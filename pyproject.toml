@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=42.0.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffusion_linking"
+version = "0.0.1"
+description = "Research on entity linking using SMC and diffusion models."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["torch", "tqdm", "seaborn",]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.9.1",
+    "click",
+    "isort>=5.12.0",
+    "jupyter",
+    "mypy>=1.5.1",
+    "pylint>=3.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest>=7.4.2",
+]
+
+all = ["diffusion_linking[dev]"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["*_test.py", "tests/*", "experiments/*", "configs/*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]

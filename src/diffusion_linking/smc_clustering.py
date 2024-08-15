@@ -9,6 +9,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from diffusion_linking.utils import batched_eval
+
+#====================== Cluster types ====================== 
 
 class Cluster():
     """
@@ -33,7 +36,7 @@ class Cluster():
         return []
     
     def add(self, data_id):
-        # This is only used for computing the combined hash
+        # This is only used for computing the combined hash - could be computed directly in future
         return self.data.union({data_id})
     
     def merge_point(self, data_id, data):
@@ -100,7 +103,7 @@ class WordCluster(Cluster):
 
 
 def get_ngram_counts(strings, n=2):
-    ngrams = [nltk.everygrams(' ' + unidecode(string).lower() + ' ', max_len=n, min_len=n-1) for string in strings if len(string.strip())>0]
+    ngrams = [nltk.everygrams(' '*(n-1) + string.replace(' ', ' '*(n-1)) + ' '*(n-1), max_len=n, min_len=n-1) for string in strings if len(string.strip())>0]
     counts = collections.defaultdict(lambda: 0)
     for string in ngrams:
         for ngram in string:
@@ -131,30 +134,7 @@ class NgramCluster(Cluster):
         return NgramCluster(self.data.union({data_id}), self.dim, self.n, counts=new_counts) 
 
 
-##
-
-def batched_eval(f, batch_size, batched_argnums, *inputs):
-        # Split arguments in batched_argnums into batches and pad last batch
-        # (avoids recompilations of jitted functions)
-        n = inputs[batched_argnums[0]].shape[0]
-        n_batches = ceil(n/batch_size)
-        pad_by = batch_size*n_batches - n
-        
-        batched_input= []
-        for i in range(len(inputs)):
-            if i in batched_argnums:
-                batched = [ inputs[i][(batch_size*j):min(batch_size*(j+1), n)] for j in range(n_batches) ]
-                batched[-1] = jnp.concatenate([batched[-1], jnp.zeros((pad_by,*inputs[i].shape[1:]))], axis=0)
-                batched_input.append(jnp.array(batched))
-            else:
-                batched_input.append(None)        
-        
-        batched_output = [ f(*[batched_input[i][b] if i in batched_argnums else inputs[i] for i in range(len(inputs))]) for b in range(n_batches) ]
-        if pad_by > 0 :
-            return jnp.concatenate(batched_output, axis=0)[:-pad_by]
-        else:
-            return jnp.concatenate(batched_output, axis=0)
- 
+#====================== Mixture models ====================== 
     
 class DPMixtureModel():
     def __init__(self, alpha):
@@ -236,7 +216,7 @@ class NgramMixture(DPMixtureModel):
         
         return jnp.array(LL)
 
-#####  
+#====================== Clusterer ======================  
 
 class SMCClustererState():
     """
@@ -460,7 +440,7 @@ def plot_particles_2D(state, n_plots=5, fig_scale=3):
     plt.show()
 
       
-#########
+#====================== Resamplers ====================== 
  
 def resample_multinomial(rng, weights, max_particles, **kwargs):
     """
@@ -555,6 +535,9 @@ def resample_greedy(rng, weights, max_particles, **kwargs):
 
 
 def split_resample(rng, weights, max_particles, state):
+    """
+    Resamples assignments from each particle separately.
+    """
     rng = jax.random.split(rng, len(state.particles))
     n_resample = floor(max_particles/len(state.particles))
     new_weights = []

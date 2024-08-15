@@ -1,7 +1,7 @@
 # Licensed under the MIT license.
 from math import ceil
 import jax.numpy as jnp
-
+import numpy as np
 
 def batched_eval(f, batch_size, batched_argnums, *inputs):
         # Split arguments in batched_argnums into batches and pad last batch
@@ -14,8 +14,8 @@ def batched_eval(f, batch_size, batched_argnums, *inputs):
         for i in range(len(inputs)):
             if i in batched_argnums:
                 batched = [ inputs[i][(batch_size*j):min(batch_size*(j+1), n)] for j in range(n_batches) ]
-                batched[-1] = jnp.concatenate([batched[-1], jnp.zeros((pad_by,*inputs[i].shape[1:]), dtype=inputs[i].dtype)], axis=0)
-                batched_input.append(jnp.array(batched))
+                batched[-1] = np.concatenate([batched[-1], np.zeros((pad_by,*inputs[i].shape[1:]), dtype=inputs[i].dtype)], axis=0)
+                batched_input.append(np.array(batched))
             else:
                 batched_input.append(None)        
         

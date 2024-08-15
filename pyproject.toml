@@ -7,8 +7,8 @@ name = "diffusion_linking"
 version = "0.0.1"
 description = "Research on entity linking using SMC and diffusion models."
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = ["torch", "tqdm", "seaborn", "jax", "jaxlib", "optax", "flax"]
+requires-python = ">=3.12"
+dependencies = ["torch", "tqdm", "seaborn", "matplotlib", "jax", "jaxlib", "optax", "flax", "nltk", "unidecode"]
 
 [project.optional-dependencies]
 dev = [

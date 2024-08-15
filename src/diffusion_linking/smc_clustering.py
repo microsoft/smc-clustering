@@ -103,7 +103,7 @@ class WordCluster(Cluster):
 
 
 def get_ngram_counts(strings, n=2):
-    ngrams = [nltk.everygrams(' '*(n-1) + string.replace(' ', ' '*(n-1)) + ' '*(n-1), max_len=n, min_len=n-1) for string in strings if len(string.strip())>0]
+    ngrams = [nltk.everygrams(' '*(n-1) + unidecode(string.strip()).lower().replace(' ', ' '*(n-1)) + ' '*(n-1), max_len=n, min_len=n-1) for string in strings if len(string.strip())>0]
     counts = collections.defaultdict(lambda: 0)
     for string in ngrams:
         for ngram in string:

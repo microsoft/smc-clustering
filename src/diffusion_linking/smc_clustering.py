@@ -101,17 +101,37 @@ class WordCluster(Cluster):
         data_counts = get_counts(data)        
         return WordCluster(self.data.union({data_id}), self.dim, counts=self.counts + data_counts) 
 
+class CountDict(dict):
+    def __init__(self, default_val, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_val = default_val
+    
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            return self.default_val
+        
+    def copy(self):
+        return CountDict(self.default_val, super().copy())
+
+def get_ngrams(string, n):
+    return nltk.everygrams(' '*(n-1) + unidecode(string.strip()).lower().replace(' ', ' '*(n-1)) + ' '*(n-1), max_len=n, min_len=n-1)
 
 def get_ngram_counts(strings, n=2):
-    ngrams = [nltk.everygrams(' '*(n-1) + unidecode(string.strip()).lower().replace(' ', ' '*(n-1)) + ' '*(n-1), max_len=n, min_len=n-1) for string in strings if len(string.strip())>0]
-    counts = collections.defaultdict(lambda: 0)
-    for string in ngrams:
-        for ngram in string:
-            counts[ngram] += 1
-    return counts
+    if len(strings) == 1:
+        ngrams = get_ngrams(strings[0], n)
+        return collections.Counter(ngrams)
+    
+    else:            
+        ngrams = [get_ngrams(string, n) for string in strings if len(string.strip())>0]
+        counts = collections.Counter(ngrams[0])
+        for ns in ngrams[1:]:
+            counts.update(ns)
+        return counts
 
 class NgramCluster(Cluster):
-    def __init__(self, data_ids, dim=28, n=2, counts=None, data=None):
+    def __init__(self, data_ids, dim=None, n=2, counts=None, data=None):
         super().__init__(data_ids, dim)
         self.n = n
         if counts is not None:
@@ -119,19 +139,23 @@ class NgramCluster(Cluster):
         elif data is not None:
             self.counts = get_ngram_counts(data, self.n)
         else:
-            self.counts = collections.defaultdict(lambda: 0) 
+            self.counts = collections.Counter()
 
     @property
     def summary(self):
         return self.counts
         
     def merge_point(self, data_id, data):
-        data_counts = get_ngram_counts(data, self.n)
-        new_counts = self.counts.copy()
-        for ngram in data_counts.keys():
-            new_counts[ngram] += data_counts[ngram]
-            
+        new_counts = self.counts + get_ngram_counts(data, self.n)           
         return NgramCluster(self.data.union({data_id}), self.dim, self.n, counts=new_counts) 
+
+class BigramCluster(NgramCluster):
+    def __init__(self, data_ids, dim=None, counts=None, data=None):
+        super().__init__(data_ids, dim, 2, counts, data)
+        
+class TrigramCluster(NgramCluster):
+    def __init__(self, data_ids, dim=None, counts=None, data=None):
+        super().__init__(data_ids, dim, 3, counts, data)
 
 
 #====================== Mixture models ====================== 
@@ -194,7 +218,7 @@ class BagOfWordsMixture(DPMixtureModel):
         return batched_eval(self._post_predictive, batch_size, (1,2), get_counts(x), summary)
     
 class NgramMixture(DPMixtureModel):
-    def __init__(self, alpha, alpha_0, prior_counts=None, n=2):
+    def __init__(self, alpha, alpha_0, n=2, prior_counts=None):
         super().__init__(alpha)       
         self.alpha_0 = alpha_0
         self.n = n
@@ -206,7 +230,7 @@ class NgramMixture(DPMixtureModel):
                 raise ValueError("Count dictionary must contain unigram counts.")
         else:
             self.V = 28
-            self.prior_counts = collections.defaultdict(lambda: 1)
+            self.prior_counts = CountDict(1)
     
     def post_predictive(self, x, n, summary):
         counts = get_ngram_counts(x, self.n)
@@ -215,6 +239,14 @@ class NgramMixture(DPMixtureModel):
             LL.append( sum([ counts[nj]*jnp.log(summary[i][nj] + self.alpha_0*self.prior_counts[nj]) - counts[nj]*jnp.log(summary[i][nj[:-1]] + self.alpha_0*(self.prior_counts[nj[:-1]] + self.V*self.prior_counts['<UNK>'])) for nj in counts.keys() if len(nj)==self.n]) )
         
         return jnp.array(LL)
+
+class BigramMixture(NgramMixture):
+    def __init__(self, alpha, alpha_0, prior_counts=None):
+        super().__init__(alpha, alpha_0, 2, prior_counts) 
+
+class TrigramMixture(NgramMixture):
+    def __init__(self, alpha, alpha_0, prior_counts=None):
+        super().__init__(alpha, alpha_0, 3, prior_counts)
 
 #====================== Clusterer ======================  
 

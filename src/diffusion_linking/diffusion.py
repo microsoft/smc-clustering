@@ -100,7 +100,6 @@ class VariationalDiffusion(torch.nn.Module):
         the log weights are then normalized to sum to 1, and the product
         of those weights is the particle estimate of p(z_0).
         """
-
         z_s = x.repeat(num_particles, 1, 1)
 
         log_prob = 0.0

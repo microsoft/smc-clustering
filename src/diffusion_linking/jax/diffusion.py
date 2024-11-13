@@ -1,14 +1,14 @@
 # Licensed under the MIT license.
 import functools
+
 import jax
 import jax.numpy as jnp
-import flax
 
 from diffusion_linking.jax.model import SetFormer
 from diffusion_linking.jax.schedule import LinearSchedule
 
 
-class VariationalDiffusion():
+class VariationalDiffusion:
     """
     Variational diffusion following https://arxiv.org/pdf/2107.00630.pdf
 
@@ -34,9 +34,9 @@ class VariationalDiffusion():
         self.schedule = schedule
         self.net = SetFormer(dim, depth)
         self.params = self.net.init(rng, jnp.zeros((1, 1, self.dim + 2)), jnp.ones((1, 1), dtype=jnp.bool), train=False)
-        
+
         self.trained_net = None
-        
+
     def compile_net(self):
         self.trained_net = jax.jit(lambda x, masks: self.net.apply(self.params, x, masks, train=False))
 
@@ -63,9 +63,9 @@ class VariationalDiffusion():
 
         # pass z, set_size and t through the model, concatenated
         set_size = masks.sum(axis=1)[:, None, None]
-        model_input = jnp.concat([z, jnp.tile(set_size,(1, seq_len, 1)), jnp.tile(t,(1, seq_len, 1))], axis=-1)
+        model_input = jnp.concat([z, jnp.tile(set_size, (1, seq_len, 1)), jnp.tile(t, (1, seq_len, 1))], axis=-1)
         rng, dropout_rng = jax.random.split(rng)
-        eps_hat = self.net.apply(params, model_input, masks, train=True, rngs={'dropout': dropout_rng})
+        eps_hat = self.net.apply(params, model_input, masks, train=True, rngs={"dropout": dropout_rng})
 
         # compute the L_inf loss
         gamma_grad = self.schedule.gamma_grad(t)
@@ -73,7 +73,6 @@ class VariationalDiffusion():
         loss = loss.mean()  # average over batch
 
         return loss
-    
 
     def smc_step(self, rng, s, t, z_s, log_weights, log_prob):
         # compute mean and variance of q(z_t | z_s)
@@ -98,7 +97,6 @@ class VariationalDiffusion():
         log_prob += log_normalizer
 
         return z_t, log_weights, log_prob
-    
 
     def logp_smc(self, rng, x, num_particles, num_time_steps, resample_thresh=0.25):
         """
@@ -108,7 +106,6 @@ class VariationalDiffusion():
         the log weights are then normalized to sum to 1, and the product
         of those weights is the particle estimate of p(z_0).
         """
-
         z_s = jnp.tile(x, (num_particles, 1, 1))
 
         log_prob = 0.0
@@ -117,7 +114,7 @@ class VariationalDiffusion():
             # t is the "next" time step, s is the "current" time step
             s = i / num_time_steps
             t = (i + 1) / num_time_steps
-            
+
             rng, step_rng = jax.random.split(rng)
             z, log_weights, log_prob = self.smc_step(step_rng, s, t, z_s, log_weights, log_prob)
 
@@ -126,12 +123,13 @@ class VariationalDiffusion():
             # print(f"iteration {i}, logp = {log_prob.item():.2f}, n_eff = {n_eff.item():.2f}")
             if n_eff < resample_thresh * num_particles:
                 rng, resample_rng = jax.random.split(rng)
-                z = jax.random.choice(resample_rng, z, shape=(num_particles,), p=jnp.exp(log_weights), replace=True, axis=0)
-                
+                z = jax.random.choice(
+                    resample_rng, z, shape=(num_particles,), p=jnp.exp(log_weights), replace=True, axis=0
+                )
+
                 log_weights = jnp.ones((num_particles,)) * jnp.log(1.0 / num_particles)
 
         return log_prob, z, log_weights
-    
 
     def moments_q_ts(self, z_s, t, s):
         """
@@ -150,7 +148,6 @@ class VariationalDiffusion():
         sigma2_ts = sigma2_t - alpha2_ts * sigma2_s
 
         return mu, sigma2_ts
-    
 
     def moments_p_st(self, z, s, t, masks=None):
         """
@@ -161,10 +158,12 @@ class VariationalDiffusion():
         """
         if masks is None:
             masks = jnp.ones_like(z[:, :, 0], dtype=jnp.bool)
-            
+
         batch_size, seq_len, _ = z.shape
         set_size = masks.sum(axis=1)[:, None, None]
-        model_input = jnp.concat([z, jnp.tile(set_size,(1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1)
+        model_input = jnp.concat(
+            [z, jnp.tile(set_size, (1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1
+        )
         eps_hat = self.trained_net(model_input, masks)
 
         gamma_s = self.schedule.gamma(s)
@@ -178,34 +177,32 @@ class VariationalDiffusion():
         mu = jnp.sqrt(alpha2_s / alpha2_t) * (z - sigma_t * c * eps_hat)
         sigma2 = sigma2_s * c
         return mu, sigma2
-    
 
     def generate(self, rng, num_samples: int, seq_len: int, num_time_steps: int, masks=None):
         # generate samples from the model
 
         if masks is None:
             masks = jnp.ones((num_samples, seq_len), dtype=jnp.bool)
-        
+
         rng, init_rng = jax.random.split(rng)
         z = jax.random.normal(init_rng, (num_samples, seq_len, self.dim))
-        
+
         def update_step(carry, rng):
-            z, s, t, masks = carry            
-            t -= 1/num_time_steps
-            s -= 1/num_time_steps
-            
+            z, s, t, masks = carry
+            t -= 1 / num_time_steps
+            s -= 1 / num_time_steps
+
             mu, sigma2 = self.moments_p_st(z, s, t, masks)
-            z = mu + jnp.sqrt(sigma2)*jax.random.normal(rng, z.shape)
-            
+            z = mu + jnp.sqrt(sigma2) * jax.random.normal(rng, z.shape)
+
             return (z, s, t, masks), None
-        
+
         step_rng = jax.random.split(rng, num_time_steps)
-        t = 1.
-        s = 1 - 1/num_time_steps
+        t = 1.0
+        s = 1 - 1 / num_time_steps
         (z, s, t, masks), _ = jax.lax.scan(update_step, (z, s, t, masks), step_rng)
-        
+
         return z
-    
 
     def score_fn(self, z, masks, t):
         """
@@ -215,7 +212,9 @@ class VariationalDiffusion():
         batch_size, seq_len, _ = z.shape
         # concatenate z, set_size and t
         set_size = masks.sum(axis=1)[:, None, None]
-        model_input = jnp.concat([z, jnp.tile(set_size,(1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1)
+        model_input = jnp.concat(
+            [z, jnp.tile(set_size, (1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1
+        )
         eta_hat = self.trained_net(model_input, masks)
         sigma2 = self.schedule(t)
         sigma = jnp.sqrt(sigma2)
@@ -227,7 +226,6 @@ class VariationalDiffusion():
         s = self.score_fn(z, masks, t)
         beta = self.schedule(t) * self.schedule.gamma_grad(t)
         return -0.5 * beta * (z + s)
-    
 
     def generate_ode(self, num_samples, seq_len, num_time_steps, masks=None, z=None, rng=None):
         """
@@ -244,45 +242,44 @@ class VariationalDiffusion():
             masks = jnp.ones((num_samples, seq_len), dtype=jnp.bool)
         if z is None:
             z = jax.random.normal(rng, (num_samples, seq_len, self.dim))
-            
+
         def update_step(carry, t):
             z, masks = carry
-            z -= 1/num_time_steps * self.prob_flow_grad_fn(z, masks, t)
-            
+            z -= 1 / num_time_steps * self.prob_flow_grad_fn(z, masks, t)
+
             return (z, masks), None
-        
-        ts = jnp.linspace(1, 1/num_time_steps, num_time_steps)
+
+        ts = jnp.linspace(1, 1 / num_time_steps, num_time_steps)
         (z, masks), _ = jax.lax.scan(update_step, (z, masks), ts)
         return z
 
-    
-    @functools.partial(jax.jit, static_argnums=(0,4))
+    @functools.partial(jax.jit, static_argnums=(0, 4))
     def log_prob_ode(self, rng, x, masks, num_time_steps=100):
         """
         Compute the log probability of x under the model, using the probability flow ODE.
         """
-        
+
         def update_step(carry, rng):
             # use vector-Jacobian product and Skilling-Hutchinson estimator
             # see https://openreview.net/pdf?id=PxTIG12RRHS eq 39 - 40
-            
+
             x, masks, t, log_prob = carry
             eps = jax.random.normal(rng, x.shape)
 
             f = functools.partial(self.prob_flow_grad_fn, masks=masks, t=t)
             grad, f_vjp = jax.vjp(f, x)
             vjp = f_vjp(eps)[0]
-            
-            x += 1/num_time_steps * grad
-            log_prob += jnp.sum(eps * vjp * masks[:, :, None], axis=[1, 2]) * 1/num_time_steps
-            
-            t += 1/num_time_steps
-            
+
+            x += 1 / num_time_steps * grad
+            log_prob += jnp.sum(eps * vjp * masks[:, :, None], axis=[1, 2]) * 1 / num_time_steps
+
+            t += 1 / num_time_steps
+
             return (x, masks, t, log_prob), None
 
-        t = 0.
+        t = 0.0
         log_prob = jnp.zeros((x.shape[0],))
-        
+
         step_rng = jax.random.split(rng, num_time_steps)
         (x, masks, t, log_prob), _ = jax.lax.scan(update_step, (x, masks, t, log_prob), step_rng)
 

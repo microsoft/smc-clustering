@@ -48,17 +48,17 @@ def train_model(
         with tqdm.tqdm(dataloader) as pbar:
             for i, batch in enumerate(pbar):
                 x, masks = batch
-                loss = step(x.to('cuda'), masks.to('cuda'))
+                loss = step(x.to("cuda"), masks.to("cuda"))
                 if i % loss_interval == 0:
                     loss_history.append(loss.item())
-                    pbar.set_description(f'epoch: {epoch}, loss: {loss.item():.4f}')
+                    pbar.set_description(f"epoch: {epoch}, loss: {loss.item():.4f}")
             if callback is not None:
                 callback(model, loss_history)
 
         if checkpoint_path is not None:
-            save_dict = {'model': model.state_dict(), 'optimizer': optimizer.state_dict(), 'loss_history': loss_history}
+            save_dict = {"model": model.state_dict(), "optimizer": optimizer.state_dict(), "loss_history": loss_history}
             if do_schedule_opt:
-                save_dict['schedule_optimizer'] = schedule_optimizer.state_dict()
+                save_dict["schedule_optimizer"] = schedule_optimizer.state_dict()
             torch.save(save_dict, checkpoint_path)
 
     return loss_history, model

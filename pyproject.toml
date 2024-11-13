@@ -7,19 +7,18 @@ name = "diffusion_linking"
 version = "0.0.1"
 description = "Research on entity linking using SMC and diffusion models."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = ["torch", "tqdm", "seaborn", "jax", "jaxlib", "optax", "flax"]
 
 [project.optional-dependencies]
 dev = [
-    "black>=23.9.1",
     "click",
-    "isort>=5.12.0",
     "jupyter",
-    "mypy>=1.5.1",
+    "pyright==1.1.374",
     "pylint>=3.0.0",
     "pytest-cov>=4.1.0",
     "pytest>=7.4.2",
+    "ruff==0.5.4",
 ]
 
 all = ["diffusion_linking[dev]"]
@@ -30,3 +29,21 @@ exclude = ["*_test.py", "tests/*", "experiments/*", "configs/*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.*",           # this covers .venv*
+    "**/venv*",
+    "**/ENV",
+    "**/env",
+]
+pythonVersion = "3.12"
+
+[tool.ruff]
+extend = "ruff.toml"

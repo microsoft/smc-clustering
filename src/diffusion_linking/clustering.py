@@ -1,103 +1,69 @@
 # Licensed under the MIT license.
-from math import ceil
 import jax
 import jax.numpy as jnp
 import numpy as np
-from matplotlib import pyplot as plt
-from tqdm import tqdm
 
 
-class Cluster:
+class Cluster():
     """
-    A simple class to hold a cluster of points.
-    A torch tensor of shape (cluster_size, dim) is used to store the data.
-    A hash is used to identify the cluster, and is computed as a frozenset of the ids the fragments. This allows
-    caching of cluster scores.
+    Represents a cluster as a frozen set of datapoint ids.
     """
-
-    def __init__(self, data, hash_=None):
-        self.data = data
-        self._hash = hash_
-        self.score = None
-
+    def __init__(self, data_ids):
+        self.data = frozenset(data_ids)
+        self.size = len(data_ids)
+    
+    @property
+    def ids(self):
+        # Convert to numpy array for easier retrieval of datapoints
+        return np.fromiter(self.data, dtype=np.int64)
+    
     @property
     def hash(self):
-        if self._hash is None:
-            return frozenset([id(self)])
-        return self._hash
-
+        return hash(self.data)
+    
     @property
-    def size(self):
-        return self.data.shape[0]
-
+    def summary(self):
+        return []
+    
+    def add(self, data_id):
+        return self.data.union({data_id})
+    
+    def merge_point(self, data_id, data):
+        return Cluster(self.data.union({data_id}))
+    
     def merge(self, other):
-        return Cluster(jnp.concat([self.data, other.data]), self.hash.union(other.hash))
+        return Cluster(self.data.union(other.data))
 
 
 class Clusterer:
-    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, batch_shape=(20,20)):
+    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16):
         self.data = data
         self.score_fn = score_fn
         self.link_threshold = link_threshold
         self.cluster_batch_size = cluster_batch_size
-        self.clusters = [Cluster(d) for d in data]
+        self.clusters = [Cluster({d}) for d in range(data.shape[0])]
         self.score_cache = {}
-        
-        self.data_dim = data[0].shape[-1]
-        self.batch_shape = batch_shape
-        
+                
     def compute_scores(self, rng, clusters, force_recompute=False):
         """
-        For a list of clusters, compute the score for each cluster.
-
+        For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
-        The score function is assumed to take a batch of data and a batch of masks,
-        and return a batch of scores. The shape of the data is (batch_size, max_cluster_size, dim),
-        the shape of the mask is (batch_size, max_cluster_size), and the shape of the scores is (batch_size,).
         """
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
-            [self.score_cache.pop(cluster.hash, None) for cluster in clusters]
+            [self.score_cache.pop(hash(cluster), None) for cluster in clusters]
             
-        compute_clusters = [ cluster for cluster in clusters if cluster.hash not in self.score_cache]        
+        compute_clusters = [ cluster for cluster in clusters if hash(cluster) not in self.score_cache]        
         if len(compute_clusters)==0:
-            for cluster in clusters:
-                cluster.score = self.score_cache[cluster.hash]
             return
-        # split clusters into batches and pad last batch (avoids recompilations)
-        n_batches = ceil(len(compute_clusters)/self.batch_shape[0])
-        compute_clusters = [ compute_clusters[(self.batch_shape[0]*i):min(self.batch_shape[0]*(i+1), len(compute_clusters))] for i in range(n_batches) ]        
-        compute_clusters[-1] += [Cluster(jnp.full((0,self.data_dim), float('nan')))] * (self.batch_shape[0] - len(compute_clusters[-1]))
         
-        for cluster_batch in compute_clusters:
-            max_size = self.batch_shape[1] + max([0,ceil((max([c.size for c in cluster_batch])-self.batch_shape[1])/8)])*8
-            # prepare the data and masks
-            data, masks, hashes = [], [], []
-            for cluster in cluster_batch:
-    
-                hashes.append(cluster.hash)
-    
-                # prepare masks
-                mask = jnp.concat([jnp.ones((cluster.size,)), jnp.zeros((max_size-cluster.size))])
-                masks.append(mask)
-    
-                # append nans onto data to make it the same size
-                padding = jnp.full((max_size - cluster.size, cluster.data.shape[1]), float('nan'))
-                data.append(jnp.concat([cluster.data, padding], axis=0))
-    
-            # compute a batch of scores, if any to compute
-            if len(data) > 0:
-                scores = self.score_fn(rng, jnp.stack(data), jnp.stack(masks))
-    
-                # hash the scores so we don't need to recompute later
-                for score, hash_ in zip(scores, hashes):
-                    self.score_cache[hash_] = score
-
-        # retrieve the scores from the cache
-        for cluster in clusters:
-            cluster.score = self.score_cache[cluster.hash]
-
+        hashes = [hash(cluster) for cluster in compute_clusters]
+        scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
+        for score, hash_ in zip(scores, hashes):
+            self.score_cache[hash_] = score
+            
+            
     def generate_batch_ids(self, rng):
         # select a batch at random
         indices = jnp.arange(len(self.clusters))
@@ -111,8 +77,8 @@ class Clusterer:
         for iteration in range(max_iter):
             rng, batch_rng = jax.random.split(rng)
             inds, ijs = self.generate_batch_ids(batch_rng)
-            cluster_batch = [c for i, c in enumerate(self.clusters) if i in inds]
-            proposed_clusters = [self.clusters[i].merge(self.clusters[j]) for i, j in ijs]
+            cluster_batch = [c.data for i, c in enumerate(self.clusters) if i in inds]
+            proposed_clusters = [self.clusters[i].merge(self.clusters[j]).data for i, j in ijs]
 
             # assign the score to each cluster
             rng, score_rng = jax.random.split(rng)
@@ -120,7 +86,7 @@ class Clusterer:
 
             # compute linking scores
             linking_scores = [
-                pc.score - self.clusters[i].score - self.clusters[j].score for (i, j), pc in zip(ijs, proposed_clusters)
+                self.score_cache[hash(pc)] - self.score_cache[self.clusters[i].hash] - self.score_cache[self.clusters[j].hash] for (i, j), pc in zip(ijs, proposed_clusters)
             ]
             linking_scores = jnp.stack(linking_scores)
 
@@ -151,3 +117,12 @@ class Clusterer:
 
             if callback is not None:
                 callback(self.clusters, iteration)
+                
+    def summary(self, print_cluster_data = False):
+        # Print out summary of clustering        
+        clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
+        print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")           
+        if print_cluster_data:
+            for c in clusters:
+                print(f"LL:{self.score_cache[c.hash]:.2g}, ", self.data[c.ids])
+            print()

@@ -1,34 +1,38 @@
 # Licensed under the MIT license.
-
+import jax
+import jax.numpy as jnp
 import numpy as np
-import torch
 
 
-class Cluster:
+class Cluster():
     """
-    A simple class to hold a cluster of points.
-    A torch tensor of shape (cluster_size, dim) is used to store the data.
-    A hash is used to identify the cluster, and is computed as a frozenset of the ids the fragments. This allows
-    caching of cluster scores.
+    Represents a cluster as a frozen set of datapoint ids.
     """
-
-    def __init__(self, data, hash_=None):
-        self.data = data
-        self._hash = hash_
-        self.score = None
-
+    def __init__(self, data_ids):
+        self.data = frozenset(data_ids)
+        self.size = len(data_ids)
+    
+    @property
+    def ids(self):
+        # Convert to numpy array for easier retrieval of datapoints
+        return np.fromiter(self.data, dtype=np.int64)
+    
     @property
     def hash(self):
-        if self._hash is None:
-            return frozenset([id(self)])
-        return self._hash
-
+        return hash(self.data)
+    
     @property
-    def size(self):
-        return self.data.shape[0]
-
+    def summary(self):
+        return []
+    
+    def add(self, data_id):
+        return self.data.union({data_id})
+    
+    def merge_point(self, data_id, data):
+        return Cluster(self.data.union({data_id}))
+    
     def merge(self, other):
-        return Cluster(torch.cat([self.data, other.data]), self.hash.union(other.hash))
+        return Cluster(self.data.union(other.data))
 
 
 class Clusterer:
@@ -37,80 +41,57 @@ class Clusterer:
         self.score_fn = score_fn
         self.link_threshold = link_threshold
         self.cluster_batch_size = cluster_batch_size
-        self.clusters = [Cluster(d) for d in data]
+        self.clusters = [Cluster({d}) for d in range(data.shape[0])]
         self.score_cache = {}
-
-    def compute_scores(self, clusters, force_recompute=False):
+                
+    def compute_scores(self, rng, clusters, force_recompute=False):
         """
-        For a list of clusters, compute the score for each cluster.
-
+        For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
-        The score function is assumed to take a batch of data and a batch of masks,
-        and return a batch of scores. The shape of the data is (batch_size, max_cluster_size, dim),
-        the shape of the mask is (batch_size, max_cluster_size), and the shape of the scores is (batch_size,).
         """
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
-            [self.score_cache.pop(cluster.hash, None) for cluster in clusters]
-
-        # prepare the data and masks
-        max_size = max([c.size for c in clusters])
-        data, masks, hashes = [], [], []
-        for cluster in clusters:
-            if cluster.hash in self.score_cache:
-                continue
-
-            hashes.append(cluster.hash)
-
-            # prepare masks
-            mask = torch.zeros(max_size, dtype=torch.bool)
-            mask[: cluster.size] = True
-            masks.append(mask)
-
-            # append nans onto data to make it the same size
-            padding = torch.zeros(max_size - cluster.size, cluster.data.shape[1]).fill_(float('nan'))
-            data.append(torch.cat([cluster.data, padding], dim=0))
-
-        # compute a batch of scores, if any to compute
-        if len(data) > 0:
-            scores = self.score_fn(torch.stack(data), torch.stack(masks))
-
-            # hash the scores so we don't need to recompute later
-            for score, hash_ in zip(scores, hashes):
-                self.score_cache[hash_] = score
-
-        # retrieve the scores from the cache
-        for cluster in clusters:
-            cluster.score = self.score_cache[cluster.hash]
-
-    def generate_batch_ids(self):
+            [self.score_cache.pop(hash(cluster), None) for cluster in clusters]
+            
+        compute_clusters = [ cluster for cluster in clusters if hash(cluster) not in self.score_cache]        
+        if len(compute_clusters)==0:
+            return
+        
+        hashes = [hash(cluster) for cluster in compute_clusters]
+        scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
+        for score, hash_ in zip(scores, hashes):
+            self.score_cache[hash_] = score
+            
+            
+    def generate_batch_ids(self, rng):
         # select a batch at random
-        indices = np.arange(len(self.clusters))
+        indices = jnp.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
-        batch_indices = np.random.choice(indices, batch_size, replace=False)
+        batch_indices = jax.random.choice(rng, indices, (batch_size,), replace=False)
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
         return batch_indices, unique_pairs
-
-    def cluster(self, max_iter=100, verbose=True, callback=None):
+    
+    def cluster(self, rng, max_iter=100, verbose=True, callback=None):
 
         for iteration in range(max_iter):
-
-            inds, ijs = self.generate_batch_ids()
-            cluster_batch = [c for i, c in enumerate(self.clusters) if i in inds]
-            proposed_clusters = [self.clusters[i].merge(self.clusters[j]) for i, j in ijs]
+            rng, batch_rng = jax.random.split(rng)
+            inds, ijs = self.generate_batch_ids(batch_rng)
+            cluster_batch = [c.data for i, c in enumerate(self.clusters) if i in inds]
+            proposed_clusters = [self.clusters[i].merge(self.clusters[j]).data for i, j in ijs]
 
             # assign the score to each cluster
-            self.compute_scores(cluster_batch + proposed_clusters)
+            rng, score_rng = jax.random.split(rng)
+            self.compute_scores(score_rng, cluster_batch + proposed_clusters)
 
             # compute linking scores
             linking_scores = [
-                pc.score - self.clusters[i].score - self.clusters[j].score for (i, j), pc in zip(ijs, proposed_clusters)
+                self.score_cache[hash(pc)] - self.score_cache[self.clusters[i].hash] - self.score_cache[self.clusters[j].hash] for (i, j), pc in zip(ijs, proposed_clusters)
             ]
-            linking_scores = torch.stack(linking_scores)
+            linking_scores = jnp.stack(linking_scores)
 
             # find the best pair in the batch, execute merge if threshold reached
-            best_pair = ijs[torch.argmax(linking_scores).item()]
+            best_pair = ijs[jnp.argmax(linking_scores).item()]
             best_score = linking_scores.max()
             if best_score > self.link_threshold:
                 if verbose:
@@ -136,3 +117,12 @@ class Clusterer:
 
             if callback is not None:
                 callback(self.clusters, iteration)
+                
+    def summary(self, print_cluster_data = False):
+        # Print out summary of clustering        
+        clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
+        print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")           
+        if print_cluster_data:
+            for c in clusters:
+                print(f"LL:{self.score_cache[c.hash]:.2g}, ", self.data[c.ids])
+            print()

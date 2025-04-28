@@ -1,7 +1,5 @@
 # Licensed under the MIT license.
 import functools, collections
-from unidecode import unidecode
-import nltk
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -9,146 +7,8 @@ import scipy
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from diffusion_linking.utils import batched_eval
-from diffusion_linking.clustering import Cluster
 
-#====================== Cluster types ====================== 
-class GaussianCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a Gaussian model
-    """
-    def __init__(self, data_ids, dim=2, Sx=None, Sxx=None, data=None):
-        super().__init__(data_ids)
-        
-        self.dim = dim
-        
-        if Sx is not None:
-            self.Sx = Sx
-        elif data is not None:
-            self.Sx = data
-        else:
-            self.Sx = jnp.zeros((dim,))
-            
-        if Sxx is not None:
-            self.Sxx = Sxx
-        elif data is not None:
-            self.Sxx = data**2
-        else:
-            self.Sxx = jnp.zeros((dim,)) 
-    
-    @property
-    def summary(self):
-        return [self.Sx, self.Sxx]
-    
-    def merge_point(self, data_id, data):
-        data_ids = self.data.union({data_id})            
-        Sx = self.Sx + data
-        Sxx = self.Sxx + data**2
-        
-        return GaussianCluster(data_ids, self.dim, Sx=Sx, Sxx=Sxx)
-    
-    
-def get_counts(strings):
-    """
-    Convert strings to ASCII and get character counts
-    """
-    counts = np.zeros((26,), dtype=np.int32)
-    for string in strings:
-        string = unidecode(string).lower()
-        count_dict = collections.Counter(string)
-        for i, char in enumerate('abcdefghijklmnopqrstuvwxyz'):
-            counts[i] += count_dict[char]
-        
-    return counts
-
-class WordCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a unigram model
-    """
-    def __init__(self, data_ids, dim=26, counts=None, data=None):
-        super().__init__(data_ids)
-        self.dim = dim
-        if counts is not None:
-            self.counts = counts
-        elif data is not None:
-            self.counts = get_counts(data)
-        else:
-            self.counts = jnp.zeros((dim,))          
-
-    @property
-    def summary(self):
-        return self.counts
-        
-    def merge_point(self, data_id, data):
-        data_counts = get_counts(data)        
-        return WordCluster(self.data.union({data_id}), self.dim, counts=self.counts + data_counts) 
-
-class CountDict(dict):
-    """
-    Dictionary with a default value. Does not insert new keys into the dictionary.
-    """
-    def __init__(self, default_val, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.default_val = default_val
-    
-    def __getitem__(self, key):
-        try:
-            return super().__getitem__(key)
-        except KeyError:
-            return self.default_val
-        
-    def copy(self):
-        return CountDict(self.default_val, super().copy())
-
-def get_ngrams(string, n):
-    """
-    Convert string to ASCII and get n-gram counts
-    """
-    return nltk.everygrams(' '*(n-1) + unidecode(string.strip()).lower().replace(' ', ' '*(n-1)) + ' '*(n-1) + 'E', max_len=n, min_len=n-1)
-
-def get_ngram_counts(strings, n=2):
-    if len(strings) == 1:
-        ngrams = get_ngrams(strings[0], n)
-        return collections.Counter(ngrams)
-    
-    else:            
-        ngrams = [get_ngrams(string, n) for string in strings if len(string.strip())>0]
-        counts = collections.Counter(ngrams[0])
-        for ns in ngrams[1:]:
-            counts.update(ns)
-        return counts
-
-class NgramCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for an n-gram model
-    """
-    def __init__(self, data_ids, n=2, counts=None, data=None):
-        super().__init__(data_ids)
-        self.n = n
-        if counts is not None:
-            self.counts = counts
-        elif data is not None:
-            self.counts = get_ngram_counts(data, self.n)
-        else:
-            self.counts = collections.Counter()
-
-    @property
-    def summary(self):
-        return self.counts
-        
-    def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts(data, self.n)           
-        return NgramCluster(self.data.union({data_id}), self.n, counts=new_counts) 
-
-class BigramCluster(NgramCluster):
-    def __init__(self, data_ids, counts=None, data=None):
-        super().__init__(data_ids, 2, counts, data)
-        
-class TrigramCluster(NgramCluster):
-    def __init__(self, data_ids, counts=None, data=None):
-        super().__init__(data_ids, 3, counts, data)
-
-#====================== Mixture models ====================== 
+#====================== Priors ====================== 
     
 class DirichletProcess:
     """
@@ -172,88 +32,7 @@ class PitmanYorProcess:
     def __call__(self, n_obs, cluster_size, n_clusters):
         # Prior probability of a clustering, based on cluster size and hyperparameters
         return jnp.where(cluster_size > 1, jnp.log((cluster_size - self.d)/(n_obs + self.alpha)), cluster_size*jnp.log((self.alpha+self.d*n_clusters)/(n_obs + self.alpha)))
-        
- 
-class GaussianMixture:
-    """
-    Gaussian model with normal-inverse-gamma prior on cluster parameters
-    """
-    def __init__(self, a, b, mu, lam):        
-        self.alpha_0 = a
-        self.beta_0 = b
-        self.mu_0 = mu
-        self.lam_0 = lam
-            
-    @functools.partial(jax.jit, static_argnums = (0))
-    @functools.partial(jax.vmap, in_axes = (None, None, 0, 0))
-    def _post_predictive(self, x, n, summary):
-        Sx = summary[0]
-        Sxx = summary[1]
-        alpha = self.alpha_0 + n/2
-        lam = self.lam_0 + n
-        mu = (self.lam_0 + Sx)/(self.lam_0 + n)
-        beta = self.beta_0 + jnp.where(n>0, 1/n, 0) * 1/2*( Sxx*n - Sx**2 + self.lam_0/lam * (Sx - self.mu_0*n)**2 )
-                            
-        return jnp.sum(jax.scipy.stats.t.logpdf(x, 
-                                        df = 2*alpha, 
-                                        loc = mu, 
-                                        scale = beta * (lam + 1)/(alpha*lam)
-                                        ))
-    
-    def post_predictive(self, x, n, summary):
-        batch_size = 2**int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1,2), x, n, np.array(summary))
-    
-    
-class BagOfWordsMixture:
-    """
-    Unigram model with Dirichlet prior on character frequencies
-    """
-    def __init__(self, alpha_0):
-        self.alpha_0 = alpha_0
-            
-    @functools.partial(jax.jit, static_argnums = (0))
-    @functools.partial(jax.vmap, in_axes = (None, None, 0))
-    def _post_predictive(self, x, counts):
-        p = (counts + self.alpha_0) / (jnp.sum(counts) + jnp.sum(self.alpha_0))        
-        return jax.scipy.stats.multinomial.logpmf(x, jnp.sum(x), p)
-    
-    def post_predictive(self, x, n, summary):
-        batch_size = 2**int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1,2), get_counts(x), summary)
-    
-class NgramMixture:
-    """
-    N-gram model with Dirichlet prior on n-gram frequencies
-    """
-    def __init__(self, alpha_0, n=2, prior_counts=None):
-        self.alpha_0 = alpha_0
-        self.n = n
-        
-        if prior_counts is not None:
-            self.prior_counts = prior_counts
-            self.V = len([key for key in prior_counts.keys() if len(key)==1]) + 1
-            if self.V < 2:
-                raise ValueError("Count dictionary must contain unigram counts.")
-        else:
-            self.V = 28
-            self.prior_counts = CountDict(1)
-    
-    def post_predictive(self, x, n, summary):
-        counts = get_ngram_counts(x, self.n)
-        LL = []
-        for i in range(len(summary)):
-            LL.append( sum([ counts[nj]*jnp.log(summary[i][nj] + self.alpha_0*self.prior_counts[nj]) - counts[nj]*jnp.log(summary[i][nj[:-1]] + self.alpha_0*(self.prior_counts[nj[:-1]] + self.V*self.prior_counts['<UNK>'])) for nj in counts.keys() if len(nj)==self.n]) )
-        
-        return jnp.array(LL)
 
-class BigramMixture(NgramMixture):
-    def __init__(self, alpha_0, prior_counts=None):
-        super().__init__(alpha_0, 2, prior_counts) 
-
-class TrigramMixture(NgramMixture):
-    def __init__(self, alpha_0, prior_counts=None):
-        super().__init__(alpha_0, 3, prior_counts)
 
 #====================== Clusterer ======================  
 
@@ -994,3 +773,5 @@ def resample_greedy(rng, weights, max_particles, **kwargs):
     """
     idx = jnp.argsort(weights)
     return idx[-max_particles:], weights[idx[-max_particles:]]
+
+

@@ -9,6 +9,14 @@ from tqdm import tqdm
 
 
 #====================== Priors ====================== 
+
+class Uniform:
+    """
+    Uniform prior on cluster sizes
+    """        
+    def __call__(self, n_obs, cluster_size, n_clusters):
+        return jnp.zeros((cluster_size.shape[0]))
+    
     
 class DirichletProcess:
     """

@@ -149,18 +149,14 @@ class Ngram:
     """
     N-gram model with Dirichlet prior on n-gram frequencies
     """
-    def __init__(self, alpha_0, n=2, prior_counts=None):
-        self.alpha_0 = alpha_0
+    def __init__(self, prior_scale, prior_counts, n=2):
+        self.prior_scale = prior_scale
         self.n = n
         
-        if prior_counts is not None:
-            self.prior_counts = prior_counts
-            self.V = len([key for key in prior_counts.keys() if len(key)==1]) + 1
-            if self.V < 2:
-                raise ValueError("Count dictionary must contain unigram counts.")
-        else:
-            self.V = 28
-            self.prior_counts = CountDict(1)
+        self.prior_counts = prior_counts
+        self.V = len([key for key in prior_counts.keys() if len(key)==1]) + 1
+        if self.V < 2:
+            raise ValueError("Count dictionary must contain unigram counts.")
     
     def post_predictive(self, obs, n, summary):
         batch_size = 2**int(jnp.log2(n.shape[0]).item())
@@ -171,8 +167,8 @@ class Ngram:
         for h in histories:
             continuations = [ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n]
             x = jnp.array([counts[ngram] for ngram in continuations])
-            alphas = jnp.array([[summary[i][ngram] + self.alpha_0*self.prior_counts[ngram] for ngram in continuations] for i in range(n.shape[0])])
-            sum_alphas = jnp.array([summary[i][h] + self.alpha_0*(self.prior_counts[h] + self.V*self.prior_counts['<UNK>']) for i in range(n.shape[0])])
+            alphas = jnp.array([[summary[i][ngram] + self.prior_scale*self.prior_counts[ngram] for ngram in continuations] for i in range(n.shape[0])])
+            sum_alphas = jnp.array([summary[i][h] + self.prior_scale*(self.prior_counts[h] + self.V*self.prior_counts['<UNK>']) for i in range(n.shape[0])])
             
             if counts[h]==1:
                 # just one n-gram observation with this history, so equivalent to cheaper categorical pmf
@@ -188,8 +184,8 @@ class Ngram:
         for h in histories:
             continuations = [ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n]
             x = jnp.array([summary[ngram] for ngram in continuations])
-            alphas = jnp.array([self.alpha_0*self.prior_counts[ngram] for ngram in continuations])
-            sum_alphas = self.alpha_0*(self.prior_counts[h] + self.V*self.prior_counts['<UNK>'])
+            alphas = jnp.array([self.prior_scale*self.prior_counts[ngram] for ngram in continuations])
+            sum_alphas = self.prior_scale*(self.prior_counts[h] + self.V*self.prior_counts['<UNK>'])
             
             if summary[h]==1:
                 LL += jnp.log(alphas) - jnp.log(sum_alphas)
@@ -200,13 +196,13 @@ class Ngram:
 
                 
 class Bigram(Ngram):
-    def __init__(self, alpha_0, prior_counts=None):
-        super().__init__(alpha_0, 2, prior_counts) 
+    def __init__(self, prior_scale, prior_counts):
+        super().__init__(prior_scale, prior_counts, 2) 
 
 
 class Trigram(Ngram):
-    def __init__(self, alpha_0, prior_counts=None):
-        super().__init__(alpha_0, 3, prior_counts)
+    def __init__(self, prior_scale, prior_counts):
+        super().__init__(prior_scale, prior_counts, 3)
 
         
 #====================== Cluster classes with sufficient statistics for surrogate models ====================== 

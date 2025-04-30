@@ -185,17 +185,16 @@ class Ngram:
     def evidence(self, n, summary):
         histories = [h for h in summary.keys() if len(h) == (self.n - 1) and h[-1] != 'E']
         LL = 0
-        for h in histories.keys():
+        for h in histories:
             continuations = [ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n]
             x = jnp.array([summary[ngram] for ngram in continuations])
             alphas = jnp.array([self.alpha_0*self.prior_counts[ngram] for ngram in continuations])
             sum_alphas = self.alpha_0*(self.prior_counts[h] + self.V*self.prior_counts['<UNK>'])
             
-            if histories[h]==1:
-                # just one n-gram observation with this history, so equivalent to cheaper categorical pmf
+            if summary[h]==1:
                 LL += jnp.log(alphas) - jnp.log(sum_alphas)
             else:
-                LL += dirichlet_categorical_logpmf(x, alphas, sum_alphas)
+                LL += dirichlet_categorical_logpmf(x, alphas[None,:], jnp.array([sum_alphas])[None,:]).flatten()
                 
         return LL
 

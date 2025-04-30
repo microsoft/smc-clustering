@@ -2,7 +2,8 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-
+from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 class Cluster():
     """
@@ -72,9 +73,9 @@ class Clusterer:
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
         return batch_indices, unique_pairs
     
-    def cluster(self, rng, max_iter=100, verbose=True, callback=None):
+    def cluster(self, rng, max_iter=100, callback=None):
 
-        for iteration in range(max_iter):
+        for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)
             inds, ijs = self.generate_batch_ids(batch_rng)
             cluster_batch = [c.data for i, c in enumerate(self.clusters) if i in inds]
@@ -93,9 +94,9 @@ class Clusterer:
             # find the best pair in the batch, execute merge if threshold reached
             best_pair = ijs[jnp.argmax(linking_scores).item()]
             best_score = linking_scores.max()
+            pbar.set_postfix({"Best score":f"{best_score:.4g}"})
+
             if best_score > self.link_threshold:
-                if verbose:
-                    print(f'iteration {iteration}, linking score: {best_score:.4f}')
                 i, j = best_pair
 
                 # remove cluster i and j
@@ -108,8 +109,6 @@ class Clusterer:
                 self.clusters.append(ci.merge(cj))
 
             else:
-                if verbose:
-                    print(f'iteration {iteration}, no links found!, best merging score: {best_score:.4f}')
                 if len(self.clusters) <= self.cluster_batch_size:
                     # in this case the batch size is larger than the number of clusters, so we've exhausted all possible links
                     print('potential links exhausted, exiting')
@@ -126,3 +125,27 @@ class Clusterer:
             for c in clusters:
                 print(f"LL:{self.score_cache[c.hash]:.2g}, ", self.data[c.ids])
             print()
+            
+    def list_cluster_labels(self):
+        """
+        Return a list of the cluster IDs for each observation
+
+        """
+        cluster_lookup = {}
+        for cl in self.clusters:
+            for i in cl.ids:
+                cluster_lookup[i.item()] = str(cl)
+        return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]
+    
+
+def plot_callback(clusterer):
+    # sort clusters by size
+    clusters = sorted(clusterer.clusters, key=lambda c: c.size, reverse=True)
+    plt.figure()
+    for c in clusters:
+        if c.size > 1:
+            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], 'o', markersize=3)
+        else:
+            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], 'ks', markersize=3, alpha=0.5)
+    plt.axis('equal')
+    plt.show()

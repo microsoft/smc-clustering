@@ -131,8 +131,10 @@ model = DiSK.load_from_checkpoint(wdir + checkpoint, schema=schema, stats=stats)
 model.to(device)
 model.model.use_diffusion_weights = True
 
-def batched_score_eval(rng, cluster_data, num_samples = 10, batch_size = 10):    
-    df = pd.DataFrame.from_records([{'names': names} for names in cluster_data])
+def batched_score_eval(rng, cluster_data, num_samples = 10, batch_size = 10):
+    # Converts each cluster's data from a list of lists of names 
+    # to a single list containing all of the names from each fragment in the cluster
+    df = pd.DataFrame.from_records([{'names': sum(names, start=[])} for names in cluster_data])
     linking_scores = estimate_probs(df, model, num_samples, device, batch_size=batch_size)    
     return linking_scores
 

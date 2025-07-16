@@ -6,6 +6,9 @@ __pycache__/
 # logs
 log/
 
+# data
+experiments/data
+
 # wandb
 wandb/*
 experiments/wandb/*

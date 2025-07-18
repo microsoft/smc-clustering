@@ -3,12 +3,14 @@ import numpy as np
 import jax
 from jax import numpy as jnp
 
+import gc
+
 import torch
 
 from kebab.contracts.entity import Entity
 from tqdm import tqdm
 
-from disk.data.loader import EntityLoader
+from disk.data.loader import RecordLoader
 from disk.data.mapper import map_entities
 from disk.model.lightning import DiSKLightning
 from disk.utils.transform import CleanPyGGraph
@@ -16,7 +18,21 @@ from disk.utils.transform import CleanPyGGraph
 from diffusion_linking.smc_clustering import SMCClusterer
 from diffusion_linking.clustering import Cluster, Clusterer
 from diffusion_linking.surrogate_models import Bigram, get_ngram_counts
+from torch_geometric.profile.utils import get_data_size
 
+
+def gpu_tensors():
+    """Prints the sizes of all GPU tensors in the current process."""
+    data = []
+    for o in gc.get_objects():
+        if torch.is_tensor(o) and o.is_cuda:
+            data.append((o.numel() * o.element_size(), o.shape, o.dtype, o.requires_grad))
+    
+    for s, sh, dt, rg in sorted(data, reverse=True)[:20]:
+        if s < 1024**2 * 8:
+            continue
+
+        print(f"{s / 1024**2:7.1f} MB  shape={sh} dtype={dt} grad={rg}")
 
 def estimate_lls(
     entities: list[Entity],
@@ -47,14 +63,14 @@ def estimate_lls(
     """
     # map to RecordData
     record_data = map_entities(entities, model.schema, model.stats)
-
+    
     # Build data loader if necessary
-    if record_data.num_entities <= batch_size:
+    if record_data.num_records <= batch_size:
         loader = [record_data]
     else:
-        loader = EntityLoader(
+        loader = RecordLoader(
             data=record_data,
-            input_nodes=np.arange(record_data.num_entities),
+            input_nodes=np.arange(record_data.num_records),
             batch_size=batch_size,
             num_workers=num_workers,
             shuffle=False,
@@ -66,10 +82,15 @@ def estimate_lls(
 
     # get all log probs in one array
     all_log_probs = []
-    all_std = []
     with torch.no_grad():
         for data in tqdm(loader, desc="Computing Linking Scores", disable=not verbose):
             data.to(device)
+            
+            if verbose:
+                mb = get_data_size(data)  # bytes
+                print(f"Batch takes {mb / 1024**2:.2f} MB, {data.num_nodes} nodes, {data.num_edges} edges")
+                gpu_tensors()
+            
             log_probs, std = model.model.monte_carlo_log_probs(
                 data=data,
                 num_samples=num_samples,
@@ -77,11 +98,8 @@ def estimate_lls(
                 return_std=True,
             )
             log_probs = log_probs.detach().cpu().numpy()
-            std = std.detach().cpu().numpy()
             all_log_probs.append(log_probs)
-            all_std.append(std)
     log_probs = np.concatenate(all_log_probs, axis=0)
-    std = np.concatenate(all_std, axis=0)
 
     return log_probs
 

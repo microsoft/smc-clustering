@@ -5,6 +5,7 @@ wdir = os.getcwd()
 
 import jax
 import numpy as np
+from pathlib import Path
 
 import torch
 import warnings
@@ -53,8 +54,9 @@ def batched_score_eval(rng, cluster_data, num_samples = 10, batch_size = 10):
     linking_scores = estimate_lls(entities, model, num_samples, device=device, batch_size=batch_size)    
     return linking_scores
 
-benchmark = mskebab.Benchmark('data/sampled_rebel_clustering.json')
-task = benchmark.tasks_by_name['Clustering-Heldout-Small']
+
+benchmark = mskebab.Benchmark(Path("config/benchmark_conf.json"))
+task = benchmark.tasks_by_name["Clustering-REBEL-Small"]
 
 if args.ds_size is not None:
     data = ListWrapper([fragment[0] for fragment in task.read_items() ][:args.ds_size])

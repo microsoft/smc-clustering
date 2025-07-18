@@ -1,0 +1,10 @@
+{
+  "Clustering-REBEL-Small": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data/rebel_clustering_100_dataset.jsonl",
+      "schema": "https://some.public/download/link",
+      "ground_truth_labels": "./data/rebel_clustering_100_ground_truth.jsonl"
+    }
+  }
+}

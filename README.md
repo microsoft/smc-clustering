@@ -22,7 +22,7 @@ everything via `uv`.
    With CUDA support (12.6 or higher):
 
    ```bash
-   uv pip install -r requirements.txt -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
+   uv pip install -r ../DiSK/requirements.txt -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
    ```
 
    Without CUDA support:
@@ -33,7 +33,13 @@ everything via `uv`.
 
 3. Install MS-KeBAB package:
    Assuming MS-KEBAB project is cloned in the parent directory of this repository, you can install it as follows:
-
+   
    ```bash
    uv pip install --no-deps -e ../MS-KeBAB
    ```
+
+To sidestep some of the issues with CUDA memory allocation, you can set the following environment variables:
+```bash
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+```

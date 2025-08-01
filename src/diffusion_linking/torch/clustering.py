@@ -69,7 +69,7 @@ class Clusterer:
             masks.append(mask)
 
             # append nans onto data to make it the same size
-            padding = torch.zeros(max_size - cluster.size, cluster.data.shape[1]).fill_(float('nan'))
+            padding = torch.zeros(max_size - cluster.size, cluster.data.shape[1]).fill_(float("nan"))
             data.append(torch.cat([cluster.data, padding], dim=0))
 
         # compute a batch of scores, if any to compute
@@ -93,9 +93,7 @@ class Clusterer:
         return batch_indices, unique_pairs
 
     def cluster(self, max_iter=100, verbose=True, callback=None):
-
         for iteration in range(max_iter):
-
             inds, ijs = self.generate_batch_ids()
             cluster_batch = [c for i, c in enumerate(self.clusters) if i in inds]
             proposed_clusters = [self.clusters[i].merge(self.clusters[j]) for i, j in ijs]
@@ -114,7 +112,7 @@ class Clusterer:
             best_score = linking_scores.max()
             if best_score > self.link_threshold:
                 if verbose:
-                    print(f'iteration {iteration}, linking score: {best_score:.4f}')
+                    print(f"iteration {iteration}, linking score: {best_score:.4f}")
                 i, j = best_pair
 
                 # remove cluster i and j
@@ -128,10 +126,10 @@ class Clusterer:
 
             else:
                 if verbose:
-                    print(f'iteration {iteration}, no links found!, best merging score: {best_score:.4f}')
+                    print(f"iteration {iteration}, no links found!, best merging score: {best_score:.4f}")
                 if len(self.clusters) <= self.cluster_batch_size:
                     # in this case the batch size is larger than the number of clusters, so we've exhausted all possible links
-                    print('potential links exhausted, exiting')
+                    print("potential links exhausted, exiting")
                     break
 
             if callback is not None:

@@ -5,33 +5,35 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-class Cluster():
+
+class Cluster:
     """
     Represents a cluster as a frozen set of datapoint ids.
     """
+
     def __init__(self, data_ids):
         self.data = frozenset(data_ids)
         self.size = len(data_ids)
-    
+
     @property
     def ids(self):
         # Convert to numpy array for easier retrieval of datapoints
         return np.fromiter(self.data, dtype=np.int64)
-    
+
     @property
     def hash(self):
         return hash(self.data)
-    
+
     @property
     def summary(self):
         return []
-    
+
     def add(self, data_id):
         return self.data.union({data_id})
-    
+
     def merge_point(self, data_id, data):
         return Cluster(self.data.union({data_id}))
-    
+
     def merge(self, other):
         return Cluster(self.data.union(other.data))
 
@@ -44,7 +46,7 @@ class Clusterer:
         self.cluster_batch_size = cluster_batch_size
         self.clusters = [Cluster({d}) for d in range(data.shape[0])]
         self.score_cache = {}
-                
+
     def compute_scores(self, rng, clusters, force_recompute=False):
         """
         For a list of clusters, compute the score for each cluster
@@ -54,17 +56,16 @@ class Clusterer:
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
             [self.score_cache.pop(hash(cluster), None) for cluster in clusters]
-            
-        compute_clusters = [ cluster for cluster in clusters if hash(cluster) not in self.score_cache]        
-        if len(compute_clusters)==0:
+
+        compute_clusters = [cluster for cluster in clusters if hash(cluster) not in self.score_cache]
+        if len(compute_clusters) == 0:
             return
-        
+
         hashes = [hash(cluster) for cluster in compute_clusters]
         scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
         for score, hash_ in zip(scores, hashes):
             self.score_cache[hash_] = score
-            
-            
+
     def generate_batch_ids(self, rng):
         # select a batch at random
         indices = jnp.arange(len(self.clusters))
@@ -72,9 +73,8 @@ class Clusterer:
         batch_indices = jax.random.choice(rng, indices, (batch_size,), replace=False)
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
         return batch_indices, unique_pairs
-    
-    def cluster(self, rng, max_iter=100, callback=None):
 
+    def cluster(self, rng, max_iter=100, callback=None):
         for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)
             inds, ijs = self.generate_batch_ids(batch_rng)
@@ -87,14 +87,17 @@ class Clusterer:
 
             # compute linking scores
             linking_scores = [
-                self.score_cache[hash(pc)] - self.score_cache[self.clusters[i].hash] - self.score_cache[self.clusters[j].hash] for (i, j), pc in zip(ijs, proposed_clusters)
+                self.score_cache[hash(pc)]
+                - self.score_cache[self.clusters[i].hash]
+                - self.score_cache[self.clusters[j].hash]
+                for (i, j), pc in zip(ijs, proposed_clusters)
             ]
             linking_scores = jnp.stack(linking_scores)
 
             # find the best pair in the batch, execute merge if threshold reached
             best_pair = ijs[jnp.argmax(linking_scores).item()]
             best_score = linking_scores.max()
-            pbar.set_postfix({"Best score":f"{best_score:.4g}"})
+            pbar.set_postfix({"Best score": f"{best_score:.4g}"})
 
             if best_score > self.link_threshold:
                 i, j = best_pair
@@ -111,21 +114,21 @@ class Clusterer:
             else:
                 if len(self.clusters) <= self.cluster_batch_size:
                     # in this case the batch size is larger than the number of clusters, so we've exhausted all possible links
-                    print('potential links exhausted, exiting')
+                    print("potential links exhausted, exiting")
                     break
 
             if callback is not None:
                 callback(self.clusters, iteration)
-                
-    def summary(self, print_cluster_data = False):
-        # Print out summary of clustering        
+
+    def summary(self, print_cluster_data=False):
+        # Print out summary of clustering
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
-        print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")           
+        print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
         if print_cluster_data:
             for c in clusters:
                 print(f"LL:{self.score_cache[c.hash]:.2g}, ", self.data[c.ids])
             print()
-            
+
     def list_cluster_labels(self):
         """
         Return a list of the cluster IDs for each observation
@@ -136,7 +139,7 @@ class Clusterer:
             for i in cl.ids:
                 cluster_lookup[i.item()] = str(cl)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]
-    
+
 
 def plot_callback(clusterer):
     # sort clusters by size
@@ -144,8 +147,8 @@ def plot_callback(clusterer):
     plt.figure()
     for c in clusters:
         if c.size > 1:
-            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], 'o', markersize=3)
+            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], "o", markersize=3)
         else:
-            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], 'ks', markersize=3, alpha=0.5)
-    plt.axis('equal')
+            plt.plot(clusterer.data[c.ids, 0], clusterer.data[c.ids, 1], "ks", markersize=3, alpha=0.5)
+    plt.axis("equal")
     plt.show()

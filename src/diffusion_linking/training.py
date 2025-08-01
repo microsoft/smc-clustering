@@ -1,9 +1,10 @@
 # Licensed under the MIT license.
 
-import tqdm
-import optax
 import jax
+import optax
+import tqdm
 from flax.training import checkpoints, train_state
+
 
 def train_model(
     rng,
@@ -20,7 +21,7 @@ def train_model(
     if optimizer is None:
         optimizer = optax.adam(1e-3)
         opt_state = optimizer.init(model.params)
-        
+
     @jax.jit
     def update_step(rng, params, x, masks, opt_state):
         val, grads = jax.value_and_grad(model.loss, argnums=1, has_aux=False)(rng, params, x, masks)
@@ -28,28 +29,24 @@ def train_model(
         params = optax.apply_updates(params, updates)
         return val, params, opt_state
 
-    for epoch in range(1,epochs+1):
+    for epoch in range(1, epochs + 1):
         with tqdm.tqdm(dataloader) as pbar:
             for i, batch in enumerate(pbar):
                 x, masks = batch
                 rng, step_rng = jax.random.split(rng)
                 loss, model.params, opt_state = update_step(step_rng, model.params, x.numpy(), masks.numpy(), opt_state)
-                
+
                 if i % loss_interval == 0:
                     loss_history.append(loss.item())
-                    pbar.set_description(f'epoch: {epoch}, loss: {loss.item():.4f}')
+                    pbar.set_description(f"epoch: {epoch}, loss: {loss.item():.4f}")
             if callback is not None:
                 callback(model, loss_history)
 
-        if checkpoint_path is not None and epoch%5 == 0:            
-            state = train_state.TrainState.create(apply_fn=model.net.apply, params=model.params['params'], tx=optimizer)
-            save_dict = {'model': state, 'loss_history': loss_history}
-            
-            checkpoints.save_checkpoint(ckpt_dir=checkpoint_path,
-                                        target=save_dict,
-                                        step=epoch,
-                                        overwrite=True,
-                                        keep=2)
+        if checkpoint_path is not None and epoch % 5 == 0:
+            state = train_state.TrainState.create(apply_fn=model.net.apply, params=model.params["params"], tx=optimizer)
+            save_dict = {"model": state, "loss_history": loss_history}
+
+            checkpoints.save_checkpoint(ckpt_dir=checkpoint_path, target=save_dict, step=epoch, overwrite=True, keep=2)
 
     model.compile_net()
     return loss_history

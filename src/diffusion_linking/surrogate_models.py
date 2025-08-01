@@ -1,6 +1,7 @@
 # Licensed under the MIT license.
 import collections
 import functools
+import re
 
 import jax
 import jax.numpy as jnp
@@ -51,7 +52,7 @@ class Gaussian:
             Sxx * n - Sx**2 + self.lam_0 / lam * (Sx - self.mu_0 * n) ** 2
         )
 
-        return -jnp.sum(
+        return jnp.sum(
             jax.scipy.special.gammaln(alpha)
             - jax.scipy.special.gammaln(self.alpha_0)
             + self.alpha_0 * jnp.log(self.beta_0)
@@ -135,7 +136,8 @@ def get_ngrams(string, n):
     """
     Convert string to ASCII and get n-grams
     """
-    return nltk.everygrams(" " * (n - 1) + unidecode(string.strip()).lower() + "E", max_len=n, min_len=n - 1)
+    string = re.sub(r"[^a-z0-9 \-]", "", unidecode(string.strip()).lower())
+    return nltk.everygrams(" " * (n - 1) + string + "E", max_len=n, min_len=n - 1)
 
 
 def get_ngram_counts(strings, n=2):
@@ -146,12 +148,11 @@ def get_ngram_counts(strings, n=2):
         ngrams = get_ngrams(strings[0], n)
         return collections.Counter(ngrams)
 
-    else:
-        ngrams = [get_ngrams(string, n) for string in strings if len(string.strip()) > 0]
-        counts = collections.Counter(ngrams[0])
-        for ns in ngrams[1:]:
-            counts.update(ns)
-        return counts
+    ngrams = [get_ngrams(string, n) for string in strings if len(string.strip()) > 0]
+    counts = collections.Counter(ngrams[0])
+    for ns in ngrams[1:]:
+        counts.update(ns)
+    return counts
 
 
 @jax.jit
@@ -183,7 +184,7 @@ class Ngram:
         counts = get_ngram_counts(obs, self.n)
         histories = [h for h in counts.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
 
-        LL = np.zeros((len(summary)))
+        LL = np.zeros(len(summary))
         for h in histories:
             continuations = [ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n]
             x = jnp.array([counts[ngram] for ngram in continuations])

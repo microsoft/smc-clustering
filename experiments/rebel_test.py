@@ -1,34 +1,43 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import pandas as pd
-import numpy as np
-import os, collections, json, sys, pickle, argparse
+import argparse
+import collections
+import json
+import os
+import pickle
+import sys
 from math import ceil
+
+import numpy as np
+import pandas as pd
+
 
 wdir = os.getcwd()
 
-import torch
 import warnings
-warnings.filterwarnings("ignore") # avoid torchmetrics warning
+
+import torch
+
+
+warnings.filterwarnings("ignore")  # avoid torchmetrics warning
 
 import jax
 import jax.numpy as jnp
-
+from disk.data.mapper import map_frame
+from disk.data.stats import TextStats
+from disk.dataset.wikidata_names import WikidataNames
+from disk.model.disk import DiSK
 from kebab import mskebab
 
-from disk.model.disk import DiSK
-from disk.dataset.wikidata_names import WikidataNames
-from disk.data.stats import TextStats
-from disk.data.mapper import map_frame
-
-from diffusion_linking.smc_clustering import SMCClusterer, DirichletProcess, resample_optimal
+from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_optimal
 from diffusion_linking.surrogate_models import Bigram, BigramCluster, CountDict
 from diffusion_linking.utils import DFWrapper
 
+
 parser = argparse.ArgumentParser()
-parser.add_argument('-ds_size', type=int)
-parser.add_argument('-n_particles', type=int, default=100)
-parser.add_argument('-max_evals', type=int)
+parser.add_argument("-ds_size", type=int)
+parser.add_argument("-n_particles", type=int, default=100)
+parser.add_argument("-max_evals", type=int)
 
 args = parser.parse_args()
 n_particles = args.n_particles
@@ -37,7 +46,8 @@ if args.max_evals is None:
 else:
     max_evals = args.max_evals
 ds_size = args.ds_size
- 
+
+
 def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
     """From kebab.tasks.clustering, modified to allow evaluation for subsets of the data"""
     fragment_count = len(predictions)
@@ -50,7 +60,6 @@ def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
         cluster = pred_clusters[cluster_id]
         cluster.add(i)
         pred_cluster_map[i] = cluster
-
 
     # construct the ground truth {element_idx -> set of element_idx} map
     gt_clusters = collections.defaultdict(set)
@@ -94,7 +103,6 @@ def estimate_probs(
     num_workers: int = 0,
     verbose: bool = False,
 ) -> np.ndarray:
-
     df.reset_index(inplace=True)
 
     if len(df) <= batch_size:
@@ -102,8 +110,10 @@ def estimate_probs(
         loader = [record_data]
     else:
         loader = []
-        for b in range(ceil(len(df)/batch_size)):
-            record_data = map_frame(df.iloc[(b*batch_size):((b+1)*batch_size)].reset_index(), model.schema, model.stats)
+        for b in range(ceil(len(df) / batch_size)):
+            record_data = map_frame(
+                df.iloc[(b * batch_size) : ((b + 1) * batch_size)].reset_index(), model.schema, model.stats
+            )
             loader.append(record_data)
 
     model.to(device)
@@ -131,34 +141,42 @@ model = DiSK.load_from_checkpoint(wdir + checkpoint, schema=schema, stats=stats)
 model.to(device)
 model.model.use_diffusion_weights = True
 
-def batched_score_eval(rng, cluster_data, num_samples = 10, batch_size = 10):
-    # Converts each cluster's data from a list of lists of names 
+
+def batched_score_eval(rng, cluster_data, num_samples=10, batch_size=10):
+    # Converts each cluster's data from a list of lists of names
     # to a single list containing all of the names from each fragment in the cluster
-    df = pd.DataFrame.from_records([{'names': sum(names, start=[])} for names in cluster_data])
-    linking_scores = estimate_probs(df, model, num_samples, device, batch_size=batch_size)    
+    df = pd.DataFrame.from_records([{"names": sum(names, start=[])} for names in cluster_data])
+    linking_scores = estimate_probs(df, model, num_samples, device, batch_size=batch_size)
     return linking_scores
 
-benchmark = mskebab.Benchmark('data/sampled_rebel_clustering.json')
-task = benchmark.task_instances['Clustering-Heldout-Small']
+
+benchmark = mskebab.Benchmark("data/sampled_rebel_clustering.json")
+task = benchmark.task_instances["Clustering-Heldout-Small"]
 
 if ds_size is not None:
-    dataset = DFWrapper(pd.DataFrame.from_records([{'name': fragment[0].properties["name"]} for fragment in task.read_items() ][:ds_size]))
-    
+    dataset = DFWrapper(
+        pd.DataFrame.from_records(
+            [{"name": fragment[0].properties["name"]} for fragment in task.read_items()][:ds_size]
+        )
+    )
+
     ground_truth = []
-    with open('data/sampled_rebel_clustering_ground_truth.jsonl', 'rb') as handle:
+    with open("data/sampled_rebel_clustering_ground_truth.jsonl", "rb") as handle:
         i = 0
         for line in handle:
             ground_truth.append(json.loads(line))
             i += 1
-            if i>=ds_size:
+            if i >= ds_size:
                 break
 else:
-    dataset = DFWrapper(pd.DataFrame.from_records([{'name': fragment[0].properties["name"]} for fragment in task.read_items() ]))
+    dataset = DFWrapper(
+        pd.DataFrame.from_records([{"name": fragment[0].properties["name"]} for fragment in task.read_items()])
+    )
 
- 
-with open('data/wikipedia_names_2gram_counts.pickle', 'rb') as handle:
+
+with open("data/wikipedia_names_2gram_counts.pickle", "rb") as handle:
     count_dict = pickle.load(handle)
-prior_counts = CountDict(count_dict['<UNK>'], count_dict)
+prior_counts = CountDict(count_dict["<UNK>"], count_dict)
 
 prior = DirichletProcess(10)
 surrogate = Bigram(0.01, prior_counts)
@@ -170,15 +188,30 @@ surrogate_threshold = 10
 model_threshold = None
 resample_fn = resample_optimal
 rng = jax.random.PRNGKey(1)
-clusterer = SMCClusterer(data=dataset, split_interval=split_interval, surrogate_threshold=surrogate_threshold, model_threshold=model_threshold, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=BigramCluster, score_cache=score_cache, print_cluster_data=True)
+clusterer = SMCClusterer(
+    data=dataset,
+    split_interval=split_interval,
+    surrogate_threshold=surrogate_threshold,
+    model_threshold=model_threshold,
+    score_fn=batched_score_eval,
+    max_particles=max_particles,
+    max_evals=max_evals,
+    prior=prior,
+    surrogate=surrogate,
+    resample_fn=resample_fn,
+    ClusterClass=BigramCluster,
+    score_cache=score_cache,
+    print_cluster_data=True,
+)
 clusterer.cluster(rng, verbose=False)
 
 cluster_list = clusterer.state.list_cluster_labels()
-with open(f'data/smc_clusterer_output_{n_particles}-particles_{max_evals}-evals_{dataset.shape[0]}-datapoints.jsonl', 'w') as f:
-    f.write('\n'.join(cluster_list))
-    
+with open(
+    f"data/smc_clusterer_output_{n_particles}-particles_{max_evals}-evals_{dataset.shape[0]}-datapoints.jsonl", "w"
+) as f:
+    f.write("\n".join(cluster_list))
+
 if ds_size is not None:
     print(cluster_metrics(cluster_list, ground_truth))
 else:
-    print(task.evaluate('data/smc_clusterer_output.jsonl'))
-
+    print(task.evaluate("data/smc_clusterer_output.jsonl"))

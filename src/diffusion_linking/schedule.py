@@ -1,10 +1,11 @@
 # Licensed under the MIT license.
 
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
-import flax.linen as nn
 
-class LinearSchedule():
+
+class LinearSchedule:
     """
     We use gamma(x) = a + (b-a) * x
 
@@ -13,9 +14,9 @@ class LinearSchedule():
     a should be a negative number, b should be positive. The resulting diffusion model is only
     "correct" as a -> -inf and b -> inf, but there are no parameters to tune.
     """
-    
-    gamma_0: float = -10.
-    gamma_1: float = 10.
+
+    gamma_0: float = -10.0
+    gamma_1: float = 10.0
 
     def gamma(self, t):
         return self.gamma_0 + (self.gamma_1 - self.gamma_0) * t

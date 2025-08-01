@@ -1,24 +1,21 @@
 import collections
-import numpy as np
-import jax
-from jax import numpy as jnp
-
 import gc
 
+import jax
+import numpy as np
 import torch
-
-from kebab.contracts.entity import Entity
-from tqdm import tqdm
-
 from disk.data.loader import RecordLoader
 from disk.data.mapper import map_entities
 from disk.model.lightning import DiSKLightning
 from disk.utils.transform import CleanPyGGraph
-
-from diffusion_linking.smc_clustering import SMCClusterer
-from diffusion_linking.clustering import Cluster, Clusterer
-from diffusion_linking.surrogate_models import Bigram, get_ngram_counts
+from jax import numpy as jnp
+from kebab.contracts.entity import Entity
 from torch_geometric.profile.utils import get_data_size
+from tqdm import tqdm
+
+from diffusion_linking.clustering import Cluster, Clusterer
+from diffusion_linking.smc_clustering import SMCClusterer
+from diffusion_linking.surrogate_models import Bigram, get_ngram_counts
 
 
 def gpu_tensors():
@@ -27,12 +24,13 @@ def gpu_tensors():
     for o in gc.get_objects():
         if torch.is_tensor(o) and o.is_cuda:
             data.append((o.numel() * o.element_size(), o.shape, o.dtype, o.requires_grad))
-    
+
     for s, sh, dt, rg in sorted(data, reverse=True)[:20]:
         if s < 1024**2 * 8:
             continue
 
         print(f"{s / 1024**2:7.1f} MB  shape={sh} dtype={dt} grad={rg}")
+
 
 def estimate_lls(
     entities: list[Entity],
@@ -63,7 +61,7 @@ def estimate_lls(
     """
     # map to RecordData
     record_data = map_entities(entities, model.schema, model.stats)
-    
+
     # Build data loader if necessary
     if record_data.num_records <= batch_size:
         loader = [record_data]
@@ -85,12 +83,12 @@ def estimate_lls(
     with torch.no_grad():
         for data in tqdm(loader, desc="Computing Linking Scores", disable=not verbose):
             data.to(device)
-            
+
             if verbose:
                 mb = get_data_size(data)  # bytes
                 print(f"Batch takes {mb / 1024**2:.2f} MB, {data.num_nodes} nodes, {data.num_edges} edges")
                 gpu_tensors()
-            
+
             log_probs, std = model.model.monte_carlo_log_probs(
                 data=data,
                 num_samples=num_samples,
@@ -103,15 +101,16 @@ def estimate_lls(
 
     return log_probs
 
-class ListWrapper():
+
+class ListWrapper:
     # Allows easier retrieval of cluster data from lists
     def __init__(self, data):
         self.data = data
-    
+
     @property
     def shape(self):
         return (len(self.data),)
-        
+
     def __getitem__(self, row_ids):
         if type(row_ids) is int:
             return [self.data[row_ids]]
@@ -119,43 +118,48 @@ class ListWrapper():
             return self.data[row_ids]
         else:
             return [self.data[idx] for idx in row_ids]
-        
+
+
 class NameBigram(Bigram):
-    '''
+    """
     Retrieves name property for use in the bigram model
-    '''
+    """
+
     def __init__(self, prior_scale, prior_counts):
         super().__init__(prior_scale, prior_counts)
-    
+
     def post_predictive(self, obs, n, summary):
         if type(obs) is list:
-            name = obs[0].properties['name']
+            name = obs[0].properties["name"]
         else:
-            name = obs.properties['name']
-        
+            name = obs.properties["name"]
+
         return super().post_predictive(name, n, summary)
-    
+
+
 class NameBigramCluster(Cluster):
     """
     Cluster subclass with summary statistics for an n-gram model, looks at name property for counts
     """
+
     def __init__(self, data_ids, n=2, counts=None, data=None):
         super().__init__(data_ids)
         self.n = n
         if counts is not None:
             self.counts = counts
         elif data is not None:
-            self.counts = get_ngram_counts([entity.properties['name'] for entity in data], self.n)
+            self.counts = get_ngram_counts([entity.properties["name"] for entity in data], self.n)
         else:
             self.counts = collections.Counter()
 
     @property
     def summary(self):
         return self.counts
-        
+
     def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts([entity.properties['name'] for entity in data], self.n)           
-        return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts) 
+        new_counts = self.counts + get_ngram_counts([entity.properties["name"] for entity in data], self.n)
+        return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts)
+
 
 def summary(clusterer, problems=None, max_print=3, min_problem_size=1, print_summary=True):
     """
@@ -165,42 +169,52 @@ def summary(clusterer, problems=None, max_print=3, min_problem_size=1, print_sum
         summary_text = ""
         if problems is None:
             problems = range(len(clusterer.state.particles))
-            n_points = [sum([clusterer.state.clusters[c].size for c in clusterer.state.particles[p][0]]) for p in problems]
+            n_points = [
+                sum([clusterer.state.clusters[c].size for c in clusterer.state.particles[p][0]]) for p in problems
+            ]
             summary_text += f"{len(problems)} subproblems of sizes {sorted(n_points, reverse=True)}"
-            
+
         for p in problems:
             n_points = sum([clusterer.state.clusters[c].size for c in clusterer.state.particles[p][0]])
             if n_points >= min_problem_size:
                 summary_text += f"\nSubproblem {p}: {len(clusterer.state.particles[p])} particles, {n_points} points"
-                for i, (particle, weight) in enumerate(sorted(zip(clusterer.state.particles[p], clusterer.state.weights[p]), key=lambda c: c[1], reverse=True)):
-                    if i>=max_print:
-                        summary_text += f"\n\t... {len(clusterer.state.particles[p])-max_print} particles omitted"
+                for i, (particle, weight) in enumerate(
+                    sorted(
+                        zip(clusterer.state.particles[p], clusterer.state.weights[p]), key=lambda c: c[1], reverse=True
+                    )
+                ):
+                    if i >= max_print:
+                        summary_text += f"\n\t... {len(clusterer.state.particles[p]) - max_print} particles omitted"
                         break
                     exp_weight = jnp.exp(weight - jax.scipy.special.logsumexp(jnp.array(clusterer.state.weights[p])))
                     clusters = sorted(particle, key=lambda c: clusterer.state.clusters[c].size, reverse=True)
                     summary_text += f"\n\tParticle {i}, weight {exp_weight:.2g}({weight:.3g}), {len(clusters)} clusters, {[clusterer.state.clusters[c].size for c in clusters]}"
                     summary_text += "\n"
-    
+
                     if clusterer.print_cluster_data:
                         for c in clusters:
-                            summary_text += f"\n\t\tLL:{clusterer.state.score_cache[c]:.2g}, " if clusterer.max_evals>0 else ""
-                            summary_text += str([entity.properties['name'] for entity in clusterer.state.retrieve_cluster_data(c)])
+                            summary_text += (
+                                f"\n\t\tLL:{clusterer.state.score_cache[c]:.2g}, " if clusterer.max_evals > 0 else ""
+                            )
+                            summary_text += str(
+                                [entity.properties["name"] for entity in clusterer.state.retrieve_cluster_data(c)]
+                            )
                             summary_text += "\n"
-    
+
                         summary_text += "\n"
                 summary_text += "\n"
-        
+
         print(summary_text)
-    
+
     elif isinstance(clusterer, Clusterer):
         clusters = sorted(clusterer.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {clusterer.data.shape[0]} points, {[c.size for c in clusters]}")
         for c in clusters:
             print(f"LL:{clusterer.score_cache[c.hash]:.2g}, ")
-            print([entity.properties['name'] for entity in clusterer.data[c.ids]])
+            print([entity.properties["name"] for entity in clusterer.data[c.ids]])
         print()
-        
- 
+
+
 def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
     """From kebab.tasks.clustering, modified to allow evaluation for subsets of the data"""
     fragment_count = len(predictions)
@@ -213,7 +227,6 @@ def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
         cluster = pred_clusters[cluster_id]
         cluster.add(i)
         pred_cluster_map[i] = cluster
-
 
     # construct the ground truth {element_idx -> set of element_idx} map
     gt_clusters = collections.defaultdict(set)

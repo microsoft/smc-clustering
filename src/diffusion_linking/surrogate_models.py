@@ -37,7 +37,9 @@ class Gaussian:
             Sxx * n - Sx**2 + self.lam_0 / lam * (Sx - self.mu_0 * n) ** 2
         )
 
-        return jnp.sum(jax.scipy.stats.t.logpdf(x, df=2 * alpha, loc=mu, scale=beta * (lam + 1) / (alpha * lam)))
+        return jnp.sum(
+            jax.scipy.stats.t.logpdf(x, df=2 * alpha, loc=mu, scale=jnp.sqrt(beta * (lam + 1) / (alpha * lam)))
+        )
 
     def post_predictive(self, x, n, summary):
         batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
@@ -60,6 +62,41 @@ class Gaussian:
             + 0.5 * jnp.log(self.lam_0)
             - 0.5 * jnp.log(lam)
             - n / 2 * jnp.log(2 * jnp.pi)
+        )
+
+
+class Bernoulli:
+    """
+    Bernoulli model with beta prior on cluster parameters
+    """
+
+    def __init__(self, a, b):
+        self.alpha_0 = a
+        self.beta_0 = b
+
+    @functools.partial(jax.jit, static_argnums=(0))
+    @functools.partial(jax.vmap, in_axes=(None, None, 0, 0))
+    def _post_predictive(self, x, n, Sy):
+        alpha = self.alpha_0 + Sy
+        beta = self.beta_0 + n - Sy
+
+        return jnp.sum(jnp.log(x * alpha + (1 - x) * beta) - jnp.log(alpha + beta))
+
+    def post_predictive(self, x, n, summary):
+        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
+        return batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary))
+
+    def evidence(self, n, Sy):
+        alpha = self.alpha_0 + Sy
+        beta = self.beta_0 + n - Sy
+
+        return jnp.sum(
+            jax.scipy.special.gammaln(alpha)
+            + jax.scipy.special.gammaln(beta)
+            - jax.scipy.special.gammaln(self.alpha_0)
+            - jax.scipy.special.gammaln(self.beta_0)
+            - jax.scipy.special.gammaln(alpha + beta)
+            + jax.scipy.special.gammaln(self.alpha_0 + self.beta_0)
         )
 
 
@@ -96,6 +133,42 @@ class CountDict(dict):
         return CountDict(self.default_val, super().copy())
 
 
+class Multinomial:
+    """
+    Multinomial model with Dirichlet prior on frequencies
+    """
+
+    def __init__(self, alpha_0):
+        self.alpha_0 = alpha_0
+
+    @functools.partial(jax.jit, static_argnums=(0))
+    @functools.partial(jax.vmap, in_axes=(None, None, 0, 0))
+    def _post_predictive(self, x, n, counts):
+        alpha_n = counts + self.alpha_0
+        sum_alpha = jnp.sum(alpha_n)
+        return (
+            jax.scipy.special.gammaln(n + 1)
+            - jnp.sum(jax.scipy.special.gammaln(x + 1))
+            + jax.scipy.special.gammaln(sum_alpha)
+            - jax.scipy.special.gammaln(sum_alpha + jnp.sum(x))
+            + jnp.sum(jax.scipy.special.gammaln(x + alpha_n) - jax.scipy.special.gammaln(alpha_n))
+        )
+
+    def post_predictive(self, x, n, summary):
+        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
+        return batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten()
+
+    def evidence(self, n, summary):
+        sum_alpha = summary.shape[0] * self.alpha_0
+        return (
+            jax.scipy.special.gammaln(n + 1)
+            - jnp.sum(jax.scipy.special.gammaln(summary + 1))
+            + jax.scipy.special.gammaln(sum_alpha)
+            - jax.scipy.special.gammaln(sum_alpha + n)
+            + jnp.sum(jax.scipy.special.gammaln(summary + self.alpha_0) - jax.scipy.special.gammaln(self.alpha_0))
+        )
+
+
 class BagOfWords:
     """
     Bag-of-words model with Dirichlet prior on frequencies
@@ -113,7 +186,7 @@ class BagOfWords:
             jax.scipy.special.gammaln(n + 1)
             - jnp.sum(jax.scipy.special.gammaln(x + 1))
             + jax.scipy.special.gammaln(sum_alpha)
-            - jax.scipy.special.gammaln(sum_alpha + n)
+            - jax.scipy.special.gammaln(sum_alpha + jnp.sum(x))
             + jnp.sum(jax.scipy.special.gammaln(x + alpha_n) - jax.scipy.special.gammaln(alpha_n))
         )
 
@@ -252,14 +325,14 @@ class GaussianCluster(Cluster):
         if Sx is not None:
             self.Sx = Sx
         elif data is not None:
-            self.Sx = data
+            self.Sx = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
         else:
             self.Sx = jnp.zeros((dim,))
 
         if Sxx is not None:
             self.Sxx = Sxx
         elif data is not None:
-            self.Sxx = data**2
+            self.Sxx = jnp.sum(data**2, axis=0) if len(data.shape) > 1 else data**2
         else:
             self.Sxx = jnp.zeros((dim,))
 
@@ -273,6 +346,55 @@ class GaussianCluster(Cluster):
         Sxx = self.Sxx + data**2
 
         return GaussianCluster(data_ids, self.dim, Sx=Sx, Sxx=Sxx)
+
+
+class BernoulliCluster(Cluster):
+    """
+    Cluster subclass with summary statistics for a Bernoulli model
+    """
+
+    def __init__(self, data_ids, dim=1, Sy=None, data=None):
+        super().__init__(data_ids)
+
+        self.dim = dim
+
+        if Sy is not None:
+            self.Sy = Sy
+        elif data is not None:
+            self.Sy = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
+        else:
+            self.Sy = jnp.zeros((dim,))
+
+    @property
+    def summary(self):
+        return self.Sy
+
+    def merge_point(self, data_id, data):
+        data_ids = self.data.union({data_id})
+        Sy = self.Sy + data
+
+        return BernoulliCluster(data_ids, self.dim, Sy=Sy)
+
+
+class MultinomialCluster(Cluster):
+    """
+    Cluster subclass with summary statistics for a multinomial model
+    """
+
+    def __init__(self, data_ids, dim, data=None):
+        super().__init__(data_ids)
+        self.dim = dim
+        if data is not None:
+            self.counts = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
+        else:
+            self.counts = jnp.zeros((dim,))
+
+    @property
+    def summary(self):
+        return self.counts
+
+    def merge_point(self, data_id, data):
+        return MultinomialCluster(self.data.union({data_id}), self.dim, data=self.counts + data)
 
 
 class WordCluster(Cluster):

@@ -1,6 +1,4 @@
 # Licensed under the MIT license.
-import collections
-import functools
 import logging
 
 import jax
@@ -20,8 +18,11 @@ class Uniform:
     Uniform prior on cluster sizes
     """
 
-    def __call__(self, n_obs, cluster_size, n_clusters):
-        return jnp.zeros((cluster_size.shape[0]))
+    def __call__(self, cluster_sizes, **kwargs):
+        return jnp.zeros((1,))
+
+    def marginal(self, n_obs, cluster_size, **kwargs):
+        return jnp.zeros(cluster_size.shape[0])
 
 
 class DirichletProcess:
@@ -32,11 +33,14 @@ class DirichletProcess:
     def __init__(self, alpha):
         self.alpha = alpha
 
-    def __call__(self, n_obs, cluster_size, n_clusters):
-        # Prior probability of a clustering, based on cluster size and hyperparameter alpha
-        return jnp.where(
-            cluster_size > 0, jnp.log(cluster_size / (n_obs + self.alpha)), jnp.log(self.alpha / (n_obs + self.alpha))
-        )
+    def __call__(self, cluster_sizes, **kwargs):
+        # Prior probability of a clustering, based on cluster sizes and hyperparameter alpha
+        return (len(cluster_sizes) * jnp.log(self.alpha) + jnp.sum(jax.scipy.special.gammaln(cluster_sizes))).item()
+
+    def marginal(self, n_obs, cluster_size, **kwargs):
+        # Prior probability of a single assignment, based on cluster size and hyperparameter alpha
+        # return jnp.where(cluster_size > 0, jnp.log(cluster_size/(n_obs + self.alpha)), jnp.log(self.alpha/(n_obs + self.alpha)))
+        return jnp.where(cluster_size > 0, jnp.log(cluster_size), jnp.log(self.alpha))
 
 
 class PitmanYorProcess:
@@ -48,7 +52,7 @@ class PitmanYorProcess:
         self.alpha = alpha
         self.d = d
 
-    def __call__(self, n_obs, cluster_size, n_clusters):
+    def marginal(self, n_obs, cluster_size, n_clusters):
         # Prior probability of a clustering, based on cluster size and hyperparameters
         return jnp.where(
             cluster_size > 0,
@@ -120,7 +124,6 @@ class SMCClustererState:
         """
         Update the particle set with assignments for the new datapoint
         """
-
         # resample the particles
         self.particles[subprob] = [self.particles[subprob][i].copy() for i in particle_ids]
         self.weights[subprob] = weights
@@ -187,33 +190,80 @@ class SMCClustererState:
         """
         return self.data[self.clusters[cluster_hash].ids]
 
-    def split_problem(self, s):
+    def reweight(self, prior):
+        """
+        Recompute particle weights to be proportional to true posterior pmf under the given prior
+        """
+        for s in range(len(self.weights)):
+            new_weights = np.zeros_like(self.weights[s])
+            for i in range(len(self.weights[s])):
+                sizes = jnp.array([self.clusters[h].size for h in self.particles[s][i]])
+                ll = sum([self.score_cache[h] for h in self.particles[s][i]])
+                new_weights[i] = prior(sizes) + ll
+
+            self.weights[s] = jnp.array(new_weights)
+
+    def split_problem(self, s, prior, quantile=1, entropy_condition=False, reweight=False):
         """
         Attempt to split given problem into subproblems
         """
-
         # list datapoints on partition
         data_idx = np.concatenate([self.clusters[cl].ids for cl in self.particles[s][0]])
         ids = {data_idx[i]: i for i in range(len(data_idx))}
 
+        if quantile < 1:
+            p_ids = np.argsort(self.weights[s])[
+                np.where(
+                    np.cumsum(sorted(jnp.exp(self.weights[s] - jax.scipy.special.logsumexp(self.weights[s]))))
+                    >= 1 - quantile
+                )[0]
+            ]
+            small_p_ids = np.delete(np.arange(len(self.weights[s])), p_ids)
+        else:
+            p_ids = np.arange(len(self.weights[s]))
+
         # construct adjacency matrix
         n = len(data_idx)
         E = np.zeros((n, n))
-        for cl in set.union(*self.particles[s]):
+        for cl in set.union(*[self.particles[s][i] for i in p_ids]):
             for n_i, i in enumerate(self.clusters[cl].ids):
                 for j in self.clusters[cl].ids[n_i:]:
                     E[ids[i], ids[j]] += 1
         E = scipy.sparse.csr_matrix(E)
 
-        # compute subgraphs
-        n_c, c = scipy.sparse.csgraph.connected_components(E, directed=False)
+        if quantile < 1 and len(small_p_ids) > 0:
+            E2 = np.zeros((n, n))
+            for cl in set.union(*[self.particles[s][i] for i in small_p_ids]):
+                for n_i, i in enumerate(self.clusters[cl].ids):
+                    for j in self.clusters[cl].ids[n_i:]:
+                        E2[ids[i], ids[j]] += 1
+            E2 = scipy.sparse.csr_matrix(E2)
+
+            n_c, c = scipy.sparse.csgraph.connected_components(E + E2, directed=False)
+            if n_c == 1:
+                n_c, c = scipy.sparse.csgraph.connected_components(E, directed=False)
+        else:
+            n_c, c = scipy.sparse.csgraph.connected_components(E, directed=False)
+
         if n_c > 1:
             # list out new subproblems
             data_partition = [set(data_idx[np.where(c == i)[0]]) for i in range(n_c)]
+
+            # list clusters that respect the data partition
             cluster_partition = [
                 set([cl for cl in self.cluster_partition[s] if self.clusters[cl].data.issubset(data_partition[i])])
                 for i in range(n_c)
             ]
+            new_clusters = set.union(*cluster_partition)
+
+            # list particles that respect the data partition
+            keep_ids = np.arange(len(self.weights[s]))
+            if quantile < 1:
+                del_ids = np.array([i for i in small_p_ids if not self.particles[s][i].issubset(new_clusters)])
+                if len(del_ids) > 0:
+                    keep_ids = np.delete(keep_ids, del_ids)
+
+            num_discarded = len(self.weights[s]) - len(keep_ids)
 
             # compute new particles and weights
             new_weights = []
@@ -221,31 +271,84 @@ class SMCClustererState:
             for subprob in cluster_partition:
                 new_particles.append([])
                 new_weights.append([])
-                for p in self.particles[s]:
-                    new_particle = p.intersection(subprob)
+                for i in keep_ids:
+                    new_particle = self.particles[s][i].intersection(subprob)
                     if new_particle not in new_particles[-1]:
                         new_particles[-1].append(new_particle)
-                        new_weights[-1].append(
-                            jax.scipy.special.logsumexp(
-                                jnp.array(
-                                    [
-                                        self.weights[s][i]
-                                        for i in range(len(self.particles[s]))
-                                        if new_particle.issubset(self.particles[s][i])
-                                    ]
+                        sizes = jnp.array([self.clusters[h].size for h in new_particle])
+                        lls = jnp.array([self.score_cache[h] for h in new_particle])
+                        if reweight:
+                            new_weights[-1].append(prior(sizes) + jnp.sum(lls))
+                        else:
+                            new_weights[-1].append(
+                                jax.scipy.special.logsumexp(
+                                    jnp.array(
+                                        [
+                                            self.weights[s][i]
+                                            for i in keep_ids
+                                            if new_particle.issubset(self.particles[s][i])
+                                        ]
+                                    )
                                 )
                             )
+
+            keep_split = False
+            if num_discarded == 0:
+                keep_split = True
+            else:
+                old_q = self.weights[s] - jax.scipy.special.logsumexp(self.weights[s])
+                new_q = [jnp.array(w) for w in new_weights]
+                new_q = [w - jax.scipy.special.logsumexp(w) for w in new_q]
+
+                def p(particle):
+                    sizes = jnp.array([self.clusters[h].size for h in particle])
+                    lls = jnp.array([self.score_cache[h] for h in particle])
+                    return prior(sizes) + jnp.sum(lls)
+
+                old_p = jnp.array([p(particle) for particle in self.particles[s]])
+                new_p = [jnp.array([p(particle) for particle in subprob]) for subprob in new_particles]
+
+                kl_1 = jnp.sum(jnp.exp(old_q) * (old_q - old_p))
+                h_1 = -jnp.sum(jnp.exp(old_q) * old_q)
+                kl_2 = np.sum([jnp.sum(jnp.exp(new_q[i]) * new_q[i]) for i in range(len(new_q))]) - np.sum(
+                    [jnp.sum(jnp.exp(new_q[i]) * new_p[i]) for i in range(len(new_q))]
+                )
+                h_2 = -np.sum([jnp.sum(jnp.exp(new_q[i]) * new_q[i]) for i in range(len(new_q))])
+
+                if (not entropy_condition and kl_1 - kl_2 >= 0) or (entropy_condition and h_1 <= h_2):
+                    keep_split = True
+                    if logger.level <= 20:
+                        logger.info(
+                            f"Split accepted: {len(old_p)}->{'x'.join([str(len(subprob)) for subprob in new_particles])}, KL diff {kl_2 - kl_1:.4g}"
                         )
+                        logger.info(
+                            f"Discarded {num_discarded} particles of combined mass {jax.scipy.special.logsumexp(old_q[del_ids]):.4g}"
+                        )
+                        for idx in del_ids:
+                            logger.info(
+                                f"\tParticle {idx}, weight {jnp.exp(old_p[idx]):.2g}({old_p[idx]:.3g}), {len(self.particles[s][idx])} clusters, {[self.clusters[c].size for c in self.particles[s][idx]]}"
+                            )
+                            for c in self.particles[s][idx]:
+                                logger.info(
+                                    f"\n\t\tLL:{self.score_cache[c]:.2g}, "
+                                    if c in self.score_cache
+                                    else "" + ", ".join([str(i) for i in self.retrieve_cluster_data(c)])
+                                )
 
-            # update state
-            del self.cluster_partition[s]
-            del self.particles[s]
-            del self.weights[s]
-            self.cluster_partition += cluster_partition
-            self.particles += new_particles
-            self.weights += [jnp.array(w) for w in new_weights]
-
-        return n_c
+            if keep_split:
+                # delete unused clusters
+                cluster_partition = [
+                    cluster_partition[i].intersection(set.union(*new_particles[i])) for i in range(n_c)
+                ]
+                # update state
+                del self.cluster_partition[s]
+                del self.particles[s]
+                del self.weights[s]
+                self.cluster_partition += cluster_partition
+                self.particles += new_particles
+                self.weights += [jnp.array(w) for w in new_weights]
+                return n_c
+        return 1
 
     def list_cluster_labels(self, metric=None):
         """
@@ -298,11 +401,15 @@ class SMCClusterer:
         ClusterClass,
         resample_fn,
         split_interval=None,
+        split_quantile=1,
+        reweight_splits=False,
+        entropy_condition=False,
         surrogate_threshold=None,
         model_threshold=None,
         callback=None,
         score_cache=None,
         print_cluster_data=False,
+        **kwargs,
     ):
         self.score_fn = score_fn
         self.prior = prior
@@ -311,6 +418,9 @@ class SMCClusterer:
         self.max_particles = max_particles
         self.resample = resample_fn
         self.split_interval = split_interval
+        self.split_quantile = split_quantile
+        self.reweight_splits = reweight_splits
+        self.entropy_condition = entropy_condition
         self.surrogate_threshold = surrogate_threshold
         self.model_threshold = model_threshold
         self.callback = callback
@@ -336,13 +446,15 @@ class SMCClusterer:
                 hashes.append(hash(c))
 
         if len(hashes) == 0:
-            return
+            return 0
 
         scores = self.score_fn(
             rng, [self.state.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters]
         )
-        for score, hash_ in zip(scores, hashes):
+        for score, hash_ in zip(scores, hashes, strict=False):
             self.state.score_cache[hash_] = score
+            
+        return len(hashes)
 
     def update_step(self, rng, new_obs, verbose):
         """
@@ -351,18 +463,16 @@ class SMCClusterer:
         rng, update_rng, move_rng = jax.random.split(rng, 3)
         n_probs = len(self.state.weights)
         empty_hash = self.state.ClusterClass([]).hash
-        evals = 0
+        model_evals = 0
 
         # Construct putative particle set
         putative_particles = []
         cluster_sizes = []
-        n_clusters = []
         summary_stats = []
         old_weights = []
         for i in range(n_probs):
             putative_particles.append([[], []])
             cluster_sizes.append([])
-            n_clusters.append([])
             summary_stats.append([])
             old_weights.append([])
             for j in range(len(self.state.weights[i])):
@@ -370,24 +480,23 @@ class SMCClusterer:
                 putative_particles[i][0] += p[0]
                 putative_particles[i][1] += p[1]
                 cluster_sizes[i] += n
-                n_clusters[i] += [len(self.state.particles[i][j])] * len(n)
                 summary_stats[i] += s
                 old_weights[i] += w
 
             putative_particles[i] = np.array(putative_particles[i], dtype=np.int64)
             cluster_sizes[i] = np.array(cluster_sizes[i])
-            n_clusters[i] = np.array(n_clusters[i])
             old_weights[i] = np.array(old_weights[i])
 
         # Normalise old subproblem weights, compute prior
         putative_weights = [
             old_weights[i]
-            + self.prior(self.state.n_obs, cluster_sizes[i], n_clusters[i])
+            + self.prior.marginal(self.state.n_obs, cluster_sizes[i])
             - jax.scipy.special.logsumexp(old_weights[i], axis=-1)
             for i in range(n_probs)
         ]
         # Evaluate surrogate model
         sur_LL = [self.surrogate.post_predictive(new_obs, cluster_sizes[i], summary_stats[i]) for i in range(n_probs)]
+        surrogate_evals = sum([len(cluster_sizes[i]) for i in range(n_probs)])
         single_LL = sur_LL[-1][-1]
 
         if n_probs == 1:
@@ -395,20 +504,22 @@ class SMCClusterer:
             putative_particles = putative_particles[0]
             putative_weights = putative_weights[0]
             sur_LL = sur_LL[0]
-        else:
-            test_weights = [putative_weights[i] + sur_LL[i] for i in range(n_probs)]
-            test_weights = jnp.array(
-                [jax.scipy.special.logsumexp(test_weights[i][cluster_sizes[i] > 0]) for i in range(len(test_weights))]
-            )
-            p_max = jnp.argmax(test_weights)
 
-            # Remove duplicate singleton clusters, leaving one associated with the highest probability subproblem
+        else:
+            # Remove duplicate singleton clusters
+
+            singleton_putative_particles = []
+            singleton_putative_weights = []
             for p_i in range(n_probs):
-                if p_i != p_max:
-                    non_empty = cluster_sizes[p_i] > 0
-                    putative_particles[p_i] = putative_particles[p_i][:, non_empty]
-                    putative_weights[p_i] = putative_weights[p_i][non_empty]
-                    sur_LL[p_i] = sur_LL[p_i][non_empty]
+                non_empty = cluster_sizes[p_i] > 0
+
+                singleton_putative_particles.append(putative_particles[p_i][:, np.logical_not(non_empty)])
+                putative_particles[p_i] = putative_particles[p_i][:, non_empty]
+
+                singleton_putative_weights.append(putative_weights[p_i][np.logical_not(non_empty)])
+                putative_weights[p_i] = putative_weights[p_i][non_empty]
+
+                sur_LL[p_i] = sur_LL[p_i][non_empty]
 
             p = jnp.concatenate([jnp.full(len(putative_weights[p_i]), p_i) for p_i in range(n_probs)])
             putative_particles = np.concatenate(putative_particles, axis=-1)
@@ -418,7 +529,7 @@ class SMCClusterer:
         putative_weights += sur_LL
         if self.surrogate_threshold is not None:
             # Discard assignments below threshold
-            keep_ids = sur_LL - single_LL > self.surrogate_threshold
+            keep_ids = sur_LL - single_LL >= self.surrogate_threshold
             putative_weights = putative_weights[keep_ids]
             putative_particles = putative_particles[:, keep_ids]
             sur_LL = sur_LL[keep_ids]
@@ -439,25 +550,33 @@ class SMCClusterer:
             # Reweight according to model
             putative_weights -= sur_LL
             new_clusters = [self.state.clusters[cluster].add(self.state.n_obs) for cluster in putative_particles[1]]
-            self.compute_scores(update_rng, new_clusters)
-            evals = len(jnp.unique(putative_particles[1]))
+            model_evals = self.compute_scores(update_rng, new_clusters + [frozenset({self.state.n_obs})])
             update = jnp.array(
                 [
                     self.state.score_cache[hash(new_cluster)] - self.state.score_cache[old_cluster_id]
-                    for new_cluster, old_cluster_id in zip(new_clusters, putative_particles[1])
+                    for new_cluster, old_cluster_id in zip(new_clusters, putative_particles[1], strict=False)
                 ]
             )
             putative_weights += update
 
-            if empty_hash in putative_particles[1]:
-                single_LL = update[putative_particles[1] == empty_hash][0]
+            if empty_hash in putative_particles[1] or n_probs > 1:
+                single_LL = self.state.score_cache[hash(frozenset({self.state.n_obs}))]
+
                 if self.model_threshold is not None:
                     # Discard assignments below threshold
-                    keep_ids = update - single_LL > self.model_threshold
+                    keep_ids = update - single_LL >= self.model_threshold
                     putative_weights = putative_weights[keep_ids]
                     putative_particles = putative_particles[:, keep_ids]
+                    update = update[keep_ids]
                     if p.size > 1:
                         p = p[keep_ids]
+
+        if n_probs > 1 and len(p) > 0:
+            # place singleton assignment on highest weighted subproblem
+            p_max = p[jnp.argmax(putative_weights)]
+            putative_particles = np.concatenate([putative_particles, singleton_putative_particles[p_max]], axis=-1)
+            putative_weights = jnp.concatenate([putative_weights, singleton_putative_weights[p_max] + single_LL])
+            p = jnp.concatenate([p, jnp.full((len(singleton_putative_weights[p_max])), p_max)])
 
         new_particle_ids = None
         if putative_weights.shape[0] > self.max_particles:
@@ -467,6 +586,18 @@ class SMCClusterer:
             putative_particles = putative_particles[:, new_particle_ids]
             if p.size > 1:
                 p = p[new_particle_ids]
+
+        if self.max_evals == 0:
+            # update score cache
+            if n_probs > 1 and len(p) > 0:
+                sur_LL = jnp.concatenate([sur_LL, jnp.full((len(singleton_putative_weights[p_max])), single_LL)])
+            if new_particle_ids is not None:
+                sur_LL = sur_LL[new_particle_ids]
+            for i, cl in enumerate(putative_particles[1]):
+                new_hash = hash(self.state.clusters[cl].add(self.state.n_obs))
+                if new_hash not in self.state.score_cache:
+                    cluster_LL = self.state.score_cache[cl] + sur_LL[i]
+                    self.state.score_cache[new_hash] = cluster_LL
 
         subprobs = jnp.unique(p)
         expected_resample = None
@@ -482,36 +613,31 @@ class SMCClusterer:
                 subprobs = jnp.unique(p)
 
         assignments = putative_particles[1]
-        weights = putative_weights - jnp.max(putative_weights)
 
         if logger.level <= 20:
-            logger.info(f"Obervation: {str(self.state.data[self.state.n_obs][0])}")
+            logger.info(f"Observation {self.state.n_obs}: {self.state.data[self.state.n_obs][0]!s}")
             unique_idx = jnp.unique(assignments, return_index=True)[1]
             unique_assignments = assignments[unique_idx]
             pooled_weights = jnp.array(
-                [jax.scipy.special.logsumexp(weights[assignments == a]) for a in unique_assignments]
+                [jax.scipy.special.logsumexp(putative_weights[assignments == a]) for a in unique_assignments]
             )
 
-            if self.max_evals > 0:
-                update = update if new_particle_ids is None else update[new_particle_ids]
-                update = update if expected_resample is None else update[expected_resample]
-            else:
-                sur_LL = sur_LL if new_particle_ids is None else sur_LL[new_particle_ids]
-                sur_LL = sur_LL if expected_resample is None else sur_LL[expected_resample]
-
             for w, cl in sorted(
-                zip(pooled_weights - jax.scipy.special.logsumexp(weights), unique_assignments),
+                zip(pooled_weights - jax.scipy.special.logsumexp(putative_weights), unique_assignments, strict=False),
                 key=lambda c: c[0],
                 reverse=True,
             ):
-                if self.max_evals > 0:
-                    logger.info(
-                        f"-> Weight {jnp.exp(w):.2g}, score {(update[putative_particles[1] == cl][0] - single_LL):.2g}: {[str(i) for i in self.state.retrieve_cluster_data(np.int64(cl.item()))]}"
-                    )
+                if cl.size == 0:
+                    score = 0
                 else:
-                    logger.info(
-                        f"-> Weight {jnp.exp(w):.2g}, score {(sur_LL[putative_particles[1] == cl][0] - single_LL):.2g}: {[str(i) for i in self.state.retrieve_cluster_data(np.int64(cl.item()))]}"
+                    score = (
+                        self.state.score_cache[hash(self.state.clusters[cl].add(self.state.n_obs))]
+                        - single_LL
+                        - self.state.score_cache[cl]
                     )
+                logger.info(
+                    f"-> Weight {jnp.exp(w):.2g}, score {score:.2g}: {', '.join([str(i) for i in self.state.retrieve_cluster_data(np.int64(cl.item()))])}"
+                )
 
         # Update particle set, merging subproblems if necessary
         if (putative_particles[1] == empty_hash).all() and self.split_interval is not None:
@@ -522,46 +648,95 @@ class SMCClusterer:
         elif len(subprobs) == 1:
             # A single subproblem has been chosen - update particle set
             p = subprobs.reshape(())
-            self.state.update_particle_set(p, putative_particles[0], weights, putative_particles[1], self.state.n_obs)
+            self.state.update_particle_set(
+                p, putative_particles[0], putative_weights, putative_particles[1], self.state.n_obs
+            )
 
         elif len(subprobs) == 2 or len([p for p in subprobs if len(self.state.weights[p]) > 1]) <= 2:
             # More than one subproblem has been chosen
-            # Compute full joint distribution for merged problem as all combinations of chosen subproblems
+            # Compute full joint distribution for merged problem by enumerating all combinations of chosen subproblems
             # (This is not attempted if more than two subproblems have more than 1 particle)
-            subprobs = sorted(subprobs, key=lambda p: len(self.state.weights[p]), reverse=True)
 
-            n_pairs = sum(p == subprobs[0]) * len(self.state.particles[subprobs[1]]) + sum(p == subprobs[1]) * len(
-                self.state.particles[subprobs[0]]
-            )
+            if logger.level <= 20:
+                old_summary = self.summary(problems=subprobs, print_summary=False)
+
+            # only two subproblems, labelled 0 and 1, may have more than one particle
+            subprobs = sorted(subprobs, key=lambda p: len(self.state.weights[p]), reverse=True)
+            s0_ids = p == subprobs[0]
+            s1_ids = p == subprobs[1]
+            other_ids = np.logical_not(np.logical_or(s0_ids, s1_ids))
+
+            # The merged particle set consists of combinations of:
+            # #putative particles on 0 x #existing particles on 1 x one existing particle on the rest
+            n_pairs = sum(s0_ids) * len(self.state.particles[subprobs[1]])
+            # #putative particles on 1 x #existing particles on 0 x one existing particle on the rest
+            n_pairs += sum(s1_ids) * len(self.state.particles[subprobs[0]])
+            # #putative particles on other subproblems x #existing particles on 0 x #existing particles on 1
+            n_pairs += sum(other_ids) * len(self.state.particles[subprobs[0]]) * len(self.state.particles[subprobs[1]])
             pairings = np.zeros((n_pairs, len(subprobs)), dtype=np.int64)
+
+            # since the other subproblems have one existing particle, the ancestor particle id is always 0
             others = [0] * (max(0, len(subprobs) - 2))
+
+            normalisers = [
+                jax.scipy.special.logsumexp(self.state.weights[subprobs[0]]),
+                jax.scipy.special.logsumexp(self.state.weights[subprobs[1]]),
+            ]
+            assignment_problems = np.zeros((n_pairs,))
             assignments = np.zeros((n_pairs,), dtype=np.int64)
             pair_weights = np.zeros((n_pairs,))
+            idx = 0
 
-            i = 0
+            # Compute weights for the three cases:
+            # putative particles on 0
             for w_i, (p_i, c_i) in zip(
-                putative_weights[p == subprobs[0]], putative_particles[:, p == subprobs[0]].transpose()
+                putative_weights[s0_ids], putative_particles[:, s0_ids].transpose(), strict=False
             ):
                 for p_j in range(len(self.state.particles[subprobs[1]])):
-                    pairings[i] = np.array([[p_i, p_j, *others]])
-                    assignments[i] = c_i
-                    pair_weights[i] = w_i + self.state.weights[subprobs[1]][p_j]
-                    i += 1
+                    pairings[idx] = np.array([[p_i, p_j, *others]])
+                    assignment_problems[idx] = subprobs[0]
+                    assignments[idx] = c_i
+                    pair_weights[idx] = w_i + self.state.weights[subprobs[1]][p_j] - normalisers[1]
+                    idx += 1
 
+            # putative particles on 1
             for w_j, (p_j, c_j) in zip(
-                putative_weights[p == subprobs[1]], putative_particles[:, p == subprobs[1]].transpose()
+                putative_weights[s1_ids], putative_particles[:, s1_ids].transpose(), strict=False
             ):
                 for p_i in range(len(self.state.particles[subprobs[0]])):
-                    pairings[i] = np.array([[p_i, p_j, *others]])
-                    assignments[i] = c_j
-                    pair_weights[i] = w_j + self.state.weights[subprobs[0]][p_i]
-                    i += 1
+                    pairings[idx] = np.array([[p_i, p_j, *others]])
+                    assignment_problems[idx] = subprobs[1]
+                    assignments[idx] = c_j
+                    pair_weights[idx] = w_j + self.state.weights[subprobs[0]][p_i] - normalisers[0]
+                    idx += 1
 
+            # putative particles on other
+            for s_k, w_k, (_, c_k) in zip(
+                p[other_ids], putative_weights[other_ids], putative_particles[:, other_ids].transpose(), strict=False
+            ):
+                for p_i in range(len(self.state.particles[subprobs[0]])):
+                    for p_j in range(len(self.state.particles[subprobs[1]])):
+                        pairings[idx] = np.array([[p_i, p_j, *others]])
+                        assignment_problems[idx] = s_k
+                        assignments[idx] = c_k
+                        pair_weights[idx] = (
+                            w_k
+                            + self.state.weights[subprobs[0]][p_i]
+                            + self.state.weights[subprobs[1]][p_j]
+                            - sum(normalisers)
+                        )
+                        idx += 1
+
+            if verbose:
+                if self.callback is not None:
+                    self.callback(self.state, highlight=self.state.n_obs, title=f"Pre merge, {self.state.n_obs}")
+            
             if n_pairs > self.max_particles:
                 # Resample again to bring new subproblem to correct size
                 rng, resample_rng = jax.random.split(rng)
                 new_particle_ids, weights = self.resample(resample_rng, pair_weights, self.max_particles)
                 assignments = assignments[new_particle_ids]
+
                 self.state.update_and_merge_particle_set(
                     subprobs, pairings[new_particle_ids], weights, assignments, self.state.n_obs
                 )
@@ -570,15 +745,23 @@ class SMCClusterer:
                 self.state.update_and_merge_particle_set(subprobs, pairings, weights, assignments, self.state.n_obs)
 
             p = len(self.state.particles) - 1
-
+            if logger.level <= 20:
+                logger.info("Merge of:")
+                logger.info(old_summary)
+                logger.info("Merged:")
+                logger.info(self.summary(problems=[p], print_summary=False))
             if verbose:
                 if self.callback is not None:
-                    self.callback(self.state, highlight=self.state.n_obs)
+                    self.callback(self.state, highlight=self.state.n_obs, title=f"Merged, {self.state.n_obs}")
                 else:
                     print("Merged problem:")
                     self.summary(problems=[p])
 
         else:
+            if logger.level <= 20:
+                logger.info("Multinomial merge")
+                old_summary = self.summary(problems=subprobs, print_summary=False)
+
             # More than one subproblem chosen and more than two subproblems have >1 particles
             # Avoid calculating full joint distribution by independantly sampling particles from each subproblem
 
@@ -620,11 +803,19 @@ class SMCClusterer:
             self.state.update_and_merge_particle_set(subprobs, particle_ids, weights, assignments, self.state.n_obs)
 
             p = len(self.state.particles) - 1
+            if logger.level <= 20:
+                logger.info("Merge of:")
+                logger.info(old_summary)
+                logger.info("Merged:")
+                logger.info(self.summary(problems=[p], print_summary=False))
             if verbose:
+                print(f"Multinomial merge at {self.state.n_obs}")
                 if self.callback is not None:
-                    self.callback(self.state, highlight=self.state.n_obs)
+                    self.callback(
+                        self.state, highlight=self.state.n_obs, title=f"Multinomial merge, {self.state.n_obs}"
+                    )
                 else:
-                    print("Merged problem:")
+                    print("\nMerged problem:")
                     self.summary(problems=[p])
 
         # Split the subproblem that was just updated
@@ -633,37 +824,42 @@ class SMCClusterer:
             and len(jnp.concatenate([self.state.clusters[cl].ids for cl in self.state.particles[p][0]]))
             > self.split_interval
         ):
-            if verbose:
+            if logger.level <= 20:
                 old_summary = self.summary(problems=[p], print_summary=False)
 
-            n_split = self.state.split_problem(p)
+            n_split = self.state.split_problem(
+                p, self.prior, self.split_quantile, self.entropy_condition, reweight=self.reweight_splits
+            )
 
-            if verbose:
-                problems = [len(self.state.particles) - i - 1 for i in range(n_split)]
-                if n_split > 1:
-                    if self.callback is not None:
-                        self.callback(self.state)
-                    else:
-                        print("\nProblem to split:")
-                        print(old_summary)
-                        print("\nSplit problem:")
-                        self.summary(problems=problems)
+            if n_split > 1:
+                if verbose and self.callback is not None:
+                    self.callback(self.state, title=f"Split, {self.state.n_obs}")
+                if logger.level <= 20:
+                    problems = [len(self.state.particles) - i - 1 for i in range(n_split)]
+                    logger.info("Problem to split:")
+                    logger.info(old_summary)
+                    logger.info("Split problem:")
+                    logger.info(self.summary(problems=problems, print_summary=False))
 
         # Return number of model evaluations made
-        return evals
+        return model_evals, surrogate_evals
 
     def cluster(self, rng, steps=None, callback_interval=5, verbose=False):
         """
         Cluster the dataset
         """
-
         if steps is None:
             steps = self.state.data.shape[0] - 1
 
         if self.state.n_obs == 1:
             rng, score_rng = jax.random.split(rng)
-            if self.score_fn is not None and self.max_evals > 0:
+            if self.max_evals > 0:
                 self.compute_scores(score_rng, [frozenset({0})])
+            else:
+                sur_LL = self.surrogate.post_predictive(
+                    self.state.data[0], jnp.zeros((1, 1)), [self.state.clusters[hash(frozenset({}))].summary]
+                )
+                self.state.score_cache[hash(frozenset({0}))] = sur_LL[0]
 
         n_evals = []
         n_subprobs = []
@@ -671,15 +867,15 @@ class SMCClusterer:
             rng, update_rng = jax.random.split(rng)
             new_obs = self.state.data[self.state.n_obs]
 
-            evals = self.update_step(update_rng, new_obs, verbose)
-            n_evals.append(evals)
+            model_evals, surrogate_evals = self.update_step(update_rng, new_obs, verbose)
+            n_evals.append([model_evals, surrogate_evals])
             n_subprobs.append(len(self.state.particles))
             self.state.n_obs += 1
 
-            pbar.set_postfix({"Subproblems": f"{len(self.state.particles)}", "Evals": f"{evals}"})
+            pbar.set_postfix({"Subproblems": f"{len(self.state.particles)}", "Evals": f"{model_evals}"})
 
             if self.callback and callback_interval > 0 and self.state.n_obs % callback_interval == 0:
-                self.callback(self.state)
+                self.callback(self.state, title=f"Callback {self.state.n_obs}")
                 self.summary()
 
         print()
@@ -700,7 +896,11 @@ class SMCClusterer:
             if n_points >= min_problem_size:
                 summary_text += f"\nSubproblem {p}: {len(self.state.particles[p])} particles, {n_points} points"
                 for i, (particle, weight) in enumerate(
-                    sorted(zip(self.state.particles[p], self.state.weights[p]), key=lambda c: c[1], reverse=True)
+                    sorted(
+                        zip(self.state.particles[p], self.state.weights[p], strict=False),
+                        key=lambda c: c[1],
+                        reverse=True,
+                    )
                 ):
                     if i >= max_print:
                         summary_text += f"\n\t... {len(self.state.particles[p]) - max_print} particles omitted"
@@ -711,7 +911,7 @@ class SMCClusterer:
                     if self.print_cluster_data:
                         for c in clusters:
                             summary_text += f"\n\t\tLL:{self.state.score_cache[c]:.2g}, " if self.max_evals > 0 else ""
-                            summary_text += str(self.state.retrieve_cluster_data(c))
+                            summary_text += ", ".join([str(i) for i in self.state.retrieve_cluster_data(c)])
                         summary_text += "\n"
                 summary_text += "\n"
 
@@ -721,7 +921,7 @@ class SMCClusterer:
         return summary_text
 
 
-def plot_particles_2D(state, subprob=None, n_plots=5, fig_scale=3, highlight=None):
+def plot_particles_2D(state, subprob=None, n_plots=5, fig_scale=3, highlight=None, title=None, **kwargs):
     """
     Plot particles with highest weights
     """
@@ -732,7 +932,9 @@ def plot_particles_2D(state, subprob=None, n_plots=5, fig_scale=3, highlight=Non
         nrows = 1 + (n_plots - 1) // ncols
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(fig_scale * ncols, fig_scale * nrows))
         for i, (particle, weight) in enumerate(
-            sorted(zip(state.particles[subprob], state.weights[subprob]), key=lambda c: c[1], reverse=True)[:n_plots]
+            sorted(
+                zip(state.particles[subprob], state.weights[subprob], strict=False), key=lambda c: c[1], reverse=True
+            )[:n_plots]
         ):
             subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
             weight = jnp.exp(weight - jax.scipy.special.logsumexp(jnp.array(state.weights[subprob])))
@@ -773,112 +975,113 @@ def plot_particles_2D(state, subprob=None, n_plots=5, fig_scale=3, highlight=Non
             subfig.set_yticks([])
 
         fig.tight_layout()
+        fig.suptitle(title)
         plt.show()
 
         return fig
 
-    else:
-        ncols = min(5, n_plots)
-        nrows = 1 + (n_plots - 1) // ncols
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(fig_scale * ncols, fig_scale * nrows))
-        markers = [
-            "o",
-            "v",
-            "^",
-            "<",
-            ">",
-            "1",
-            "2",
-            "3",
-            "4",
-            "8",
-            "s",
-            "p",
-            "*",
-            "h",
-            "H",
-            "+",
-            "x",
-            "D",
-            "d",
-            "|",
-            "_",
-            "P",
-            "X",
-            0,
-            2,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-        ]
-        for subprob in range(len(state.particles)):
-            for i, (particle, weight) in enumerate(
-                sorted(zip(state.particles[subprob], state.weights[subprob]), key=lambda c: c[1], reverse=True)[
-                    :n_plots
-                ]
-            ):
-                subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
-                weight = jnp.exp(weight - jax.scipy.special.logsumexp(jnp.array(state.weights[subprob])))
-                clusters = sorted(
-                    [state.retrieve_cluster_data(cluster_hash) for cluster_hash in particle],
-                    key=lambda c: c.shape[0],
-                    reverse=True,
-                )
-
-                for c in clusters:
-                    if c.shape[0] > 1:
-                        subfig.plot(c[:, 0], c[:, 1], markers[subprob % len(markers)], markersize=3)
-                    else:
-                        subfig.plot(
-                            c[:, 0], c[:, 1], markers[subprob % len(markers)], markersize=3, alpha=0.75, color="black"
-                        )
-
-                x_min = jnp.min(jnp.concatenate(clusters)[:, 0]) - 0.2
-                x_max = jnp.max(jnp.concatenate(clusters)[:, 0]) + 0.2
-                y_min = jnp.min(jnp.concatenate(clusters)[:, 1]) - 0.2
-                y_max = jnp.max(jnp.concatenate(clusters)[:, 1]) + 0.2
-                subfig.plot(
-                    [x_min, x_min, x_max, x_max, x_min],
-                    [y_min, y_max, y_max, y_min, y_min],
-                    color="black",
-                    linestyle="dotted",
-                )
-                subfig.annotate(f"{weight:.2g}", (x_max, jnp.mean(jnp.concatenate(clusters)[:, 1])))
-
-        for i in range(n_plots):
+    ncols = min(5, n_plots)
+    nrows = 1 + (n_plots - 1) // ncols
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(fig_scale * ncols, fig_scale * nrows))
+    markers = [
+        "o",
+        "v",
+        "^",
+        "<",
+        ">",
+        "1",
+        "2",
+        "3",
+        "4",
+        "8",
+        "s",
+        "p",
+        "*",
+        "h",
+        "H",
+        "+",
+        "x",
+        "D",
+        "d",
+        "|",
+        "_",
+        "P",
+        "X",
+        0,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+    ]
+    for subprob in range(len(state.particles)):
+        for i, (particle, weight) in enumerate(
+            sorted(
+                zip(state.particles[subprob], state.weights[subprob], strict=False), key=lambda c: c[1], reverse=True
+            )[:n_plots]
+        ):
             subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
-            if state.n_obs < state.data.shape[0]:
-                unobserved_pts = state.data[(state.n_obs + 1) :]
-                subfig.plot(unobserved_pts[:, 0], unobserved_pts[:, 1], "x", color="black", alpha=0.25, markersize=2)
+            weight = jnp.exp(weight - jax.scipy.special.logsumexp(jnp.array(state.weights[subprob])))
+            clusters = sorted(
+                [state.retrieve_cluster_data(cluster_hash) for cluster_hash in particle],
+                key=lambda c: c.shape[0],
+                reverse=True,
+            )
 
-            if highlight is not None:
-                subfig.plot(
-                    state.data[highlight, 0],
-                    state.data[highlight, 1],
-                    "o",
-                    markersize=6,
-                    color="black",
-                    markerfacecolor="none",
-                )
+            for c in clusters:
+                if c.shape[0] > 1:
+                    subfig.plot(c[:, 0], c[:, 1], markers[subprob % len(markers)], markersize=3)
+                else:
+                    subfig.plot(
+                        c[:, 0], c[:, 1], markers[subprob % len(markers)], markersize=3, alpha=0.75, color="black"
+                    )
 
-            subfig.set_aspect("equal")
-            subfig.set_xticks([])
-            subfig.set_yticks([])
+            x_min = jnp.min(jnp.concatenate(clusters)[:, 0]) - 0.2
+            x_max = jnp.max(jnp.concatenate(clusters)[:, 0]) + 0.2
+            y_min = jnp.min(jnp.concatenate(clusters)[:, 1]) - 0.2
+            y_max = jnp.max(jnp.concatenate(clusters)[:, 1]) + 0.2
+            subfig.plot(
+                [x_min, x_min, x_max, x_max, x_min],
+                [y_min, y_max, y_max, y_min, y_min],
+                color="black",
+                linestyle="dotted",
+            )
+            subfig.annotate(f"{weight:.2g}", (x_max, jnp.mean(jnp.concatenate(clusters)[:, 1])))
 
-        for i in range(n_plots, nrows * ncols):
-            subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
-            subfig.set_xticks([])
-            subfig.set_yticks([])
+    for i in range(n_plots):
+        subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
+        if state.n_obs < state.data.shape[0]:
+            unobserved_pts = state.data[(state.n_obs + 1) :]
+            subfig.plot(unobserved_pts[:, 0], unobserved_pts[:, 1], "x", color="black", alpha=0.25, markersize=2)
 
-        fig.tight_layout()
-        plt.show()
+        if highlight is not None:
+            subfig.plot(
+                state.data[highlight, 0],
+                state.data[highlight, 1],
+                "o",
+                markersize=6,
+                color="black",
+                markerfacecolor="none",
+            )
 
-        return fig
+        subfig.set_aspect("equal")
+        subfig.set_xticks([])
+        subfig.set_yticks([])
+
+    for i in range(n_plots, nrows * ncols):
+        subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
+        subfig.set_xticks([])
+        subfig.set_yticks([])
+
+    fig.tight_layout()
+    fig.suptitle(title)
+    plt.show()
+
+    return fig
 
 
 # ====================== Resamplers ======================

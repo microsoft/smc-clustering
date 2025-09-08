@@ -2,7 +2,7 @@
 import logging
 
 import jax
-import jax.numpy as jnp
+import scipy
 import numpy as np
 from tqdm import tqdm
 
@@ -85,7 +85,7 @@ class GibbsClusterer:
 
         rng, sample_rng = jax.random.split(rng)
         new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=jnp.exp(weights - jax.scipy.special.logsumexp(weights))
+            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
         ).item()
 
         if new_k != old_k:
@@ -143,13 +143,13 @@ class GibbsClusterer:
             cluster_sizes.append(0)
             weights[-1] = self.prior.marginal(self.data.shape[0], 0).item()
 
-        sur_LL = self.surrogate.post_predictive(self.data[i], jnp.array(cluster_sizes), summary_stats)
+        sur_LL = self.surrogate.post_predictive(self.data[i], np.array(cluster_sizes), summary_stats)
         weights += sur_LL
         surrogate_evals = len(cluster_sizes)
 
         rng, sample_rng = jax.random.split(rng)
         new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=jnp.exp(weights - jax.scipy.special.logsumexp(weights))
+            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
         ).item()
 
         if new_k != old_k:
@@ -170,7 +170,7 @@ class GibbsClusterer:
                 + sur_LL[old_k]
             )
             rng, mh_rng = jax.random.split(rng)
-            if a > jnp.log(jax.random.uniform(mh_rng)):
+            if a > np.log(jax.random.uniform(mh_rng)):
                 # Upate state
                 if new_k < len(self.clusters):
                     self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])

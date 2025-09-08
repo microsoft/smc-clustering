@@ -1,6 +1,5 @@
 # Licensed under the MIT license.
 import jax
-import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -39,13 +38,13 @@ class Cluster:
 
 
 class Clusterer:
-    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None):
+    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):
         self.data = data
         self.score_fn = score_fn
         self.link_threshold = link_threshold
         self.cluster_batch_size = cluster_batch_size
         self.clusters = [Cluster({d}) for d in range(data.shape[0])]
-        self.score_cache = {}
+        self.score_cache = {} if score_cache is None else score_cache
         self.prior = prior if prior is not None else lambda s: 0
         self.objective = None
 
@@ -72,7 +71,7 @@ class Clusterer:
 
     def generate_batch_ids(self, rng):
         # select a batch at random
-        indices = jnp.arange(len(self.clusters))
+        indices = np.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
         batch_indices = jax.random.choice(rng, indices, (batch_size,), replace=False)
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
@@ -105,10 +104,10 @@ class Clusterer:
                 - self.score_cache[self.clusters[j].hash]
                 for (i, j), pc in zip(ijs, proposed_clusters, strict=False)
             ]
-            linking_scores = jnp.stack(linking_scores)
+            linking_scores = np.stack(linking_scores)
 
             # find the best pair in the batch, execute merge if threshold reached
-            best_pair = ijs[jnp.argmax(linking_scores).item()]
+            best_pair = ijs[np.argmax(linking_scores).item()]
             best_score = linking_scores.max()
 
             if best_score > self.link_threshold:

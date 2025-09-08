@@ -446,13 +446,15 @@ class SMCClusterer:
                 hashes.append(hash(c))
 
         if len(hashes) == 0:
-            return
+            return 0
 
         scores = self.score_fn(
             rng, [self.state.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters]
         )
         for score, hash_ in zip(scores, hashes, strict=False):
             self.state.score_cache[hash_] = score
+            
+        return len(hashes)
 
     def update_step(self, rng, new_obs, verbose):
         """
@@ -855,7 +857,7 @@ class SMCClusterer:
                 self.compute_scores(score_rng, [frozenset({0})])
             else:
                 sur_LL = self.surrogate.post_predictive(
-                    self.state.data[0], jnp.zeros((1, 1)), jnp.array([self.state.clusters[hash(frozenset({}))].summary])
+                    self.state.data[0], jnp.zeros((1, 1)), [self.state.clusters[hash(frozenset({}))].summary]
                 )
                 self.state.score_cache[hash(frozenset({0}))] = sur_LL[0]
 

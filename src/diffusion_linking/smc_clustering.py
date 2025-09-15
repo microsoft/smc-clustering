@@ -504,7 +504,17 @@ class SMCClusterer:
             putative_particles = putative_particles[0]
             putative_weights = putative_weights[0]
             sur_LL = sur_LL[0]
+            
+            non_empty = cluster_sizes[0] > 0
 
+            singleton_putative_particles = putative_particles[:, np.logical_not(non_empty)]
+            putative_particles = putative_particles[:, non_empty]
+
+            singleton_putative_weights = putative_weights[np.logical_not(non_empty)]
+            putative_weights = putative_weights[non_empty]
+
+            sur_LL = sur_LL[non_empty]
+            
         else:
             # Remove duplicate singleton clusters
 
@@ -570,13 +580,17 @@ class SMCClusterer:
                 if p.size > 1:
                     p = p[keep_ids]
 
-        if n_probs > 1 and len(p) > 0:
+        if n_probs > 1:
             # place singleton assignment on highest weighted subproblem
             p_max = p[np.argmax(putative_weights)]
             putative_particles = np.concatenate([putative_particles, singleton_putative_particles[p_max]], axis=-1)
             putative_weights = np.concatenate([putative_weights, singleton_putative_weights[p_max] + single_LL])
             p = np.concatenate([p, np.full((len(singleton_putative_weights[p_max])), p_max)])
-
+            
+        else:
+            putative_particles = np.concatenate([putative_particles, singleton_putative_particles], axis=-1)
+            putative_weights = np.concatenate([putative_weights, singleton_putative_weights + single_LL])
+            
         new_particle_ids = None
         if putative_weights.shape[0] > self.max_particles:
             # Resample
@@ -591,8 +605,12 @@ class SMCClusterer:
             # update score cache
             if n_probs > 1:
                 sur_LL = np.concatenate([sur_LL, np.full((len(singleton_putative_weights[p_max])), single_LL)])
+            else:
+                sur_LL = np.concatenate([sur_LL, np.full((len(singleton_putative_weights)), single_LL)])
+            
             if new_particle_ids is not None:
                 sur_LL = sur_LL[new_particle_ids]
+                
             for i, cl in enumerate(putative_particles[1]):
                 new_hash = hash(self.state.clusters[cl].add(self.state.n_obs))
                 if new_hash not in self.state.score_cache:

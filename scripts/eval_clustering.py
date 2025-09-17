@@ -139,6 +139,9 @@ def score_entities(
             entities.append(
                 cluster[:9] + cluster[-1:]
             )  # keep first 9 and last entity which is the one being added (potentially)
+            logging.warning(
+                f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties}, ... Entity N = {cluster[-1].properties}"
+            )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
     scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=18.818361, batch_size=batch_size)

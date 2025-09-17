@@ -2,7 +2,7 @@
 Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Test --offset 0
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Set-Test --offset 0
 """
 
 from __future__ import annotations

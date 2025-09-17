@@ -2,7 +2,7 @@
 Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --offset 18.81
+    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --offset 0 --max_evals inf
 """
 
 from __future__ import annotations

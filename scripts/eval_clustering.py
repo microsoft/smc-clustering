@@ -2,7 +2,7 @@
 Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10
+    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --offset 18.81
 """
 
 from __future__ import annotations
@@ -125,7 +125,12 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 
 def score_entities(
-    rng: Any, clusters: list[list[Entity]], model: nn.Module, tokenizer: JsonLMTokenizer, batch_size: int = 256
+    rng: Any,
+    clusters: list[list[Entity]],
+    model: nn.Module,
+    tokenizer: JsonLMTokenizer,
+    batch_size: int = 256,
+    offset: float = 18.818361,
 ) -> list[float]:
     """Estimate cluster log-likelihoods."""
     # entities = [Entity.merge(cluster) if len(cluster) > 1 else cluster[0] for cluster in clusters]
@@ -144,7 +149,7 @@ def score_entities(
             )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
-    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=18.818361, batch_size=batch_size)
+    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size)
 
     return scores
 
@@ -159,6 +164,12 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--out", default="./output/predictions.txt", help="Output file path for predicted clusters")
     p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    p.add_argument(
+        "--offset",
+        type=float,
+        default=0,
+        help="Additive logit offset used when scoring entities (was previously hardcoded)",
+    )
 
     # Clustering arguments
     p.add_argument("--seed", type=int, default=0)
@@ -214,10 +225,7 @@ def main(argv: list[str] | None = None) -> None:
     max_evals = np.inf if args.max_evals is None else args.max_evals
 
     batched_score_eval = partial(
-        score_entities,
-        model=model,
-        tokenizer=tok,
-        batch_size=args.batch_size,
+        score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset
     )
 
     clusterer = SMCClusterer(

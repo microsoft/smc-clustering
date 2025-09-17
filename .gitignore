@@ -8,6 +8,7 @@ log/
 
 # data
 data_vm/
+data_vm
 runs/
 output/
 experiments/data

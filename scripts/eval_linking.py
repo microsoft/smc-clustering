@@ -2,7 +2,14 @@
 Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Set-Test --offset 0
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Test
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Validation
+
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Set-Test
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Set-Validation
+
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Test
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Validation
 """
 
 from __future__ import annotations
@@ -11,7 +18,6 @@ import argparse
 import json
 import logging
 import os
-from collections.abc import Iterable
 from pathlib import Path
 from time import perf_counter as pc
 
@@ -64,9 +70,12 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 def _load_linking_pairs(task_instance: Task) -> list[tuple[dict, dict]]:
     """Yield pairs (A,B) from MS-KeBAB."""
-    ent_pairs: Iterable[tuple[tuple[Entity, Entity], bool]] = task_instance.read_items()
+    ent_pairs = task_instance.read_items()
     pairs = [
-        (e1.properties if isinstance(e1, Entity) else [f.properties for f in e1], e2.properties)
+        (
+            e1.properties if isinstance(e1, Entity) else [f.properties for f in e1],
+            e2.properties if isinstance(e2, Entity) else [f.properties for f in e2],
+        )
         for (e1, e2), _ in ent_pairs
     ]
     return list(pairs)
@@ -99,7 +108,8 @@ def main(argv: list[str] | None = None) -> None:
     """Run the evaluation."""
     args = build_argparser().parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    # logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     logging.info(f"Arguments: {args}")
 
     device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
@@ -157,7 +167,7 @@ def main(argv: list[str] | None = None) -> None:
     metrics["Peak GPU Memory (GB)"] = peak_vram_alloc / 1.0e9
 
     for key, val in metrics.items():
-        logging.info(f"{key}: {val:.6f}")
+        # logging.info(f"{key}: {val:.6f}")
         print(f"{key}: {val:.6f}")
 
 

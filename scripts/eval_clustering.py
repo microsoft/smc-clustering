@@ -81,7 +81,7 @@ class NameBigram(Bigram):
         else:
             name = obs.properties["name"]
 
-        return super().post_predictive(name, n, summary) * 0
+        return super().post_predictive(name, n, summary)
 
 
 class NameBigramCluster(Cluster):

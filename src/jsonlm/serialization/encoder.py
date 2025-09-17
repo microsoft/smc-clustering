@@ -9,6 +9,7 @@ validation and returns a canonicalized dict. Determinism here makes downstream m
 from __future__ import annotations
 
 import json
+from typing import cast
 
 
 def canonicalize_entity(entity: dict[str, list[str]]) -> dict[str, list[str]]:
@@ -108,11 +109,7 @@ def entity_to_string(entity: dict[str, list[str]]) -> str:
 
 
 def entities_to_string(entities: list[dict[str, list[str]]]) -> str:
-    """Serialize a sequence of entities to a stable training string.
-
-    Each entity is canonicalized and serialized using entity_to_string, then concatenated with
-    single spaces between the token streams. No additional separators are added beyond what
-    the individual entity serializations already carry.
+    """Serialize a sequence of entities to a stable string.
 
     Args:
         entities: List of entity mappings to serialize.
@@ -127,8 +124,19 @@ def entities_to_string(entities: list[dict[str, list[str]]]) -> str:
     if not entities:
         return ""
 
-    entities = sorted(entities, key=lambda e: sorted(e.keys()))
-    serialized_entities = [entity_to_string(entity) for entity in entities]
+    def _entity_sort_key(e: dict[str, list[str]]) -> str:
+        can_ent = canonicalize_entity(e)
+        if not can_ent:
+            return ""
+        parts: list[str] = []
+        for k in can_ent:
+            vals = can_ent[k]
+            part = f"{k}:{','.join(vals)}" if vals else f"{k}:"
+            parts.append(part)
+        return "|".join(parts)
+
+    entities_sorted = sorted(entities, key=_entity_sort_key)
+    serialized_entities = [entity_to_string(entity) for entity in entities_sorted]
     return " ".join(serialized_entities)
 
 
@@ -231,7 +239,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
         key_tok = tokens[pos]
         if key_tok[0] != "STRING":
             raise ValueError(f"Expected string literal for key after <K>, got {key_tok[0]!r} at position {pos}")
-        key = key_tok[1]  # type: ignore[index]
+        key = cast(str, key_tok[1])
         pos += 1
 
         take(":")
@@ -247,7 +255,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
                     raise ValueError(
                         f"Expected string literal for value after <V>, got {val_tok[0]!r} at position {pos}",
                     )
-                value = val_tok[1]  # type: ignore[index]
+                value = cast(str, val_tok[1])
                 pos += 1
                 values.append(value)
                 if peek() == ",":

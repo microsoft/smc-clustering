@@ -9,7 +9,7 @@ This script:
   5) Saves artifacts: vocabulary tokens, BPE model JSON, and transformer config JSON.
 
 Example:
-    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --batch_size 256 --max_epochs 10 --decode_every 500
+    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp2 --batch_size 256 --max_epochs 10 --decode_every 500
 """
 
 from __future__ import annotations
@@ -162,13 +162,13 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--resume_from", default=None, help="Path to Lightning checkpoint (.ckpt) to resume from.")
 
     # Tokenizer / vocab
-    p.add_argument("--bpe_vocab_size", type=int, default=900, help="Byte-Level BPE vocab size for string interiors.")
+    p.add_argument("--bpe_vocab_size", type=int, default=1000, help="Byte-Level BPE vocab size for string interiors.")
 
     # Model
-    p.add_argument("--d_model", type=int, default=384)
-    p.add_argument("--n_layers", type=int, default=12)
+    p.add_argument("--d_model", type=int, default=512)
+    p.add_argument("--n_layers", type=int, default=16)
     p.add_argument("--n_heads", type=int, default=8)
-    p.add_argument("--d_ff", type=int, default=4 * 384)
+    p.add_argument("--d_ff", type=int, default=4 * 512)
     p.add_argument("--max_seq_len", type=int, default=4096)
     p.add_argument("--dropout", type=float, default=0.0)
     p.add_argument("--tie_embeddings", action="store_true", default=True)

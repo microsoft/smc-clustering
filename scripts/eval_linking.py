@@ -2,7 +2,7 @@
 Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Test
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Test --offset 0
 """
 
 from __future__ import annotations
@@ -86,6 +86,12 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--out", default="./output/scores.txt", help="Output file path for Δ values")
     p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    p.add_argument(
+        "--offset",
+        type=float,
+        default=0.0,
+        help="Additive logit offset used when scoring entity linking pairs (was previously hardcoded)",
+    )
     return p
 
 
@@ -122,7 +128,7 @@ def main(argv: list[str] | None = None) -> None:
             start = pc()
 
             deltas = compute_deltas_batched(
-                pairs, model=model, tokenizer=tok, offset=18.818361, batch_size=args.batch_size, device=device
+                pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
             )
 
             end = pc()
@@ -132,7 +138,7 @@ def main(argv: list[str] | None = None) -> None:
         start = pc()
 
         deltas = compute_deltas_batched(
-            pairs, model=model, tokenizer=tok, offset=18.818361, batch_size=args.batch_size, device=device
+            pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
         )
 
         end = pc()

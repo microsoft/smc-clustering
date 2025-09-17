@@ -254,17 +254,17 @@ def main(argv: list[str] | None = None) -> None:
 
     metrics = task_instance.evaluate(Path(args.out))
 
-    if n_evals[-1] > 0:
-        ll = sum(
-            [
-                clusterer.state.score_cache[h]
-                for s in range(len(clusterer.state.particles))
-                for h in clusterer.state.particles[s][np.argmax(clusterer.state.weights[s])]
-            ]
-        )
-        metrics["LL"] = ll
-
-    metrics["evals"] = len(clusterer.state.score_cache)
+    # if n_evals[-1] > 0:
+    #     ll = sum(
+    #         [
+    #             clusterer.state.score_cache[h]
+    #             for s in range(len(clusterer.state.particles))
+    #             for h in clusterer.state.particles[s][np.argmax(clusterer.state.weights[s])]
+    #         ]
+    #     )
+    #     metrics["LL"] = ll
+    #
+    # metrics["evals"] = len(clusterer.state.score_cache)
 
     for key, val in metrics.items():
         logging.info(f"{key}: {val:.6f}")

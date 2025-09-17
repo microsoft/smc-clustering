@@ -19,8 +19,8 @@ Example usage:
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 500.0 --max_particles 10 --max_evals 0 --split_interval 1
 
     # --- json-lm model ---
-    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --offset 0 --max_evals inf
-    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 500.0 --max_particles 10 --offset 0 --max_evals inf
+    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10
+    uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 500.0 --max_particles 10
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ class NameBigram(Bigram):
         else:
             name = obs.properties["name"]
 
-        return super().post_predictive(name, n, summary)
+        return super().post_predictive(name, n, summary) * 0
 
 
 class NameBigramCluster(Cluster):

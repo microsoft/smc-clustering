@@ -10,6 +10,8 @@ Example usage:
 
     uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Test
     uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Validation
+
+    uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Incremental-Set-Test
 """
 
 from __future__ import annotations

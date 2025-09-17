@@ -130,7 +130,7 @@ def score_entities(
     model: nn.Module,
     tokenizer: JsonLMTokenizer,
     batch_size: int = 256,
-    offset: float = 18.818361,
+    offset: float = 0.0,
 ) -> list[float]:
     """Estimate cluster log-likelihoods."""
     # entities = [Entity.merge(cluster) if len(cluster) > 1 else cluster[0] for cluster in clusters]

@@ -131,6 +131,7 @@ def score_entities(
     tokenizer: JsonLMTokenizer,
     batch_size: int = 256,
     offset: float = 0.0,
+    max_cluster_size: int = 30,
 ) -> list[float]:
     """Estimate cluster log-likelihoods."""
     # entities = [Entity.merge(cluster) if len(cluster) > 1 else cluster[0] for cluster in clusters]
@@ -138,11 +139,11 @@ def score_entities(
 
     entities = []
     for cluster in clusters:
-        if len(cluster) < 10:
+        if len(cluster) < max_cluster_size:
             entities.append(cluster)
         else:
             entities.append(
-                cluster[:9] + cluster[-1:]
+                cluster[: max_cluster_size - 1] + cluster[-1:]
             )  # keep first 9 and last entity which is the one being added (potentially)
             logging.warning(
                 f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties}, ... Entity N = {cluster[-1].properties}"

@@ -97,6 +97,7 @@ ignore = [
     "TRY300",  # Checks for return statements in try blocks
     "S101",    # Checks for uses of the assert keyword
     "LOG015",  # logging-fstring-interpolation
+    "N806",
 ]
 
 [lint.per-file-ignores]

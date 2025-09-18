@@ -44,7 +44,7 @@ from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
 from diffusion_linking.clustering import Cluster
-from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_optimal
+from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_greedy
 from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
 from jsonlm.models.scoring import score_entities_batched
 from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
@@ -254,7 +254,7 @@ def main(argv: list[str] | None = None) -> None:
         max_evals=max_evals,
         prior=prior,
         surrogate=surrogate,
-        resample_fn=resample_optimal,
+        resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
 

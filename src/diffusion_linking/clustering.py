@@ -60,7 +60,7 @@ class Clusterer:
 
         compute_clusters = [cluster for cluster in clusters if hash(cluster) not in self.score_cache]
         if len(compute_clusters) == 0:
-            return None
+            return 0
 
         hashes = [hash(cluster) for cluster in compute_clusters]
         scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
@@ -83,6 +83,9 @@ class Clusterer:
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append(model_evals)
+            self.objective = sum(
+                    [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
+                )
 
         for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)
@@ -155,7 +158,7 @@ class Clusterer:
         cluster_lookup = {}
         for cl in self.clusters:
             for i in cl.ids:
-                cluster_lookup[i.item()] = str(cl)
+                cluster_lookup[i.item()] = str(cl.hash)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]
 
 

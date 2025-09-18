@@ -270,5 +270,5 @@ class GibbsClusterer:
         cluster_lookup = {}
         for cl in self.best if best else self.clusters:
             for i in cl.ids:
-                cluster_lookup[i.item()] = str(cl)
+                cluster_lookup[i.item()] = str(cl.hash)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]

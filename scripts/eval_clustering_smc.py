@@ -267,7 +267,7 @@ def main(argv: list[str] | None = None) -> None:
         resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
-    experiment_name = f's{args.seed}_p{args.max_particles}_alpha{args.alpha}{"_split" if args.split_interval is not None else "_smc"}'
+    experiment_name = f's{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{"_split" if args.split_interval is not None else "_smc"}'
 
     # Run clustering
     t = time.time()

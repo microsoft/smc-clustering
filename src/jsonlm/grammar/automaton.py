@@ -4,14 +4,21 @@ Prefix automaton and transitions for the constrained JSON-with-<K>/<V> grammar.
 This module advances a compact State enum given observed token IDs from the tokenizer. It uses only the tokenizer's
 special token IDs plus knowledge that BPE pieces occupy a contiguous range after specials. The automaton validates
 transitions; callers can use `allowed_token_mask` to mask logits before sampling or loss computation.
+
+The automaton can optionally use precomputed tables from the runtime for faster lookup when available.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from jsonlm.grammar.spec import State
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+
+
+if TYPE_CHECKING:
+    from jsonlm.grammar.runtime import GrammarRuntime
 
 
 @dataclass(slots=True)
@@ -22,12 +29,23 @@ class GrammarState:
 
 
 class GrammarAutomaton:
-    """Deterministic state machine for the project grammar."""
+    """Deterministic state machine for the project grammar.
 
-    def __init__(self, tokenizer: JsonLMTokenizer) -> None:
-        """Initialize with tokenizer to access special IDs and BPE ranges."""
+    Can optionally use precomputed tables from GrammarRuntime for faster transitions
+    and mask computation when available. Falls back to explicit state machine logic.
+    """
+
+    def __init__(self, tokenizer: JsonLMTokenizer, runtime: GrammarRuntime | None = None) -> None:
+        """Initialize with tokenizer to access special IDs and BPE ranges.
+
+        Args:
+            tokenizer: JsonLMTokenizer with vocabulary
+            runtime: Optional precomputed runtime tables for fast lookup
+        """
         self.tok = tokenizer
-        # Cache IDs for speed and readability.
+        self._runtime = runtime
+
+        # Cache IDs.
         self._id_lbrace = tokenizer.vocabulary.token_id("{")
         self._id_rbrace = tokenizer.vocabulary.token_id("}")
         self._id_lbracket = tokenizer.vocabulary.token_id("[")
@@ -46,12 +64,24 @@ class GrammarAutomaton:
         self._bpe_start = self.tok.specials_size
         self._bpe_end = self.tok.specials_size + self.tok.bpe_size  # exclusive
 
+        # State-to-index mapping for runtime table lookup
+        if self._runtime is not None:
+            self._state_to_idx = {s: i for i, s in enumerate(State)}
+
+    def _get_state_index(self, state: State) -> int:
+        """Get state index for runtime table lookup."""
+        if self._runtime is None:
+            raise RuntimeError("No runtime available for state indexing")
+        return self._state_to_idx[state]
+
     def start(self) -> GrammarState:
         """Return the initial grammar state (after BOS, before '{')."""
         return GrammarState(state=State.START)
 
     def step(self, gs: GrammarState, token_id: int) -> GrammarState:
         """Advance the grammar state by consuming `token_id`.
+
+        Uses precomputed tables if runtime is available, otherwise falls back to explicit logic.
 
         Args:
             gs: Current grammar state.
@@ -70,6 +100,20 @@ class GrammarAutomaton:
         if t in (self._id_bos, self._id_pad):
             raise ValueError("BOS/PAD are not valid tokens in constrained sequence positions.")
 
+        # Use precomputed tables if available
+        if self._runtime is not None:
+            try:
+                state_idx = self._get_state_index(s)
+                next_state_idx = self._runtime.next_state[state_idx, t].item()
+                if next_state_idx < 0:
+                    raise ValueError(f"Invalid transition from {s} with token {t}")
+                next_state = self._runtime.state_list[next_state_idx]
+                return GrammarState(next_state)
+            except (IndexError, RuntimeError):
+                # Fall back to explicit logic if table lookup fails
+                pass
+
+        # Explicit state machine logic (fallback)
         # Helper predicates.
         is_bpe = self._bpe_start <= t < self._bpe_end
 

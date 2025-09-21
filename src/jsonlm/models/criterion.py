@@ -30,7 +30,7 @@ def apply_mask_and_logprobs(logits: torch.Tensor, mask: torch.BoolTensor) -> tor
     Raises:
         ValueError: If any timestep has no allowed tokens (mask all False along V).
     """
-    assert logits.dim() == 3, f"Expected logits [B, T, V], got {tuple(logits.shape)}"  # noqa: PLR2004
+    assert logits.dim() == 3, f"Expected logits [B, T, V], got {tuple(logits.shape)}"
     assert mask.shape == logits.shape, f"Mask shape {tuple(mask.shape)} must match logits {tuple(logits.shape)}"
 
     # Ensure at least one allowed token per position to avoid NaNs from log_softmax(all -inf).
@@ -51,6 +51,7 @@ def constrained_nll(
     target_ids: torch.Tensor,
     masks: torch.BoolTensor,
     reduction: Literal["mean", "sum"] = "mean",
+    weights: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Compute constrained NLL under grammar masks with teacher forcing.
 
@@ -62,6 +63,7 @@ def constrained_nll(
         target_ids: Gold token IDs of shape [B, T] (long); gathered against `logits`.
         masks: Boolean allowed-token masks of shape [B, T, V]; True means "allowed".
         reduction: 'mean' (default) averages NLL over BxT; 'sum' sums over BxT.
+        weights: Optional per-position weights of shape [B, T]; if provided, NLL is weighted.
 
     Returns:
         loss: Scalar tensor (mean or sum over BxT).
@@ -70,11 +72,13 @@ def constrained_nll(
     Raises:
         ValueError: If shapes mismatch, a timestep has no allowed tokens, or a gold token is disallowed.
     """
-    assert logits.dim() == 3, f"logits must be [B, T, V], got {tuple(logits.shape)}"  # noqa: PLR2004
-    assert target_ids.dim() == 2, f"target_ids must be [B, T], got {tuple(target_ids.shape)}"  # noqa: PLR2004
+    assert logits.dim() == 3, f"logits must be [B, T, V], got {tuple(logits.shape)}"
+    assert target_ids.dim() == 2, f"target_ids must be [B, T], got {tuple(target_ids.shape)}"
     assert masks.shape == logits.shape, f"masks must match logits; got {tuple(masks.shape)} vs {tuple(logits.shape)}"
     B, T, V = logits.shape
     assert target_ids.shape == (B, T), "target_ids shape must be [B, T]"
+    if weights is not None:
+        assert weights.shape == (B, T), f"weights must be [B, T], got {tuple(weights.shape)}"
 
     # Compute masked log-probabilities.
     log_probs = apply_mask_and_logprobs(logits, masks)  # [B, T, V]
@@ -89,19 +93,30 @@ def constrained_nll(
         raise ValueError(f"Gold token is disallowed by mask at positions (batch, time): {bt_pairs}")
 
     nll = -gold_lp  # [B, T]
-    if reduction == "mean":
-        loss = nll.mean()
-    elif reduction == "sum":
-        loss = nll.sum()
+
+    if weights is not None:
+        nll = nll * weights
+        if reduction == "mean":
+            denom = weights.sum().clamp_min(1.0)
+            loss = nll.sum() / denom
+        elif reduction == "sum":
+            loss = nll.sum()
+        else:
+            raise ValueError(f"Unknown reduction: {reduction!r}")
     else:
-        raise ValueError(f"Unknown reduction: {reduction!r}")
+        if reduction == "mean":
+            loss = nll.mean()
+        elif reduction == "sum":
+            loss = nll.sum()
+        else:
+            raise ValueError(f"Unknown reduction: {reduction!r}")
     return loss, nll
 
 
 def invalid_mass(logits: torch.Tensor, masks: torch.BoolTensor) -> torch.Tensor:
     """Return the probability mass assigned to disallowed tokens at each position.
 
-    This is computed from the *unmasked* softmax over logits; it is a diagnostic metric, not used in the loss.
+    This is computed from the unmasked softmax over logits; it is a diagnostic metric, not used in the loss.
 
     Shapes:
         logits: [B, T, V] float

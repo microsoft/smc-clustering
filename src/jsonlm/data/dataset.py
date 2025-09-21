@@ -16,7 +16,8 @@ from json.decoder import JSONDecodeError
 import torch
 from torch.utils.data import Dataset
 
-from jsonlm.serialization.encoder import entities_to_string, entity_to_string
+from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from jsonlm.serialization.normalization import normalize_entity_or_sequence
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
@@ -104,19 +105,19 @@ class EntityDataset(Dataset):
 
         # Handle both single entities (dict) and entity sequences (list of dicts)
         if isinstance(obj, dict):
-            # Handle legacy "properties" wrapper if present
-            if "properties" in obj:
-                obj = obj["properties"]
+            # Normalize entity by removing legacy "properties" wrapper if present
+            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
+            assert isinstance(normalized_obj, dict), "Single entity normalization should return dict"
             # Single entity: serialize with entity_to_string
-            s = entity_to_string(obj)
+            s = entity_to_string(normalized_obj)
         elif isinstance(obj, list):
             # Entity sequence: validate all elements are dicts and serialize with entities_to_string
             if not all(isinstance(item, dict) for item in obj):
                 raise ValueError(f"List items must all be dicts in {ref.path}:{ref.lineno}")
-            # Handle legacy "properties" wrapper if present
-            if all("properties" in item for item in obj):
-                obj = [item["properties"] for item in obj]
-            s = entities_to_string(obj)
+            # Normalize sequence by removing legacy "properties" wrappers if present
+            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
+            assert isinstance(normalized_obj, list), "Sequence normalization should return list"
+            s = entities_to_string_as_set(normalized_obj)
         else:
             raise ValueError(f"Expected a JSON object or array in {ref.path}:{ref.lineno}, got {type(obj).__name__}")
 

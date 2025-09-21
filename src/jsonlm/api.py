@@ -21,7 +21,7 @@ from jsonlm.models.criterion import apply_mask_and_logprobs
 from jsonlm.models.decode import decode_greedy  # add near other imports
 from jsonlm.serialization.encoder import (
     canonicalize_entity,
-    entities_to_string,
+    entities_to_string_as_set,
     entity_to_string,
     parse_entity,
     parse_sequence,
@@ -66,7 +66,7 @@ def encode_sequence(
         A list of token IDs representing the serialized entity sequence.
     """
     # Canonicalization happens inside entities_to_string via entity_to_string calls
-    s = entities_to_string(entities)
+    s = entities_to_string_as_set(entities)
     return tokenizer.encode(s, add_bos_eos=add_bos_eos)
 
 
@@ -116,7 +116,7 @@ def _ids_from_sequence_or_text(
     if isinstance(entities_or_text, str):
         # Parse and re-serialize to ensure canonicalized, deterministic form.
         can_list = parse_sequence(entities_or_text)
-        s = entities_to_string(can_list)
+        s = entities_to_string_as_set(can_list)
         return tokenizer.encode(s, add_bos_eos=add_bos_eos)
     raise TypeError(f"Expected list or str, got {type(entities_or_text).__name__}")
 
@@ -288,7 +288,7 @@ def decode_entity(
     device: torch.device | None = None,
 ) -> dict[str, list[str]]:
     """Decode a valid entity via constrained greedy and return it as a canonical dict."""
-    text = decode_greedy(model=model, tokenizer=tokenizer, max_steps=max_steps, device=device)
+    text = decode_greedy(model=model, tokenizer=tokenizer, max_steps=max_steps, device=device, stop_at_end=True)
     return parse_entity(text)
 
 

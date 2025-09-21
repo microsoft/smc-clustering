@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import entities_to_string, entity_to_string, parse_entity, parse_sequence
+from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string, parse_entity, parse_sequence
 
 
 def test_entities_to_string_empty():
     """Test that empty entity list serializes to empty string."""
-    result = entities_to_string([])
+    result = entities_to_string_as_set([])
     assert result == ""
 
 
@@ -24,7 +24,7 @@ def test_entities_to_string_single_entity():
     entity = {"a": ["x"]}
 
     single_result = entity_to_string(entity)
-    sequence_result = entities_to_string([entity])
+    sequence_result = entities_to_string_as_set([entity])
 
     assert sequence_result == single_result
 
@@ -33,7 +33,7 @@ def test_entities_to_string_multiple_entities():
     """Test serialization of multiple entities with space separation."""
     entities = [{"a": ["x"]}, {"b": ["y", "z"]}, {"c": ["p"], "d": ["q"]}]
 
-    result = entities_to_string(entities)
+    result = entities_to_string_as_set(entities)
 
     # Should be individual entity strings joined with spaces
     expected_parts = [entity_to_string(entity) for entity in entities]
@@ -50,9 +50,24 @@ def test_entities_to_string_with_empty_entity():
         {"b": ["y"]},
     ]
 
-    result = entities_to_string(entities)
+    result = entities_to_string_as_set(entities)
 
-    expected_parts = [entity_to_string(entity) for entity in entities]
+    # entities_to_string now sorts entities, so we need to sort them first
+    def _entity_sort_key(e: dict[str, list[str]]) -> str:
+        from jsonlm.serialization.encoder import canonicalize_entity
+
+        can_ent = canonicalize_entity(e)
+        if not can_ent:
+            return ""
+        parts: list[str] = []
+        for k in can_ent:
+            vals = can_ent[k]
+            part = f"{k}:{','.join(vals)}" if vals else f"{k}:"
+            parts.append(part)
+        return "|".join(parts)
+
+    sorted_entities = sorted(entities, key=_entity_sort_key)
+    expected_parts = [entity_to_string(entity) for entity in sorted_entities]
     expected = " ".join(expected_parts)
 
     assert result == expected
@@ -83,7 +98,7 @@ def test_parse_sequence_multiple_entities():
     entities = [{"a": ["x"]}, {"b": ["y", "z"]}, {"title": ["Notes"], "tags": ["ai", "ml"]}]
 
     # Serialize to string
-    text = entities_to_string(entities)
+    text = entities_to_string_as_set(entities)
 
     # Parse back
     parsed = parse_sequence(text)
@@ -103,10 +118,25 @@ def test_parse_sequence_round_trip():
     ]
 
     # Round trip: entities -> string -> entities
-    serialized = entities_to_string(entities)
+    serialized = entities_to_string_as_set(entities)
     parsed = parse_sequence(serialized)
 
-    assert parsed == entities
+    # entities_to_string now sorts entities, so we need to sort the expected result
+    def _entity_sort_key(e: dict[str, list[str]]) -> str:
+        from jsonlm.serialization.encoder import canonicalize_entity
+
+        can_ent = canonicalize_entity(e)
+        if not can_ent:
+            return ""
+        parts: list[str] = []
+        for k in can_ent:
+            vals = can_ent[k]
+            part = f"{k}:{','.join(vals)}" if vals else f"{k}:"
+            parts.append(part)
+        return "|".join(parts)
+
+    expected_sorted = sorted(entities, key=_entity_sort_key)
+    assert parsed == expected_sorted
 
 
 def test_parse_sequence_with_whitespace_variations():
@@ -135,10 +165,25 @@ def test_parse_sequence_complex_values():
     ]
 
     # Round trip test
-    serialized = entities_to_string(entities)
+    serialized = entities_to_string_as_set(entities)
     parsed = parse_sequence(serialized)
 
-    assert parsed == entities
+    # entities_to_string now sorts entities, so we need to sort the expected result
+    def _entity_sort_key(e: dict[str, list[str]]) -> str:
+        from jsonlm.serialization.encoder import canonicalize_entity
+
+        can_ent = canonicalize_entity(e)
+        if not can_ent:
+            return ""
+        parts: list[str] = []
+        for k in can_ent:
+            vals = can_ent[k]
+            part = f"{k}:{','.join(vals)}" if vals else f"{k}:"
+            parts.append(part)
+        return "|".join(parts)
+
+    expected_sorted = sorted(entities, key=_entity_sort_key)
+    assert parsed == expected_sorted
 
 
 def test_parse_sequence_error_handling():
@@ -182,8 +227,8 @@ def test_entities_to_string_maintains_determinism():
         {"b": ["second", "first", "second"]},  # duplicate values
     ]
 
-    result1 = entities_to_string(entities)
-    result2 = entities_to_string(entities)
+    result1 = entities_to_string_as_set(entities)
+    result2 = entities_to_string_as_set(entities)
 
     # Should be identical (deterministic)
     assert result1 == result2
@@ -204,7 +249,7 @@ def test_backward_compatibility():
     parsed_old = parse_entity(serialized_old)
 
     # New functions should be compatible
-    serialized_new = entities_to_string([entity])
+    serialized_new = entities_to_string_as_set([entity])
     parsed_new = parse_sequence(serialized_new)
 
     assert serialized_old == serialized_new
@@ -223,10 +268,51 @@ def test_empty_and_mixed_sequences():
         [{"a": []}, {"b": ["y"]}],  # empty value list (gets canonicalized out)
     ]
 
+    def _entity_sort_key(e: dict[str, list[str]]) -> str:
+        from jsonlm.serialization.encoder import canonicalize_entity
+
+        can_ent = canonicalize_entity(e)
+        if not can_ent:
+            return ""
+        parts: list[str] = []
+        for k in can_ent:
+            vals = can_ent[k]
+            part = f"{k}:{','.join(vals)}" if vals else f"{k}:"
+            parts.append(part)
+        return "|".join(parts)
+
     for entities in test_cases:
         # Should not raise errors
-        serialized = entities_to_string(entities)
+        serialized = entities_to_string_as_set(entities)
         parsed = parse_sequence(serialized)
 
-        # Should be canonical
-        assert parsed == entities
+        # entities_to_string now sorts entities, so we need to sort the expected result
+        expected_sorted = sorted(entities, key=_entity_sort_key)
+        assert parsed == expected_sorted
+
+
+def test_parse_sequence_with_braces_in_strings():
+    """Test that braces inside quoted strings don't interfere with entity boundary detection."""
+    # This tests the specific fix: braces inside quoted values should not affect entity parsing
+    entities = [
+        {"code": ['function() { return "hello"; }']},  # braces in code
+        {"json_example": ['{"key": "value"}']},  # JSON string containing braces
+        {"message": ["Use { and } carefully"]},  # braces in plain text
+        {"mixed": ['{"nested": "value"} and some text']},  # mixed content
+    ]
+
+    # Round trip test
+    serialized = entities_to_string_as_set(entities)
+    parsed = parse_sequence(serialized)
+
+    assert parsed == entities
+
+    # Also test manually constructed problematic cases
+    problematic_text = (
+        '{ <K> "code" : [ <V> "if (x) { return \\"}\\"; }" ] } { <K> "data" : [ <V> "{\\"nested\\": \\"value\\"}" ] }'
+    )
+
+    parsed_problematic = parse_sequence(problematic_text)
+    expected_problematic = [{"code": ['if (x) { return "}"; }']}, {"data": ['{"nested": "value"}']}]
+
+    assert parsed_problematic == expected_problematic

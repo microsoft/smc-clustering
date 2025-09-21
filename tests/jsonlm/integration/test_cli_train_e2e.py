@@ -40,6 +40,7 @@ def test_train_cli_runs_and_saves_artifacts(tmp_path: Path) -> None:
     _write_jsonl(train_path, train_lines)
     _write_jsonl(val_path, val_lines)
 
+    # Run CLI with a tiny model on CPU and few steps/epochs for speed
     args = [
         "--train",
         str(train_path),

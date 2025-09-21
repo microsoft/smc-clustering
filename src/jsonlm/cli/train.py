@@ -42,8 +42,9 @@ from jsonlm.api import decode_entity
 from jsonlm.data.collate import pad_collate
 from jsonlm.data.dataset import EntityDataset
 from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
-from jsonlm.serialization.encoder import entities_to_string, entity_to_string
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
+from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from jsonlm.serialization.normalization import normalize_entity_or_sequence
 from jsonlm.tokenization.trainer import train_tokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -60,11 +61,11 @@ def _is_wandb_configured() -> bool:
         # This is done by checking if we have an API key or are in offline mode
         from wandb.sdk.wandb_settings import Settings
 
-        settings = Settings()
+        Settings()
         # If we can't get basic settings or there's no API key configured, wandb won't work
         api_key = wandb.api.api_key
         return api_key is not None and api_key != ""
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Any exception during wandb configuration check means it's not properly set up
         return False
 
@@ -106,17 +107,16 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
                         # Entity sequence: serialize with entities_to_string
                         if not all(isinstance(item, dict) for item in obj):
                             raise ValueError(f"List items must all be dicts in {p}:{lineno}")
-                        # Handle legacy "properties" wrapper if present
-                        if "properties" in obj[0]:
-                            obj = [item["properties"] for item in obj]
-
-                        yield entities_to_string(obj)
+                        # Normalize sequence by removing legacy "properties" wrappers if present
+                        normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
+                        assert isinstance(normalized_obj, list), "Sequence normalization should return list"
+                        yield entities_to_string_as_set(normalized_obj)
                     elif isinstance(obj, dict):
-                        # Handle legacy "properties" wrapper if present
-                        if "properties" in obj:
-                            obj = obj["properties"]
+                        # Normalize entity by removing legacy "properties" wrapper if present
+                        normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
+                        assert isinstance(normalized_obj, dict), "Single entity normalization should return dict"
                         # Single entity: serialize with entity_to_string
-                        yield entity_to_string(obj)
+                        yield entity_to_string(normalized_obj)
                     else:
                         raise ValueError(f"Expected a JSON object or array in {p}:{lineno}, got {type(obj).__name__}")
                 except json.JSONDecodeError as e:
@@ -150,11 +150,12 @@ class PeriodicDecodeCallback(Callback):
         try:
             d = decode_entity(pl_module.model, tokenizer=self.tokenizer, max_steps=self.max_steps)
             print(f"[decode@step={global_step}] {d!r}")
-        except Exception as e:  # keep training robust to decode mishaps
+        except Exception as e:  # keep training robust to decode mishaps  # noqa: BLE001
             print(f"[decode@step={global_step}] ERROR: {e}")
 
 
 def build_argparser() -> argparse.ArgumentParser:
+    """Build the argument parser for the training CLI."""
     p = argparse.ArgumentParser(description="Train a constrained LM over JSON entities.")
     p.add_argument("--train", nargs="+", required=True, help="Path(s) to train JSONL file(s).")
     p.add_argument("--val", nargs="+", required=True, help="Path(s) to val JSONL file(s).")
@@ -162,15 +163,15 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--resume_from", default=None, help="Path to Lightning checkpoint (.ckpt) to resume from.")
 
     # Tokenizer / vocab
-    p.add_argument("--bpe_vocab_size", type=int, default=1000, help="Byte-Level BPE vocab size for string interiors.")
+    p.add_argument("--bpe_vocab_size", type=int, default=12_288, help="Byte-Level BPE vocab size for string interiors.")
 
     # Model
-    p.add_argument("--d_model", type=int, default=512)
-    p.add_argument("--n_layers", type=int, default=16)
-    p.add_argument("--n_heads", type=int, default=8)
-    p.add_argument("--d_ff", type=int, default=4 * 512)
+    p.add_argument("--d_model", type=int, default=192)
+    p.add_argument("--n_layers", type=int, default=8)
+    p.add_argument("--n_heads", type=int, default=3)
+    p.add_argument("--d_ff", type=int, default=576)
     p.add_argument("--max_seq_len", type=int, default=4096)
-    p.add_argument("--dropout", type=float, default=0.0)
+    p.add_argument("--dropout", type=float, default=0.05)
     p.add_argument("--tie_embeddings", action="store_true", default=True)
     p.add_argument("--no_tie_embeddings", action="store_false", dest="tie_embeddings")
     p.add_argument("--use_bias", action="store_true", default=False)
@@ -178,38 +179,42 @@ def build_argparser() -> argparse.ArgumentParser:
     # Optimization
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--weight_decay", type=float, default=0.0)
-    p.add_argument("--batch_size", type=int, default=512)
-    p.add_argument("--max_epochs", type=int, default=1)
+    p.add_argument("--batch_size", type=int, default=256)
+    p.add_argument("--precision", choices=["bf16-true", "16-mixed", "32"], default="bf16-true")
+    p.add_argument("--grad_clip", type=float, default=1.0)
+    p.add_argument("--warmup_steps", type=int, default=1000)
+    p.add_argument("--max_epochs", type=int, default=10)
     p.add_argument(
-        "--max_steps",
+        "--max_steps_override",
         type=int,
         default=-1,
         help="Max optimization steps; use -1 to disable step limit (Lightning default).",
     )
     p.add_argument("--seed", type=int, default=523)
+    p.add_argument(
+        "--struct_weight",
+        type=float,
+        default=0.5,
+        help="Weight for structure/EOS tokens in loss (1.0 = no down-weight).",
+    )
+    p.add_argument(
+        "--no_downweight_eos",
+        action="store_true",
+        default=False,
+        help="Disable down-weighting of EOS tokens.",
+    )
 
     # Misc
     p.add_argument("--num_workers", type=int, default=0)
-    p.add_argument("--decode_every", type=int, default=0, help="If >0, print a decode every N train steps.")
+    p.add_argument("--decode_every", type=int, default=200, help="If >0, print a decode every N train steps.")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
-
-    # Training control
-    p.add_argument(
-        "--limit_train_batches",
-        type=float,
-        default=None,
-        help=(
-            "Limit the number of training batches per epoch. Use a float in (0,1] for a fraction of the total, "
-            "or an integer value (>=1) to specify an absolute number of batches."
-        ),
-    )
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
     """Train a constrained language model over JSON entities."""
     # Configure logging once per entry; INFO is useful for CLI progress.
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s\t[%(levelname)s]\t%(message)s")
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     logger = logging.getLogger(__name__)
 
     logger.info("Parsing arguments")
@@ -219,7 +224,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Setting random seeds (seed=%d)", args.seed)
     seed_everything(args.seed, workers=True)
     random.seed(args.seed)
-    np.random.seed(args.seed)
+    np.random.seed(args.seed)  # noqa: NPY002
     torch.manual_seed(args.seed)
 
     # Build base Vocabulary and train tokenizer on serialized train corpus.
@@ -249,6 +254,7 @@ def main(argv: list[str] | None = None) -> None:
         str(args.tie_embeddings),
         str(args.use_bias),
     )
+
     cfg = TransformerConfig(
         vocab_size=len(tok),
         d_model=args.d_model,
@@ -267,9 +273,9 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Indexing training and validation datasets from JSONL files")
     train_ds = EntityDataset(paths=list(args.train), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True)
     val_ds = EntityDataset(paths=list(args.val), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True)
-    try:
+    try:  # noqa: SIM105
         logger.info("Dataset sizes: train=%d, val=%d", len(train_ds), len(val_ds))
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         # len should work, but keep training robust if it doesn't for some reason
         pass
 
@@ -296,8 +302,19 @@ def main(argv: list[str] | None = None) -> None:
 
     # Model + Lightning module
     logger.info("Initializing model and Lightning module")
-    model = TinyTransformerLM(cfg)
-    lit = LitConstrainedLM(model=model, tokenizer=tok, lr=args.lr, weight_decay=args.weight_decay)
+    model = TransformerLM(cfg)
+    max_steps_override = args.max_steps_override if args.max_steps_override is not None else -1
+
+    lit = LitConstrainedLM(
+        model=model,
+        tokenizer=tok,
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        warmup_steps=args.warmup_steps,
+        max_steps_override=max_steps_override if max_steps_override > 0 else None,
+        struct_weight=args.struct_weight,
+        downweight_eos=(not args.no_downweight_eos),
+    )
 
     # Device selection
     if args.device == "auto":
@@ -343,30 +360,24 @@ def main(argv: list[str] | None = None) -> None:
             name="training_logs",
         )
 
-    max_steps_val = args.max_steps if args.max_steps is not None else -1
-    # Normalize limit_train_batches: allow integers via float input
-    limit_train_batches = args.limit_train_batches
-    if limit_train_batches is not None and limit_train_batches >= 1.0 and float(limit_train_batches).is_integer():
-        limit_train_batches = int(limit_train_batches)
-
     logger.info(
-        "Constructing Trainer (max_epochs=%d, max_steps=%d, log_every_n_steps=%d, limit_train_batches=%s)",
+        "Constructing Trainer (max_epochs=%d, max_steps=%d, log_every_n_steps=%d)",
         args.max_epochs,
-        max_steps_val,
+        max_steps_override,
         50,
-        str(limit_train_batches),
     )
 
     trainer = Trainer(
         default_root_dir=args.save_dir,
         max_epochs=args.max_epochs,
-        max_steps=max_steps_val,
+        max_steps=max_steps_override,
         accelerator="gpu" if use_gpu else "cpu",
         devices=1,
+        precision=args.precision,
+        gradient_clip_val=args.grad_clip,
         callbacks=[ckpt_cb, es_cb, dec_cb],
         log_every_n_steps=50,
         logger=pl_logger,
-        limit_train_batches=limit_train_batches,
     )
 
     if args.resume_from:

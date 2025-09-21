@@ -9,15 +9,17 @@ masks are computed from the tokenizer's grammar automaton, and a constrained NLL
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+import math
 
 import torch
 from pytorch_lightning import LightningModule
+from pytorch_lightning.utilities.types import OptimizerLRScheduler
 from torch import nn
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.mask import allowed_token_mask
+from jsonlm.grammar.runtime import get_runtime
 from jsonlm.models.criterion import constrained_nll, invalid_mass
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
@@ -30,6 +32,10 @@ class LitConstrainedLM(LightningModule):
         tokenizer: The tokenizer describing joint vocabulary (specials + BPE).
         lr: Learning rate for AdamW optimizer.
         weight_decay: Weight decay for AdamW.
+        warmup_steps: Number of warmup steps for learning rate schedule.
+        max_steps: Total training steps for cosine decay; if None, uses constant LR.
+        struct_weight: Weight for structure/EOS tokens in loss (1.0 = no down-weight).
+        downweight_eos: Whether to down-weight EOS tokens in loss.
     """
 
     def __init__(
@@ -37,69 +43,70 @@ class LitConstrainedLM(LightningModule):
         model: nn.Module,
         tokenizer: JsonLMTokenizer,
         lr: float = 3e-4,
-        weight_decay: float = 0.0,
+        weight_decay: float = 0.1,
+        warmup_steps: int = 1000,
+        max_steps_override: int | None = None,
+        struct_weight: float = 0.5,
+        downweight_eos: bool = True,
     ) -> None:
+        """Initialize the LitConstrainedLM."""
         super().__init__()
         self.model = model
         self.tokenizer = tokenizer
         self.lr = lr
         self.weight_decay = weight_decay
-
-        # Build a reusable automaton; stateless step() calls will drive per-example states.
-        self.automaton = GrammarAutomaton(tokenizer)
+        self.warmup_steps = warmup_steps
+        self.max_steps_override = max_steps_override
+        self.struct_weight = struct_weight
+        self.downweight_eos = downweight_eos
 
         # Save hyperparameters for Lightning checkpoints (omit large objects).
         self.save_hyperparameters(
             {
                 "lr": self.lr,
                 "weight_decay": self.weight_decay,
+                "warmup_steps": self.warmup_steps,
+                "max_steps": self.max_steps_override,
+                "struct_weight": self.struct_weight,
+                "downweight_eos": self.downweight_eos,
                 "specials_size": self.tokenizer.specials_size,
                 "bpe_size": self.tokenizer.bpe_size,
             },
         )
 
     def _build_masks_for_batch(self, ids_with_eos: torch.Tensor) -> torch.BoolTensor:
-        """Construct [B, T, V] Boolean masks of allowed next tokens for teacher forcing.
+        """Construct [B, T, V] Boolean masks of allowed next tokens for teacher forcing."""
+        rt = get_runtime(self.tokenizer, device=ids_with_eos.device)
+        return rt.build_masks(ids_with_eos)
 
-        Given sequences with BOS…EOS, this builds a mask per timestep aligned with targets (i.e., for the prediction
-        of token y_t given the prefix y_<t). The final timestep corresponds to EOS; we do not advance the automaton
-        after consuming EOS.
+    def _build_weights(self, target_ids: torch.Tensor) -> torch.Tensor:
+        """Build per-position weights that down-weight structure tokens and optionally EOS.
+
+        Args:
+            target_ids: Token IDs of shape [B, T].
+
+        Returns:
+            weights: Tensor of shape [B, T] with per-position weights.
         """
-        assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long, "ids_with_eos must be [B, L] long"
-        B, L = ids_with_eos.shape
-        assert L >= 2, "Need at least BOS and EOS"
-        V = len(self.tokenizer)
-
-        T = L - 1
-        masks = torch.zeros((B, T, V), dtype=torch.bool, device=ids_with_eos.device)
-        eos = self.tokenizer.vocabulary.eos_id
-
-        for b in range(B):
-            seq = ids_with_eos[b]  # [L]
-            assert seq[0].item() == self.tokenizer.vocabulary.bos_id, "Sequence must start with BOS"
-
-            gs: GrammarState = self.automaton.start()
-            for t in range(T):
-                y_t = int(seq[t + 1].item())
-
-                # Allowed next tokens before consuming y_t.
-                m = allowed_token_mask(gs, self.automaton, self.tokenizer)  # [V]
-                masks[b, t] = m.to(device=ids_with_eos.device)
-
-                # If y_t is EOS, allow EOS only for the rest of this row and stop stepping.
-                if y_t == eos:
-                    if t + 1 < T:
-                        masks[b, t + 1 :, :] = False
-                        masks[b, t + 1 :, eos] = True
-                    break
-
-                # Consume non-EOS gold token in the grammar.
-                try:
-                    gs = self.automaton.step(gs, y_t)
-                except ValueError as e:
-                    raise ValueError(f"Automaton reject at b={b}, t={t}, token_id={y_t}: {e}") from e
-
-        return masks
+        voc = self.tokenizer.vocabulary
+        specials = [
+            voc.token_id("{"),
+            voc.token_id("}"),
+            voc.token_id("["),
+            voc.token_id("]"),
+            voc.token_id(":"),
+            voc.token_id(","),
+            voc.k_id,
+            voc.v_id,
+            voc.quote_id,
+        ]
+        w = torch.ones_like(target_ids, dtype=torch.float32, device=target_ids.device)
+        if self.struct_weight < 1.0:
+            for tid in specials:
+                w = w * (1.0 - (1.0 - self.struct_weight) * (target_ids == tid).float())
+        if self.downweight_eos:
+            w = w * (1.0 - (1.0 - self.struct_weight) * (target_ids == voc.eos_id).float())
+        return w
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Run the underlying model to produce logits [B, T, V]."""
@@ -121,7 +128,7 @@ class LitConstrainedLM(LightningModule):
             loss: Scalar tensor used by Lightning for optimization.
             logs: Dict of logged metrics for potential external consumption.
         """
-        assert batch.dim() == 2 and batch.dtype == torch.long, f"Batch must be [B, L] long, got {tuple(batch.shape)}"
+        assert batch.dim() == 2 and batch.dtype == torch.long, f"Batch must be [B, T] long, got {tuple(batch.shape)}"
         # Inputs predict "next" tokens; targets are the shifted stream.
         input_ids = batch[:, :-1]  # [B, T]
         target_ids = batch[:, 1:]  # [B, T]
@@ -135,8 +142,17 @@ class LitConstrainedLM(LightningModule):
         # Grammar masks aligned with targets.
         masks = self._build_masks_for_batch(batch)  # [B, T, V]
 
+        # Build weights for down-weighting structure tokens.
+        weights = self._build_weights(target_ids)
+
         # Constrained NLL.
-        loss, nll_per_token = constrained_nll(logits, target_ids, masks, reduction="mean")  # scal, [B, T]
+        loss, nll_per_token = constrained_nll(
+            logits,
+            target_ids,
+            masks,
+            reduction="mean",
+            weights=weights,
+        )  # scal, [B, T]
 
         # Diagnostics: raw invalid mass before masking.
         inv_mass = invalid_mass(logits.detach(), masks)  # [B, T]
@@ -147,7 +163,7 @@ class LitConstrainedLM(LightningModule):
             # Allowed-only logprobs: set disallowed to -inf and argmax.
             masked_logits = logits.masked_fill(~masks, float("-inf"))
             pred = masked_logits.argmax(dim=-1)  # [B, T]
-            acc = (pred == target_ids).float().mean()
+            acc = (pred == target_ids).float().mean()  # scalar
 
         # Log scalars (Lightning handles aggregation).
         self.log(f"{stage}/loss", loss, prog_bar=True, on_step=(stage == "train"), on_epoch=True, batch_size=B)
@@ -166,6 +182,36 @@ class LitConstrainedLM(LightningModule):
         """Lightning validation_step: log metrics; Lightning aggregates automatically."""
         _loss, _ = self._shared_step(batch, stage="val")
 
-    def configure_optimizers(self) -> Any:
-        """Configure AdamW with the provided LR/weight decay."""
-        return AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+    def configure_optimizers(self) -> OptimizerLRScheduler:
+        """Configure AdamW with cosine LR schedule with warmup."""
+        opt = AdamW(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+
+        # Compute total steps from Trainer if no explicit override
+        if self.max_steps_override is not None and self.max_steps_override > 0:
+            total_steps = self.max_steps_override
+        else:
+            try:
+                total_steps = int(self.trainer.estimated_stepping_batches)
+            except RuntimeError:
+                # No trainer attached (e.g., in unit tests), use default
+                logging.warning("No trainer attached; using default total_steps=1000 for LR schedule")
+                total_steps = 1000
+
+        # Choose warmup if not provided (e.g., 2k steps or 5%)
+        warmup = (
+            self.warmup_steps
+            if (self.warmup_steps is not None and self.warmup_steps >= 0)
+            else max(1, min(2000, int(0.05 * total_steps)))
+        )
+
+        def _lr_lambda(step: int) -> float:
+            """Learning rate schedule."""
+            if step < warmup:
+                return float(step + 1) / float(max(1, warmup))
+            progress = (step - warmup) / max(1, total_steps - warmup)
+            floor = 0.10
+
+            return floor + 0.5 * (1 - floor) * (1 + math.cos(math.pi * progress))
+
+        sch = LambdaLR(opt, lr_lambda=_lr_lambda)
+        return {"optimizer": opt, "lr_scheduler": {"scheduler": sch, "interval": "step"}}

@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 import random
 
-import pytest
 import torch
 from torch import nn
 
@@ -54,8 +53,7 @@ def _make_tokenizer() -> tuple:
     return tok, vocab
 
 
-@pytest.mark.parametrize("use_fast_mask", [True, False])
-def test_batched_scores_match_single_api(use_fast_mask: bool) -> None:
+def test_batched_scores_match_single_api() -> None:
     """score_entities_batched should equal logprob_entity for each item (sum/mean/bpt)."""
     tok, _ = _make_tokenizer()
     model = DummyModel(vocab_size=len(tok))
@@ -76,7 +74,7 @@ def test_batched_scores_match_single_api(use_fast_mask: bool) -> None:
         tokenizer=tok,
         normalize="sum",
         batch_size=2,
-        use_fast_mask=use_fast_mask,
+        include_eos=True,
     )
     single_sum = [logprob_entity(x, model=model, tokenizer=tok, normalize="sum") for x in mixed]
     assert len(batched_sum) == len(single_sum)
@@ -90,7 +88,7 @@ def test_batched_scores_match_single_api(use_fast_mask: bool) -> None:
         tokenizer=tok,
         normalize="mean",
         batch_size=2,
-        use_fast_mask=use_fast_mask,
+        include_eos=True,
     )
     single_mean = [logprob_entity(x, model=model, tokenizer=tok, normalize="mean") for x in mixed]
     for a, b in zip(batched_mean, single_mean, strict=False):
@@ -103,15 +101,14 @@ def test_batched_scores_match_single_api(use_fast_mask: bool) -> None:
         tokenizer=tok,
         normalize="bpt",
         batch_size=2,
-        use_fast_mask=use_fast_mask,
+        include_eos=True,
     )
     single_bpt = [logprob_entity(x, model=model, tokenizer=tok, normalize="bpt") for x in mixed]
     for a, b in zip(batched_bpt, single_bpt, strict=False):
         assert math.isclose(a, b, rel_tol=1e-7, abs_tol=1e-7)
 
 
-@pytest.mark.parametrize("use_fast_mask", [True, False])
-def test_batched_scoring_handles_variable_lengths(use_fast_mask: bool) -> None:
+def test_batched_scoring_handles_variable_lengths() -> None:
     """Ensure different sequence lengths (due to different entity sizes) don't break batching."""
     tok, _ = _make_tokenizer()
     model = DummyModel(vocab_size=len(tok))
@@ -133,7 +130,6 @@ def test_batched_scoring_handles_variable_lengths(use_fast_mask: bool) -> None:
         tokenizer=tok,
         normalize="sum",
         batch_size=3,
-        use_fast_mask=use_fast_mask,
     )
     assert len(scores) == len(entities)
     # Finite sanity
@@ -162,8 +158,7 @@ def test_compute_deltas_batched_matches_api_delta() -> None:
         assert math.isclose(a, b, rel_tol=0.0, abs_tol=1e-8)
 
 
-@pytest.mark.parametrize("use_fast_mask", [True, False])
-def test_batched_accepts_dicts_and_serialized_strings(use_fast_mask: bool) -> None:
+def test_batched_accepts_dicts_and_serialized_strings() -> None:
     """Mixed input types should score identically after canonicalization and serialization."""
     tok, _ = _make_tokenizer()
     model = DummyModel(vocab_size=len(tok))
@@ -176,7 +171,6 @@ def test_batched_accepts_dicts_and_serialized_strings(use_fast_mask: bool) -> No
         tokenizer=tok,
         normalize="sum",
         batch_size=2,
-        use_fast_mask=use_fast_mask,
     )
 
     assert len(scores) == 2

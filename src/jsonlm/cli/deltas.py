@@ -31,7 +31,7 @@ import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
 
 from jsonlm.models.scoring import compute_deltas_batched
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -55,8 +55,8 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
-    model = TinyTransformerLM(cfg).to(device).eval()
+def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(ckpt_path, map_location=device)
     state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
     if "state_dict" in ckpt:
@@ -79,7 +79,7 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
                 if not (
                     isinstance(arr, list) and len(arr) == 2 and isinstance(arr[0], dict) and isinstance(arr[1], dict)
                 ):
-                    raise ValueError("Line must be a JSON array of two objects.")  # noqa: TRY301
+                    raise ValueError("Line must be a JSON array of two objects.")
                 yield arr[0], arr[1]
             except Exception as e:
                 raise ValueError(f"Parse error in {path}:{lineno}: {e}") from e
@@ -113,7 +113,6 @@ def build_argparser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Main CLI entry point."""
     args = build_argparser().parse_args(argv)
 
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)

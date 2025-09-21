@@ -63,17 +63,20 @@ class JsonLMTokenizer:
         Raises:
             ValueError: If the corpus has no quoted strings to train on.
         """
-        # Collect interior texts of all JSON string literals from the corpus.
-        values: list[str] = []
-        for line in corpus:
-            toks = encoder._lex(line)  # ("STRING", text) for literals
-            for typ, val in toks:
-                if typ == "STRING":
-                    assert isinstance(val, str)
-                    values.append(val)
 
-        if not values:
-            raise ValueError("No string literals found in corpus to train BPE.")
+        # Create a generator that yields string literal contents on-the-fly
+        def string_literals_generator():
+            found_any = False
+            for line in corpus:
+                toks = encoder._lex(line)  # ("STRING", text) for literals
+                for typ, val in toks:
+                    if typ == "STRING":
+                        assert isinstance(val, str)
+                        found_any = True
+                        yield val
+
+            if not found_any:
+                raise ValueError("No string literals found in corpus to train BPE.")
 
         # Train Byte-Level BPE: full byte alphabet + byte fallback => zero OOV risk.
         bpe = Tokenizer(BPE(unk_token="[UNK]", byte_fallback=True))
@@ -84,7 +87,7 @@ class JsonLMTokenizer:
             special_tokens=[],  # specials are managed externally in Vocabulary
             initial_alphabet=ByteLevel.alphabet(),  # ensure all bytes are representable
         )
-        bpe.train_from_iterator(values, trainer=trainer)
+        bpe.train_from_iterator(string_literals_generator(), trainer=trainer)
 
         return cls(vocabulary=vocabulary, bpe=bpe, specials_size=len(vocabulary), bpe_size=bpe.get_vocab_size())
 

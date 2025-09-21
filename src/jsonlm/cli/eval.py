@@ -29,7 +29,8 @@ from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found
 
 from jsonlm import constants
 from jsonlm.api import delta, logprob_entity, logprob_sequence
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
+from jsonlm.serialization.normalization import normalize_entity_or_sequence
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -65,9 +66,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model_from_ckpt(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
+def _load_model_from_ckpt(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
     """Load TinyTransformerLM weights from a Lightning checkpoint or plain state_dict."""
-    model = TinyTransformerLM(cfg)
+    model = TransformerLM(cfg)
     model.to(device)
 
     ckpt = torch.load(ckpt_path, map_location=device)
@@ -145,12 +146,12 @@ def main(argv: list[str] | None = None) -> None:
                     try:
                         obj = json.loads(line)
                         if isinstance(obj, dict):
-                            # Handle legacy "properties" wrapper if present
-                            if "properties" in obj:
-                                obj = obj["properties"]
+                            # Normalize entity by removing legacy "properties" wrapper if present
+                            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
+                            assert isinstance(normalized_obj, dict), "Single entity normalization should return dict"
                             # Single entity: use logprob_entity
                             lp = logprob_entity(
-                                obj,
+                                normalized_obj,
                                 model=model,
                                 tokenizer=tok,
                                 normalize=args.normalize,
@@ -161,11 +162,11 @@ def main(argv: list[str] | None = None) -> None:
                             if not all(isinstance(item, dict) for item in obj):
                                 raise ValueError(f"List items must all be dicts in {args.data}:{lineno}")
 
-                            # Handle legacy "properties" wrapper if present
-                            if "properties" in obj[0]:
-                                obj = [item.get("properties", item) for item in obj]
+                            # Normalize sequence by removing legacy "properties" wrappers if present (lenient mode)
+                            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
+                            assert isinstance(normalized_obj, list), "Sequence normalization should return list"
                             lp = logprob_sequence(
-                                obj,
+                                normalized_obj,
                                 model=model,
                                 tokenizer=tok,
                                 include_eos=False,

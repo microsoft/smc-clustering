@@ -14,7 +14,7 @@ import tempfile
 import torch
 
 from jsonlm.data.dataset import EntityDataset
-from jsonlm.serialization.encoder import entities_to_string, entity_to_string
+from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
 from jsonlm.tokenization.trainer import train_tokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -84,7 +84,7 @@ def test_dataset_handles_entity_sequences() -> None:
         sequence = [entity1, entity2]
 
         # Create corpus for tokenizer training
-        corpus = [entity_to_string(entity1), entity_to_string(entity2), entities_to_string(sequence)]
+        corpus = [entity_to_string(entity1), entity_to_string(entity2), entities_to_string_as_set(sequence)]
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with both single entities and sequences
@@ -127,7 +127,7 @@ def test_dataset_sequence_vs_manual_serialization() -> None:
         entities = [{"author": ["Ada"]}, {"field": ["computing"]}, {"tags": ["ai", "ml"]}]
 
         # Create corpus for tokenizer
-        corpus = [entities_to_string(entities)] + [entity_to_string(e) for e in entities]
+        corpus = [entities_to_string_as_set(entities)] + [entity_to_string(e) for e in entities]
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with sequence
@@ -140,7 +140,7 @@ def test_dataset_sequence_vs_manual_serialization() -> None:
         dataset_ids = ds[0]
 
         # Manually serialize and encode the same sequence
-        manual_text = entities_to_string(entities)
+        manual_text = entities_to_string_as_set(entities)
         manual_ids = torch.tensor(tok.encode(manual_text, add_bos_eos=True), dtype=torch.long)
 
         # Should be identical
@@ -185,7 +185,7 @@ def test_dataset_mixed_single_and_sequence_lines() -> None:
         single_entity = {"name": ["Alice"]}
         sequence = [{"role": ["admin"]}, {"team": ["engineering"]}]
 
-        corpus = [entity_to_string(single_entity), entities_to_string(sequence)]
+        corpus = [entity_to_string(single_entity), entities_to_string_as_set(sequence)]
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with mixed content

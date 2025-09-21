@@ -10,7 +10,7 @@ from __future__ import annotations
 import torch
 
 from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.serialization.encoder import entity_to_string
 from jsonlm.tokenization.trainer import train_tokenizer
 from jsonlm.tokenization.vocab import Vocabulary
@@ -54,7 +54,7 @@ def test_one_training_step_with_transformer_smoke() -> None:
         dropout=0.0,
         tie_embeddings=True,
     )
-    model = TinyTransformerLM(cfg)
+    model = TransformerLM(cfg)
 
     lit = LitConstrainedLM(model=model, tokenizer=tok, lr=1e-3, weight_decay=0.0)
 
@@ -65,7 +65,11 @@ def test_one_training_step_with_transformer_smoke() -> None:
     assert torch.isfinite(loss).item() is True
 
     # Backward and optimizer step manually (keeps test independent of Trainer).
-    opt = lit.configure_optimizers()
+    opt_config = lit.configure_optimizers()
+    if isinstance(opt_config, dict):
+        opt = opt_config["optimizer"]
+    else:
+        opt = opt_config
     assert isinstance(opt, torch.optim.Optimizer)
     opt.zero_grad(set_to_none=True)
     loss.backward()

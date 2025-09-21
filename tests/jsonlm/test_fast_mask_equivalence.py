@@ -1,19 +1,48 @@
 """
-Tests to verify that _build_masks_for_batch_fast and _build_masks_for_batch produce identical results.
+Tests to verify that the new runtime implementation produces correct results.
 
-This module tests the equivalence between the optimized fast mask implementation and the reference
-slow implementation across various entity structures and edge cases, particularly with the new
-Kleene-plus grammar that allows multiple entities.
+This module tests the runtime implementation across various entity structures and edge cases,
+particularly with the new Kleene-plus grammar that allows multiple entities. Since the runtime
+supersedes both old implementations, we test it against a simple reference implementation.
 """
 
 from __future__ import annotations
 
 import torch
 
-from jsonlm.models.scoring import _build_masks_for_batch, _build_masks_for_batch_fast
+from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from jsonlm.grammar.mask import allowed_token_mask
+from jsonlm.grammar.runtime import get_runtime
 from jsonlm.serialization.encoder import entity_to_string
 from jsonlm.tokenization.trainer import train_tokenizer
 from jsonlm.tokenization.vocab import Vocabulary
+
+
+def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:
+    """Reference implementation using per-step automaton for comparison."""
+    assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long
+    B, L = ids_with_eos.shape
+    assert L >= 2
+    V = len(tokenizer)
+    T = L - 1
+    masks = torch.zeros((B, T, V), dtype=torch.bool, device=ids_with_eos.device)
+    eos = tokenizer.vocabulary.eos_id
+
+    automaton = GrammarAutomaton(tokenizer)
+    for b in range(B):
+        seq = ids_with_eos[b]
+        gs: GrammarState = automaton.start()
+        for t in range(T):
+            y_t = int(seq[t + 1].item())
+            m = allowed_token_mask(gs, automaton, tokenizer)
+            masks[b, t] = m.to(device=ids_with_eos.device)
+            if y_t == eos:
+                if t + 1 < T:
+                    masks[b, t + 1 :, :] = False
+                    masks[b, t + 1 :, eos] = True
+                break
+            gs = automaton.step(gs, y_t)
+    return masks
 
 
 def _make_tokenizer():
@@ -48,9 +77,10 @@ def _encode_entities_to_batch(entities: list[dict[str, list[str]]], tokenizer) -
     return batch
 
 
-def test_fast_slow_mask_equivalence_basic():
-    """Test that fast and slow mask implementations produce identical results for basic entities."""
+def test_runtime_mask_equivalence_basic():
+    """Test that runtime implementation produces identical results to reference for basic entities."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Test various entity structures
     entities = [
@@ -63,21 +93,23 @@ def test_fast_slow_mask_equivalence_basic():
 
     batch = _encode_entities_to_batch(entities, tok)
 
-    # Generate masks with both implementations
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    # Generate masks with runtime and reference implementations
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
     # Should be identical
-    assert torch.equal(masks_slow, masks_fast), (
-        f"Mask implementations differ!\n"
-        f"Shapes: slow={masks_slow.shape}, fast={masks_fast.shape}\n"
-        f"First difference at: {torch.where(masks_slow != masks_fast)}"
+    assert torch.equal(masks_runtime, masks_reference), (
+        f"Runtime and reference implementations differ!\n"
+        f"Shapes: runtime={masks_runtime.shape}, reference={masks_reference.shape}\n"
+        f"First difference at: {torch.where(masks_runtime != masks_reference)}"
     )
 
 
-def test_fast_slow_mask_equivalence_variable_lengths():
+def test_runtime_mask_equivalence_variable_lengths():
     """Test equivalence with variable-length sequences (different padding)."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Mix of short and long entities to test padding handling
     entities = [
@@ -89,17 +121,19 @@ def test_fast_slow_mask_equivalence_variable_lengths():
 
     batch = _encode_entities_to_batch(entities, tok)
 
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
-    assert torch.equal(masks_slow, masks_fast), (
-        f"Variable length mask implementations differ!\nBatch shape: {batch.shape}\nEntities: {entities}"
+    assert torch.equal(masks_runtime, masks_reference), (
+        f"Variable length runtime and reference implementations differ!\nBatch shape: {batch.shape}\nEntities: {entities}"
     )
 
 
-def test_fast_slow_mask_equivalence_edge_cases():
+def test_runtime_mask_equivalence_edge_cases():
     """Test equivalence for edge cases like empty entities and single tokens."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Edge case entities
     entities = [
@@ -128,35 +162,39 @@ def test_fast_slow_mask_equivalence_edge_cases():
 
     batch = _encode_entities_to_batch(valid_entities, tok)
 
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
-    assert torch.equal(masks_slow, masks_fast), (
-        f"Edge case mask implementations differ!\nValid entities: {valid_entities}\nBatch shape: {batch.shape}"
+    assert torch.equal(masks_runtime, masks_reference), (
+        f"Edge case runtime and reference implementations differ!\nValid entities: {valid_entities}\nBatch shape: {batch.shape}"
     )
 
 
-def test_fast_slow_mask_equivalence_single_entity():
+def test_runtime_mask_equivalence_single_entity():
     """Test equivalence for single entity (common case)."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     entity = {"name": ["Alice", "Bob"], "role": ["admin"]}
     batch = _encode_entities_to_batch([entity], tok)
 
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
-    assert torch.equal(masks_slow, masks_fast), (
-        f"Single entity mask implementations differ!\n"
+    assert torch.equal(masks_runtime, masks_reference), (
+        f"Single entity runtime and reference implementations differ!\n"
         f"Entity: {entity}\n"
         f"Batch shape: {batch.shape}\n"
-        f"Mask shapes: slow={masks_slow.shape}, fast={masks_fast.shape}"
+        f"Mask shapes: runtime={masks_runtime.shape}, reference={masks_reference.shape}"
     )
 
 
-def test_fast_slow_mask_equivalence_batch_sizes():
+def test_runtime_mask_equivalence_batch_sizes():
     """Test equivalence across different batch sizes."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Create a larger set of diverse entities
     entities = [
@@ -174,55 +212,60 @@ def test_fast_slow_mask_equivalence_batch_sizes():
         test_entities = entities[:batch_size]
         batch = _encode_entities_to_batch(test_entities, tok)
 
-        masks_slow = _build_masks_for_batch(batch, tok)
-        masks_fast = _build_masks_for_batch_fast(batch, tok)
+        rt = get_runtime(tok, device)
+        masks_runtime = rt.build_masks(batch)
+        masks_reference = _build_masks_reference(batch, tok)
 
-        assert torch.equal(masks_slow, masks_fast), (
-            f"Batch size {batch_size} mask implementations differ!\n"
+        assert torch.equal(masks_runtime, masks_reference), (
+            f"Batch size {batch_size} runtime and reference implementations differ!\n"
             f"Entities: {test_entities}\n"
             f"Batch shape: {batch.shape}"
         )
 
 
-def test_fast_slow_mask_states_at_each_position():
-    """Test that both implementations handle grammar state transitions identically."""
+def test_runtime_mask_states_at_each_position():
+    """Test that runtime implementation handles grammar state transitions correctly."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Entity that exercises various grammar states
     entity = {"key1": ["val1", "val2"], "key2": ["val3"]}
     batch = _encode_entities_to_batch([entity], tok)
 
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
     # Should be identical
-    assert torch.equal(masks_slow, masks_fast)
+    assert torch.equal(masks_runtime, masks_reference)
 
     # Additionally, check that the masks have the expected structure:
     # - At each position, only grammatically valid tokens should be allowed
     # - The number of allowed tokens should be reasonable (not all or none except at EOS)
-    B, T, V = masks_slow.shape
+    B, T, V = masks_runtime.shape
 
     for b in range(B):
         for t in range(T):
-            allowed_count = masks_slow[b, t].sum().item()
+            allowed_count = masks_runtime[b, t].sum().item()
             # Sanity check: should have some allowed tokens (unless at end with EOS-only)
             assert allowed_count > 0, f"No tokens allowed at batch {b}, position {t}"
             assert allowed_count < V, f"All tokens allowed at batch {b}, position {t} (likely wrong)"
 
 
-def test_fast_slow_mask_end_state_kleene_plus():
-    """Test that both implementations correctly handle the Kleene-plus END state behavior."""
+def test_runtime_mask_end_state_kleene_plus():
+    """Test that runtime implementation correctly handles the Kleene-plus END state behavior."""
     tok = _make_tokenizer()
+    device = torch.device("cpu")
 
     # Test entity that reaches END state
     entity = {"test": ["value"]}
     batch = _encode_entities_to_batch([entity], tok)
 
-    masks_slow = _build_masks_for_batch(batch, tok)
-    masks_fast = _build_masks_for_batch_fast(batch, tok)
+    rt = get_runtime(tok, device)
+    masks_runtime = rt.build_masks(batch)
+    masks_reference = _build_masks_reference(batch, tok)
 
-    assert torch.equal(masks_slow, masks_fast)
+    assert torch.equal(masks_runtime, masks_reference)
 
     # Specifically check the mask at the position where we'd be in END state
     # This would be after the closing '}' token, where we should allow both EOS and '{'
@@ -232,12 +275,12 @@ def test_fast_slow_mask_end_state_kleene_plus():
     # Find the position in the sequence where END state occurs
     # The exact position depends on the tokenization, but we can verify that
     # when EOS is allowed, '{' should also be allowed (Kleene-plus behavior)
-    B, T, V = masks_slow.shape
+    B, T, V = masks_runtime.shape
     for b in range(B):
         for t in range(T):
-            if masks_slow[b, t, eos_id]:  # If EOS is allowed
+            if masks_runtime[b, t, eos_id]:  # If EOS is allowed
                 # Then '{' should also be allowed (Kleene-plus)
-                assert masks_slow[b, t, lbrace_id], (
+                assert masks_runtime[b, t, lbrace_id], (
                     f"At batch {b}, position {t}: EOS allowed but '{{' not allowed. "
                     f"This violates Kleene-plus grammar where both should be allowed at END state."
                 )

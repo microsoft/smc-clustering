@@ -14,7 +14,7 @@ import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
 
 from jsonlm.models.decode import decode_greedy, decode_sample
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.serialization.encoder import parse_entity
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
@@ -44,7 +44,7 @@ def main(argv=None) -> None:
     tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
     cfg = TransformerConfig(**json.load(open(f"{args.artifacts}/config.json", encoding="utf-8")))
 
-    model = TinyTransformerLM(cfg).to(device).eval()
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(args.ckpt, map_location=device)
     state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
     state = (

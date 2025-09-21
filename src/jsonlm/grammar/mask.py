@@ -18,9 +18,11 @@ from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 def allowed_token_mask(gs: GrammarState, automaton: GrammarAutomaton, tokenizer: JsonLMTokenizer) -> torch.BoolTensor:
     """Return a Bool mask over the joint vocabulary for valid next tokens.
 
+    Uses precomputed tables if automaton has runtime, otherwise falls back to explicit logic.
+
     Args:
         gs: Current grammar state.
-        automaton: The automaton carrying cached token IDs.
+        automaton: The automaton carrying cached token IDs and optional runtime.
         tokenizer: The tokenizer describing vocab layout (specials + BPE).
 
     Returns:
@@ -30,6 +32,20 @@ def allowed_token_mask(gs: GrammarState, automaton: GrammarAutomaton, tokenizer:
         BOS and PAD are always disallowed; EOS is allowed if and only if state == END.
     """
     V = len(tokenizer)
+    s = gs.state
+
+    # Use precomputed tables if available
+    if automaton._runtime is not None:
+        try:
+            state_idx = automaton._get_state_index(s)
+            # Return a copy to avoid modifying the cached tensor
+            mask = automaton._runtime.allowed[state_idx, :].clone()
+            return mask
+        except (IndexError, RuntimeError):
+            # Fall back to explicit logic if table lookup fails
+            pass
+
+    # Explicit mask construction (fallback)
     mask = torch.zeros(V, dtype=torch.bool)
 
     # Convenience IDs and ranges.
@@ -46,8 +62,6 @@ def allowed_token_mask(gs: GrammarState, automaton: GrammarAutomaton, tokenizer:
 
     bpe_start = tokenizer.specials_size
     bpe_end = tokenizer.specials_size + tokenizer.bpe_size  # exclusive
-
-    s = gs.state
 
     # State-specific allowances.
     if s == State.START:

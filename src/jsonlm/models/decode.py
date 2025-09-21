@@ -13,6 +13,7 @@ from torch import nn
 
 from jsonlm.grammar.automaton import GrammarAutomaton
 from jsonlm.grammar.mask import allowed_token_mask
+from jsonlm.grammar.spec import State
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
@@ -21,6 +22,7 @@ def decode_greedy(
     tokenizer: JsonLMTokenizer,
     max_steps: int = 512,
     device: torch.device | None = None,
+    stop_at_end: bool = False,
 ) -> str:
     """Generate a valid entity string using grammar-constrained greedy decoding.
 
@@ -35,6 +37,7 @@ def decode_greedy(
         tokenizer: Tokenizer providing vocabulary layout and decode().
         max_steps: Maximum number of tokens to generate (including EOS); guards against infinite loops.
         device: Optional torch.device; defaults to the model's parameter device if not provided.
+        stop_at_end: If True, force EOS when gs.state==END by masking to EOS-only (single entity termination).
 
     Returns:
         A space-separated serialized entity string (without BOS/EOS).
@@ -71,6 +74,12 @@ def decode_greedy(
 
         # Grammar mask for current state (allowed next tokens).
         mask = allowed_token_mask(gs, automaton, tokenizer).to(device=device)  # [V]
+
+        # If stop_at_end=True and we're in END state, force EOS-only to guarantee single entity.
+        if stop_at_end and gs.state == State.END:
+            mask.fill_(False)
+            mask[eos_id] = True
+
         if not mask.any():
             raise RuntimeError("No allowed next tokens from grammar; decoding cannot proceed.")
 

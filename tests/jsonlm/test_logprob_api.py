@@ -14,7 +14,7 @@ import torch
 from torch import nn
 
 from jsonlm.api import encode_entity, encode_sequence, logprob_entity, logprob_sequence
-from jsonlm.serialization.encoder import entities_to_string, entity_to_string
+from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
 from jsonlm.tokenization.trainer import train_tokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -43,8 +43,8 @@ def _tokenizer() -> tuple:
         entity_to_string({"a": ["x", "y"], "b": ["c"]}),
         entity_to_string({"title": ["Notes"], "tags": ["ai", "ml"]}),
         # Add sequence training data for sequence tests
-        entities_to_string([{"a": ["x"]}, {"b": ["y"]}]),
-        entities_to_string([{"name": ["Alice"]}, {"role": ["admin"]}]),
+        entities_to_string_as_set([{"a": ["x"]}, {"b": ["y"]}]),
+        entities_to_string_as_set([{"name": ["Alice"]}, {"role": ["admin"]}]),
     ]
     tok = train_tokenizer(corpus, vocabulary=vocab, bpe_vocab_size=128)
     return tok, vocab
@@ -105,7 +105,7 @@ def test_encode_sequence_basic() -> None:
     assert ids[-1] == tok.vocabulary.eos_id, "Should end with EOS"
 
     # Should match manual serialization
-    manual_text = entities_to_string(entities)
+    manual_text = entities_to_string_as_set(entities)
     manual_ids = tok.encode(manual_text, add_bos_eos=True)
     assert ids == manual_ids
 
@@ -146,7 +146,7 @@ def test_logprob_sequence_vs_manual_serialization() -> None:
 
     # Verify that encoding is correct
     sequence_ids = encode_sequence(entities, tokenizer=tok, add_bos_eos=True)
-    manual_text = entities_to_string(entities)
+    manual_text = entities_to_string_as_set(entities)
     manual_ids = tok.encode(manual_text, add_bos_eos=True)
     assert sequence_ids == manual_ids
 
@@ -220,7 +220,7 @@ def test_logprob_sequence_accepts_string_input() -> None:
     model = DummyModel(vocab_size=len(tok))
 
     entities = [{"a": ["x"]}, {"b": ["y"]}]
-    serialized = entities_to_string(entities)
+    serialized = entities_to_string_as_set(entities)
 
     # Both should give same result
     score_from_list = logprob_sequence(entities, model=model, tokenizer=tok, normalize="sum")

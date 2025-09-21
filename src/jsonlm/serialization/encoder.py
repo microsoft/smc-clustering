@@ -9,7 +9,10 @@ validation and returns a canonicalized dict. Determinism here makes downstream m
 from __future__ import annotations
 
 import json
-from typing import cast
+
+
+# Each lexed token is a tuple (TYPE, VALUE). Only STRING carries a meaningful VALUE; others use the lexeme as TYPE.
+Token = tuple[str, str | None]
 
 
 def canonicalize_entity(entity: dict[str, list[str]]) -> dict[str, list[str]]:
@@ -35,14 +38,13 @@ def canonicalize_entity(entity: dict[str, list[str]]) -> dict[str, list[str]]:
     if not isinstance(entity, dict):
         raise ValueError(f"Entity must be a dict[str, list[str]], got: {type(entity).__name__}")
 
-    # Validate and normalize values as lists of strings with set semantics (sorted unique).
     norm: dict[str, list[str]] = {}
     for k, vs in entity.items():
+        # Validate key and value types.
         if not isinstance(k, str):
             raise ValueError(f"Entity keys must be str, got key type: {type(k).__name__}")
         if not isinstance(vs, list):
             raise ValueError(f"Entity values must be lists, got type for key '{k}': {type(vs).__name__}")
-        # Validate items are strings.
         bad_items = [type(x).__name__ for x in vs if not isinstance(x, str)]
         if bad_items:
             raise ValueError(f"All list items must be str for key '{k}', bad types: {bad_items}")
@@ -52,7 +54,7 @@ def canonicalize_entity(entity: dict[str, list[str]]) -> dict[str, list[str]]:
         norm[k] = unique_sorted
 
     # Sort keys lexicographically for canonical ordering.
-    out: dict[str, list[str]] = {k: norm[k] for k in sorted(norm.keys())}
+    out = {k: norm[k] for k in sorted(norm.keys())}
     return out
 
 
@@ -82,11 +84,9 @@ def entity_to_string(entity: dict[str, list[str]]) -> str:
         tokens.append("}")
         return " ".join(tokens)
 
-    first_key = True
-    for k, values in can.items():
-        if not first_key:
+    for i, (k, values) in enumerate(can.items()):
+        if i > 0:
             tokens.append(",")
-        first_key = False
 
         # Emit keyval: <K> "key" : [ ... ]
         tokens.append("<K>")
@@ -108,8 +108,8 @@ def entity_to_string(entity: dict[str, list[str]]) -> str:
     return " ".join(tokens)
 
 
-def entities_to_string(entities: list[dict[str, list[str]]]) -> str:
-    """Serialize a sequence of entities to a stable string.
+def entities_to_string_as_set(entities: list[dict[str, list[str]]]) -> str:
+    """Serialize a sequence of entities (interpreted as a bag)to a stable string.
 
     Args:
         entities: List of entity mappings to serialize.
@@ -143,8 +143,8 @@ def entities_to_string(entities: list[dict[str, list[str]]]) -> str:
 def parse_sequence(text: str) -> list[dict[str, list[str]]]:
     """Parse a training string containing multiple entities back into a list of canonical dicts.
 
-    Uses brace counting to identify entity boundaries, then calls the existing parse_entity
-    function for each individual entity.
+    Uses lexer-based brace counting to identify entity boundaries, then calls the existing parse_entity
+    function for each individual entity. Only counts { and } tokens outside of STRING tokens.
 
     Args:
         text: The training string containing one or more entities.
@@ -162,38 +162,40 @@ def parse_sequence(text: str) -> list[dict[str, list[str]]]:
     if not text or not text.strip():
         return []
 
+    tokens = _lex(text)
     entities: list[dict[str, list[str]]] = []
-    remaining_text = text.strip()
+    start_idx = 0
 
-    while remaining_text:
-        # Find the end of the first entity by counting braces
+    while start_idx < len(tokens):
+        # Find the end of the first entity by counting { and } tokens
         brace_count = 0
-        entity_end = 0
+        entity_end_idx = start_idx
 
-        for i, char in enumerate(remaining_text):
-            if char == "{":
+        for i in range(start_idx, len(tokens)):
+            token_type, _ = tokens[i]
+            if token_type == "{":
                 brace_count += 1
-            elif char == "}":
+            elif token_type == "}":
                 brace_count -= 1
                 if brace_count == 0:
-                    entity_end = i + 1
+                    entity_end_idx = i + 1
                     break
 
-        if entity_end == 0:
+        if brace_count != 0:
             raise ValueError("Unterminated entity in sequence")
 
-        # Extract and parse the first entity using existing parse_entity function
-        entity_text = remaining_text[:entity_end].strip()
-        entity = parse_entity(entity_text)
+        # Parse the entity using the pre-lexed tokens
+        entity_tokens = tokens[start_idx:entity_end_idx]
+        entity = parse_entity("", _tokens=entity_tokens)
         entities.append(entity)
 
-        # Move to the remaining text
-        remaining_text = remaining_text[entity_end:].strip()
+        # Move to the next entity
+        start_idx = entity_end_idx
 
     return entities
 
 
-def parse_entity(text: str) -> dict[str, list[str]]:
+def parse_entity(text: str, *, _tokens: list[Token] | None = None) -> dict[str, list[str]]:
     """Parse a training string with <K>/<V> sentinels back into a canonical entity dict.
 
     The parser accepts the deterministic format produced by `entity_to_string`. It is whitespace-insensitive, requires
@@ -202,6 +204,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
 
     Args:
         text: The training string to parse.
+        _tokens: Pre-lexed tokens (internal use only). If provided, text is ignored.
 
     Returns:
         Canonicalized dict[str, list[str]].
@@ -209,7 +212,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
     Raises:
         ValueError: If the input violates the expected grammar or contains invalid quoting/escapes.
     """
-    tokens = _lex(text)
+    tokens = _tokens if _tokens is not None else _lex(text)
     pos = 0
 
     def take(expected: str) -> None:
@@ -239,7 +242,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
         key_tok = tokens[pos]
         if key_tok[0] != "STRING":
             raise ValueError(f"Expected string literal for key after <K>, got {key_tok[0]!r} at position {pos}")
-        key = cast(str, key_tok[1])
+        key = key_tok[1]  # type: ignore[index]
         pos += 1
 
         take(":")
@@ -255,7 +258,7 @@ def parse_entity(text: str) -> dict[str, list[str]]:
                     raise ValueError(
                         f"Expected string literal for value after <V>, got {val_tok[0]!r} at position {pos}",
                     )
-                value = cast(str, val_tok[1])
+                value = val_tok[1]  # type: ignore[index]
                 pos += 1
                 values.append(value)
                 if peek() == ",":
@@ -295,15 +298,11 @@ def _string_literal(value: str) -> str:
     return dumped
 
 
-# Each lexed token is a tuple (TYPE, VALUE). Only STRING carries a meaningful VALUE; others use the lexeme as TYPE.
-Token = tuple[str, str | None]
-
-
 def _lex(text: str) -> list[tuple[str, str | None]]:
     """Lex the training string into tokens: punctuation, sentinels, and JSON strings."""
     i = 0
     n = len(text)
-    toks: list[tuple[str, str | None]] = []
+    tokens: list[tuple[str, str | None]] = []
 
     while i < n:
         ch = text[i]
@@ -315,18 +314,18 @@ def _lex(text: str) -> list[tuple[str, str | None]]:
 
         # Single-character punctuation.
         if ch in "{}[]:,":
-            toks.append((ch, None))
+            tokens.append((ch, None))
             i += 1
             continue
 
         # Sentinels <K> or <V>.
         if ch == "<":
             if text.startswith("<K>", i):
-                toks.append(("<K>", None))
+                tokens.append(("<K>", None))
                 i += 3
                 continue
             if text.startswith("<V>", i):
-                toks.append(("<V>", None))
+                tokens.append(("<V>", None))
                 i += 3
                 continue
             raise ValueError(f"Unknown sentinel starting at position {i}: {text[i : i + 4]!r}")
@@ -353,10 +352,10 @@ def _lex(text: str) -> list[tuple[str, str | None]]:
                 py_str = json.loads(raw)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON string literal at {i}: {e.msg}") from e
-            toks.append(("STRING", py_str))
+            tokens.append(("STRING", py_str))
             i = j + 1
             continue
 
         raise ValueError(f"Unexpected character at position {i}: {ch!r}")
 
-    return toks
+    return tokens

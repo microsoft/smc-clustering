@@ -1,0 +1,72 @@
+[alpha=1.0, max_evals=0, max_particles=10, seed=0, split_interval=1]
+fragments: 843.000000
+predicted_clusters: 54.000000
+ground_truth_clusters: 100.000000
+precision: 0.383140
+recall: 0.797011
+f1: 0.465583
+t: 15.624996
+total_evals: 5575.000000
+LL: -20890.823551
+LP: -19139.303678
+fragments_subproblems: 843.000000
+predicted_clusters_subproblems: 27.000000
+ground_truth_clusters_subproblems: 100.000000
+precision_subproblems: 0.211676
+recall_subproblems: 0.854267
+f1_subproblems: 0.279925
+
+[alpha=1.0, max_evals=0, max_particles=10, seed=1, split_interval=1]
+fragments: 843.000000
+predicted_clusters: 62.000000
+ground_truth_clusters: 100.000000
+precision: 0.405624
+recall: 0.788906
+f1: 0.464449
+t: 15.818063
+total_evals: 5555.000000
+LL: -21037.444376
+LP: -19317.142564
+fragments_subproblems: 843.000000
+predicted_clusters_subproblems: 32.000000
+ground_truth_clusters_subproblems: 100.000000
+precision_subproblems: 0.271626
+recall_subproblems: 0.861003
+f1_subproblems: 0.353493
+
+[alpha=500.0, max_evals=0, max_particles=10, seed=0, split_interval=1]
+fragments: 843.000000
+predicted_clusters: 108.000000
+ground_truth_clusters: 100.000000
+precision: 0.647534
+recall: 0.760928
+f1: 0.645586
+t: 25.851053
+total_evals: 6090.000000
+LL: -19257.493620
+LP: -17401.089923
+fragments_subproblems: 843.000000
+predicted_clusters_subproblems: 65.000000
+ground_truth_clusters_subproblems: 100.000000
+precision_subproblems: 0.495888
+recall_subproblems: 0.845541
+f1_subproblems: 0.571987
+
+[alpha=500.0, max_evals=0, max_particles=10, seed=1, split_interval=1]
+fragments: 843.000000
+predicted_clusters: 110.000000
+ground_truth_clusters: 100.000000
+precision: 0.645485
+recall: 0.734397
+f1: 0.630892
+t: 25.111648
+total_evals: 6067.000000
+LL: -19326.118974
+LP: -17484.579612
+fragments_subproblems: 843.000000
+predicted_clusters_subproblems: 65.000000
+ground_truth_clusters_subproblems: 100.000000
+precision_subproblems: 0.501551
+recall_subproblems: 0.859303
+f1_subproblems: 0.572724
+

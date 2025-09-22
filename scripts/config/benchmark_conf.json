@@ -47,6 +47,14 @@
       "ground_truth": "./data_vm/datasets/clustering_100/test/rebel_clustering_ground_truth.jsonl"
     }
   },
+  "Clustering-REBEL-200": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data_vm/datasets/clustering_200/test/rebel_clustering_dataset.jsonl",
+      "schema": "",
+      "ground_truth": "./data_vm/datasets/clustering_200/test/rebel_clustering_ground_truth.jsonl"
+    }
+  },
   "Clustering-REBEL-500": {
     "task": "Clustering",
     "data": {

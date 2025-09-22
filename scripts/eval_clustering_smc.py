@@ -242,9 +242,13 @@ def main(argv: list[str] | None = None) -> None:
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset
     )
 
+    split_interval = args.split_interval
+    if split_interval == 0:
+        split_interval = None
+
     clusterer = SMCClusterer(
         data=data,
-        split_interval=args.split_interval,
+        split_interval=split_interval,
         model_threshold=args.threshold,
         score_fn=batched_score_eval,
         max_particles=args.max_particles,

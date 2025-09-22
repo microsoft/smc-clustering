@@ -7,17 +7,14 @@ Examples:
     uv run scripts/sweep_eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/last.ckpt \
-        --task_instance Clustering-REBEL-100 \
-        --alpha [1.0,500.0] \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
         --seed [0,1] \
         --max_particles 10 \
-        --max_evals 0
-
-
-    uv run scripts/sweep_eval_clustering_smc.py \
-        --task_instance Clustering-REBEL-100 \
-        --alpha 1.0,2.0,5.0 --seed 0,1,2
+        --max_evals 0 \
+        --split_interval [0,1]
 
 Use --dry-run to only print the planned commands.
 """
@@ -158,6 +155,11 @@ def main(argv: list[str] | None = None) -> int:
     logging.info("Planned %d runs", len(combos))
 
     os.makedirs(args.out_root, exist_ok=True)
+    metrics_path = os.path.join(args.out_root, "metrics.txt")
+    if not os.path.exists(metrics_path):
+        # Initialize empty metrics file (no header per spec)
+        with open(metrics_path, "w", encoding="utf-8"):
+            pass
 
     base_cmd_prefix = ["uv", "run", args.script]
 
@@ -188,12 +190,43 @@ def main(argv: list[str] | None = None) -> int:
         logging.info("Run: %s", " ".join(shlex.quote(c) for c in cmd))
         if not args.dry_run:
             log_path = os.path.join(out_dir, "log.txt")
+            metrics_lines: list[str] = []
+            in_metrics = False
             with open(log_path, "w", encoding="utf-8") as lf:
                 lf.write("Command: " + " ".join(shlex.quote(c) for c in cmd) + "\n\n")
                 lf.flush()
-                result = subprocess.run(cmd, check=False, stdout=lf, stderr=subprocess.STDOUT)
-            if result.returncode != 0:
-                logging.error("Run failed (exit=%d). See %s", result.returncode, log_path)
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    encoding="utf-8",
+                )
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    lf.write(line)
+                    if not in_metrics and line.strip() == "METRICS":
+                        in_metrics = True
+                        continue
+                    if in_metrics:
+                        metrics_lines.append(line.rstrip("\n"))
+                proc.wait()
+                exit_code = proc.returncode or 0
+            # Append metrics section
+            header = ", ".join(f"{k}={combo[k]}" for k in sorted(combo))
+            with open(metrics_path, "a", encoding="utf-8") as mf:
+                mf.write(f"[{header}]\n")
+                if metrics_lines:
+                    for ml in metrics_lines:
+                        mf.write(ml + "\n")
+                else:
+                    mf.write("<no metrics captured>\n")
+                if exit_code != 0:
+                    mf.write(f"<run failed exit_code={exit_code}>\n")
+                mf.write("\n")
+            if exit_code != 0:
+                logging.error("Run failed (exit=%d). See %s", exit_code, log_path)
             else:
                 logging.info("Completed successfully -> %s", log_path)
 

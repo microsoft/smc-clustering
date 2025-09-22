@@ -21,17 +21,20 @@ Example usage:
     # --- json-lm model ---
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 500.0 --max_particles 10
+
+    =====
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --max_evals 0
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
-import time
 import json
 import logging
 import os
 import pickle
+import time
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -49,7 +52,7 @@ from diffusion_linking.clustering import Cluster
 from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_greedy
 from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
 from jsonlm.models.scoring import score_entities_batched
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -131,9 +134,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
+def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
     """Load model from checkpoint."""
-    model = TinyTransformerLM(cfg).to(device).eval()
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(ckpt_path, map_location=device)
     state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
     if "state_dict" in ckpt:
@@ -179,7 +182,9 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
     p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
     p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
-    p.add_argument("--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters")
+    p.add_argument(
+        "--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters"
+    )
     p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
     p.add_argument("--out", default="./output", help="Output path for results")
     p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
@@ -220,13 +225,13 @@ def main(argv: list[str] | None = None) -> None:
 
     data = list(e for e, _ in task_instance.read_items())
     logging.info(f"Loaded {len(data)} entities for clustering")
-    
+
     # shuffle the dataset, compute the inverse shuffling
     shuffle_rng, rng = jax.random.split(rng)
     shuffled_idx = jax.random.permutation(shuffle_rng, len(data))
     unshuffled_idx = np.zeros_like(shuffled_idx)
     unshuffled_idx[shuffled_idx] = np.arange(len(data))
-    
+
     data = ListWrapper([data[i] for i in shuffled_idx])
 
     # Set up the JSON-LM model
@@ -267,14 +272,13 @@ def main(argv: list[str] | None = None) -> None:
         resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
-    experiment_name = f's{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{"_split" if args.split_interval is not None else "_smc"}'
+    experiment_name = f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split_interval is not None else '_smc'}"
 
     # Run clustering
     t = time.time()
     n_evals, _ = clusterer.cluster(rng, callback_interval=0)
     t = time.time() - t
-    
-    
+
     # Evaluate metrics and save results
     ll = sum(
         [
@@ -284,42 +288,52 @@ def main(argv: list[str] | None = None) -> None:
         ]
     )
 
-    lp = ll + sum([ np.log(args.alpha) + scipy.special.gammaln(clusterer.state.clusters[h].size) for s in range(len(clusterer.state.particles)) for h in clusterer.state.particles[s][np.argmax(clusterer.state.weights[s])] ])
+    lp = ll + sum(
+        [
+            np.log(args.alpha) + scipy.special.gammaln(clusterer.state.clusters[h].size)
+            for s in range(len(clusterer.state.particles))
+            for h in clusterer.state.particles[s][np.argmax(clusterer.state.weights[s])]
+        ]
+    )
 
     clustering = clusterer.state.list_cluster_labels()
-    clustering = [clustering[idx] for idx in unshuffled_idx] # cluster labels for the data in the original order
-    
+    clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(os.path.join(args.out, experiment_name + '_clustering'), "w", encoding="utf-8") as f:
+    with open(os.path.join(args.out, experiment_name + "_clustering"), "w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
 
-    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + '_clustering')))
-    metrics['t'] = t
-    metrics['total_evals'] = len(clusterer.state.score_cache)
-    metrics['LL'] = ll
-    metrics['LP'] = lp
-    
+    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_clustering")))
+    metrics["t"] = t
+    metrics["total_evals"] = len(clusterer.state.score_cache)
+    metrics["LL"] = ll
+    metrics["LP"] = lp
+
     if args.split_interval is not None:
         # check accuracy of subproblem partition
         clustering = clusterer.state.list_cluster_labels()
-        subprob_labels = [np.where([int(cl) in clusterer.state.cluster_partition[s] for s in range(len(clusterer.state.cluster_partition))])[0].item() for cl in clustering]
+        subprob_labels = [
+            np.where(
+                [int(cl) in clusterer.state.cluster_partition[s] for s in range(len(clusterer.state.cluster_partition))]
+            )[0].item()
+            for cl in clustering
+        ]
         subprob_labels = [subprob_labels[idx] for idx in unshuffled_idx]
-        
-        with open(os.path.join(args.out, experiment_name + '_subproblems'), "w", encoding="utf-8") as f:
+
+        with open(os.path.join(args.out, experiment_name + "_subproblems"), "w", encoding="utf-8") as f:
             for cluster in subprob_labels:
                 f.write(str(cluster) + "\n")
-        
-        subproblem_metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + '_subproblems')))
-        for key, val in subproblem_metrics.items():
-            metrics[key + '_subproblems'] = val
 
+        subproblem_metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_subproblems")))
+        for key, val in subproblem_metrics.items():
+            metrics[key + "_subproblems"] = val
 
     for key, val in metrics.items():
         logging.info(f"{key}: {val:.6f}")
         print(f"{key}: {val:.6f}")
-        
-    with open(os.path.join(args.out, experiment_name + '_metrics.pickle'), "wb") as f:
+
+    with open(os.path.join(args.out, experiment_name + "_metrics.pickle"), "wb") as f:
         pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 

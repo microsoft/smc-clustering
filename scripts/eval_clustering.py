@@ -47,7 +47,7 @@ from diffusion_linking.clustering import Cluster
 from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_greedy
 from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
 from jsonlm.models.scoring import score_entities_batched
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -129,9 +129,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
+def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
     """Load model from checkpoint."""
-    model = TinyTransformerLM(cfg).to(device).eval()
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(ckpt_path, map_location=device)
     state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
     if "state_dict" in ckpt:

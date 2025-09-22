@@ -1,15 +1,32 @@
 """
 Filter a JSONL dataset by labels, keeping at most N unique labels.
 
+If a "confusing entities" map is provided (JSONL lines of [entity_id, [confusing_entity_ids...]]), then accepting a
+label will also accept all of its confusing labels (provided doing so does not exceed the unique limit). This is done
+atomically: either the whole cluster (label + confusing) fits under the limit and is accepted, or the label is skipped.
+
 Example:
-    uv run scripts/filter_dataset_by_labels.py         --dataset ./data_vm/datasets/rebel_clustering_dataset.jsonl         --labels ./data_vm/datasets/rebel_clustering_ground_truth.jsonl         --max-unique 10         --out ./data_vm/datasets/clustering_small/data/rebel_clustering_dataset.jsonl         --out-labels ./data_vm/datasets/clustering_small/data/rebel_clustering_ground_truth.jsonl
+    uv run scripts/filter_dataset_by_labels.py \
+        --dataset ./data_vm/datasets/clustering/test/rebel_clustering_dataset.jsonl \
+        --labels ./data_vm/datasets/clustering/test/rebel_clustering_ground_truth.jsonl \
+        --confusing-map ./data_vm/datasets/rebel_confusing_entities_map.jsonl \
+        --max-unique 10 \
+        --min-confusing-cluster-size 2 \
+        --max-confusing-cluster-entities 5 \
+        --out ./data_vm/datasets/clustering_small/test/rebel_clustering_dataset.jsonl \
+        --out-labels ./data_vm/datasets/clustering_small/test/rebel_clustering_ground_truth.jsonl
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
+
+
+CLUSTER_LOG_SAMPLE = 25  # number of cluster members to show in acceptance log
+_MIN_QUOTED_LEN = 2  # minimal length to consider stripping surrounding quotes
 
 
 def build_argparser() -> argparse.ArgumentParser:
@@ -33,6 +50,23 @@ def build_argparser() -> argparse.ArgumentParser:
         default=None,
         help="Output labels path. Defaults to <dataset_stem>_labels_<max_unique>_filtered.labels.jsonl",
     )
+    p.add_argument(
+        "--confusing-map",
+        default="rebel_confusing_entities_map.jsonl",
+        help="Optional path to JSONL map of entity_id -> list(confusing entity_ids). Default: rebel_confusing_entities_map.jsonl. Use empty string to disable.",
+    )
+    p.add_argument(
+        "--min-confusing-cluster-size",
+        type=int,
+        default=2,
+        help="Minimum size (number of distinct labels) a confusing cluster must have (after filtering) to trigger grouped acceptance. Clusters smaller than this act as singletons.",
+    )
+    p.add_argument(
+        "--max-confusing-cluster-entities",
+        type=int,
+        default=4,
+        help="Optional cap on number of labels taken from a confusing cluster (0 = no cap). Root label always included; remaining members truncated deterministically (sorted order).",
+    )
     return p
 
 
@@ -42,8 +76,14 @@ def _count_lines(path: Path) -> int:
 
 
 def _read_labels(path: Path) -> list[str]:
+    def _normalize(label: str) -> str:
+        # Remove surrounding single or double quotes if present: "Q1" -> Q1, 'Q1' -> Q1
+        if len(label) >= _MIN_QUOTED_LEN and label[0] == label[-1] and label[0] in {'"', "'"}:
+            return label[1:-1]
+        return label
+
     with path.open(encoding="utf-8") as f:
-        return [line.rstrip("\n").strip() for line in f]
+        return [_normalize(line.rstrip("\n").strip()) for line in f]
 
 
 def _derive_default_paths(dataset_path: Path, max_unique: int) -> tuple[Path, Path]:
@@ -53,12 +93,55 @@ def _derive_default_paths(dataset_path: Path, max_unique: int) -> tuple[Path, Pa
     return dataset_out, labels_out
 
 
+def _load_confusing_map(path: Path) -> dict[str, set[str]]:
+    """Load confusing entities map from JSONL where each line is [entity_id, [confusing_ids...]].
+
+    Returns a dict mapping entity -> set of confusing entities INCLUDING the entity itself.
+    No filtering or merging is performed; data is used as-is. Missing or unreadable file results in empty dict.
+    """
+    if not path or str(path) == "":  # disabled
+        return {}
+    if not path.exists():
+        logging.info("Confusing map file '%s' not found; proceeding without it.", path)
+        return {}
+    mapping: dict[str, set[str]] = {}
+    processed = 0
+    try:
+        with path.open(encoding="utf-8") as fin:
+            for line_no, raw in enumerate(fin, 1):
+                processed += 1
+                if processed % 500_000 == 0:
+                    logging.info(f"Processed {processed:,} lines of confusing map...")
+
+                raw = raw.strip()
+                if not raw:
+                    continue
+                try:
+                    root, conf_list = json.loads(raw)
+                    if not isinstance(root, str) or not isinstance(conf_list, list):
+                        raise TypeError("Invalid line structure; expected [str, list]")
+                    # Normalize and filter
+                    confusing_set = {c for c in conf_list if isinstance(c, str)}
+                    confusing_set.add(root)
+                    mapping[root] = confusing_set
+                except Exception as e:  # noqa: BLE001
+                    logging.warning("Failed to parse confusing map line %d: %s", line_no, e)
+    except OSError as e:
+        logging.info("Could not read confusing map file '%s': %s; proceeding without it.", path, e)
+        return {}
+
+    return mapping
+
+
 def filter_dataset(
     dataset_path: str | Path,
     labels_path: str | Path,
     max_unique: int,
     out_dataset_path: str | Path | None = None,
     out_labels_path: str | Path | None = None,
+    confusing_map_path: str | Path | None = None,
+    min_confusing_cluster_size: int = 1,
+    max_confusing_cluster_entities: int = 0,
 ) -> tuple[int, int, int, int]:
     """Filter the dataset and write out filtered JSONL and labels.
 
@@ -92,6 +175,30 @@ def filter_dataset(
         )
         raise SystemExit(2)
 
+    # Build set of all labels (still useful for default singleton mapping for unseen labels)
+    all_labels = set(labels)
+
+    if min_confusing_cluster_size <= 0:
+        raise ValueError("--min-confusing-cluster-size must be positive")
+
+    confusing_map: dict[str, set[str]] = {}
+    if confusing_map_path:
+        confusing_map = _load_confusing_map(Path(confusing_map_path))
+        if confusing_map:
+            logging.info("Loaded confusing map clusters: %d", len(confusing_map))
+        else:
+            logging.info("Confusing map disabled or empty; proceeding with per-label acceptance.")
+            if min_confusing_cluster_size > 1:
+                logging.info(
+                    "min-confusing-cluster-size=%d requested but no clusters available; behaving as singleton mode.",
+                    min_confusing_cluster_size,
+                )
+
+    # Construct label -> cluster mapping directly from map; unseen labels are singletons.
+    label_to_cluster: dict[str, set[str]] = {root: set(cluster) for root, cluster in confusing_map.items()}
+    for lbl in all_labels:
+        label_to_cluster.setdefault(lbl, {lbl})
+
     accepted_labels: set[str] = set()
     kept = 0
     skipped = 0
@@ -107,19 +214,56 @@ def filter_dataset(
     ):
         for raw_line, label in zip(din, labels, strict=True):
             processed += 1
-            # Decide whether to keep this record
+            # Decide whether to keep this record (possibly introducing entire cluster)
             if label in accepted_labels:
                 dout_data.write(raw_line)
                 dout_labels.write(label + "\n")
                 kept += 1
-            else:
-                if len(accepted_labels) < max_unique:
-                    accepted_labels.add(label)
-                    dout_data.write(raw_line)
-                    dout_labels.write(label + "\n")
-                    kept += 1
+                continue
+
+            cluster = label_to_cluster.get(label, {label})
+            new_labels = cluster - accepted_labels
+
+            if not new_labels:
+                # All labels already accepted
+                dout_data.write(raw_line)
+                dout_labels.write(label + "\n")
+                kept += 1
+                continue
+
+            cluster_size = len(cluster)
+            effective_cluster = cluster if cluster_size >= min_confusing_cluster_size else {label}
+
+            original_effective_size = len(effective_cluster)
+            if max_confusing_cluster_entities and len(effective_cluster) > max_confusing_cluster_entities:
+                # Deterministic truncation: always include the triggering label, then add others in sorted order
+                others = sorted(x for x in effective_cluster if x != label)
+                take = max_confusing_cluster_entities - 1  # already including label
+                take = max(take, 0)
+                truncated = {label, *others[:take]}
+                effective_cluster = truncated
+
+            new_effective = effective_cluster - accepted_labels
+
+            if len(accepted_labels) + len(new_effective) <= max_unique:
+                accepted_labels.update(new_effective)
+                dout_data.write(raw_line)
+                dout_labels.write(label + "\n")
+                kept += 1
+                if len(new_effective) > 1:
+                    logging.info(
+                        "Accepted cluster via label '%s': orig_size=%d used_size=%d (added %d new). Members added: %s",
+                        label,
+                        original_effective_size,
+                        len(effective_cluster),
+                        len(new_effective),
+                        ", ".join(sorted(new_effective)[:CLUSTER_LOG_SAMPLE])
+                        + ("..." if len(new_effective) > CLUSTER_LOG_SAMPLE else ""),
+                    )
                 else:
-                    skipped += 1
+                    logging.debug("Accepted singleton label '%s'", label)
+            else:
+                skipped += 1
 
             if processed % 100000 == 0:
                 logging.info(
@@ -147,6 +291,9 @@ def main(argv: list[str] | None = None) -> int:
             args.max_unique,
             args.out,
             args.out_labels,
+            args.confusing_map if getattr(args, "confusing_map", None) else None,
+            args.min_confusing_cluster_size,
+            args.max_confusing_cluster_entities,
         )
     except (OSError, ValueError, SystemExit):
         logging.exception("Error while filtering")

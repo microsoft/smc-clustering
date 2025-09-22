@@ -9,7 +9,7 @@ This script:
   5) Saves artifacts: vocabulary tokens, BPE model JSON, and transformer config JSON.
 
 Example:
-    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp2 --batch_size 256 --max_epochs 10 --decode_every 500
+    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --max_epochs 10 --decode_every 500 --device cuda --batch_size 32
 """
 
 from __future__ import annotations
@@ -163,13 +163,13 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--resume_from", default=None, help="Path to Lightning checkpoint (.ckpt) to resume from.")
 
     # Tokenizer / vocab
-    p.add_argument("--bpe_vocab_size", type=int, default=12_288, help="Byte-Level BPE vocab size for string interiors.")
+    p.add_argument("--bpe_vocab_size", type=int, default=1200, help="Byte-Level BPE vocab size for string interiors.")
 
     # Model
-    p.add_argument("--d_model", type=int, default=192)
-    p.add_argument("--n_layers", type=int, default=8)
-    p.add_argument("--n_heads", type=int, default=3)
-    p.add_argument("--d_ff", type=int, default=576)
+    p.add_argument("--d_model", type=int, default=256)
+    p.add_argument("--n_layers", type=int, default=10)
+    p.add_argument("--n_heads", type=int, default=8)
+    p.add_argument("--d_ff", type=int, default=768)
     p.add_argument("--max_seq_len", type=int, default=4096)
     p.add_argument("--dropout", type=float, default=0.05)
     p.add_argument("--tie_embeddings", action="store_true", default=True)
@@ -182,7 +182,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--batch_size", type=int, default=256)
     p.add_argument("--precision", choices=["bf16-true", "16-mixed", "32"], default="bf16-true")
     p.add_argument("--grad_clip", type=float, default=1.0)
-    p.add_argument("--warmup_steps", type=int, default=1000)
+    p.add_argument("--warmup_steps", type=int, default=1500)
     p.add_argument("--max_epochs", type=int, default=10)
     p.add_argument(
         "--max_steps_override",
@@ -194,7 +194,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--struct_weight",
         type=float,
-        default=0.5,
+        default=0.4,
         help="Weight for structure/EOS tokens in loss (1.0 = no down-weight).",
     )
     p.add_argument(

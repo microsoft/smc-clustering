@@ -27,18 +27,17 @@ from __future__ import annotations
 
 import argparse
 import collections
-import time
 import json
 import logging
 import os
 import pickle
+import time
 from functools import partial
 from pathlib import Path
 from typing import Any
 
 import jax
 import numpy as np
-import scipy
 import torch
 from kebab import mskebab
 from kebab.contracts.entity import Entity
@@ -49,7 +48,7 @@ from diffusion_linking.clustering import Cluster, Clusterer
 from diffusion_linking.smc_clustering import DirichletProcess
 from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
 from jsonlm.models.scoring import score_entities_batched
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -131,9 +130,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
+def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
     """Load model from checkpoint."""
-    model = TinyTransformerLM(cfg).to(device).eval()
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(ckpt_path, map_location=device)
     state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
     if "state_dict" in ckpt:
@@ -179,7 +178,9 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
     p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
     p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
-    p.add_argument("--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters")
+    p.add_argument(
+        "--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters"
+    )
     p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
     p.add_argument("--out", default="./output", help="Output path for results")
     p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
@@ -195,11 +196,21 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument("--prior_scale", type=float, default=25)
-    p.add_argument("--cluster_batch_size", type=int, default=None, help="Number of clusters sampled at each iteration (if None, compute all cluster merges)")
+    p.add_argument(
+        "--cluster_batch_size",
+        type=int,
+        default=None,
+        help="Number of clusters sampled at each iteration (if None, compute all cluster merges)",
+    )
     p.add_argument("--increment", type=int, default=10, help="Number of iterations to do between each evaluation")
     p.add_argument("--max_iter", type=int, default=np.inf, help="Maximum number of iterations")
     p.add_argument("--max_t", type=int, default=np.inf, help="Maximum runtime")
-    p.add_argument("--stop_cond", type=float, default=100, help="Convergence condition - stop if there is no change to the best clustering for this many iterations")
+    p.add_argument(
+        "--stop_cond",
+        type=float,
+        default=100,
+        help="Convergence condition - stop if there is no change to the best clustering for this many iterations",
+    )
 
     return p
 
@@ -221,13 +232,13 @@ def main(argv: list[str] | None = None) -> None:
 
     data = list(e for e, _ in task_instance.read_items())
     logging.info(f"Loaded {len(data)} entities for clustering")
-    
+
     # shuffle the dataset, compute the inverse shuffling
     shuffle_rng, rng = jax.random.split(rng)
     shuffled_idx = jax.random.permutation(shuffle_rng, len(data))
     unshuffled_idx = np.zeros_like(shuffled_idx)
     unshuffled_idx[shuffled_idx] = np.arange(len(data))
-    
+
     data = ListWrapper([data[i] for i in shuffled_idx])
 
     # Set up the JSON-LM model
@@ -253,34 +264,29 @@ def main(argv: list[str] | None = None) -> None:
     batched_score_eval = partial(
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset
     )
-    
+
     if args.cluster_batch_size is None:
         cluster_batch_size = len(data.data)
-        experiment_name = f's{args.seed}_alpha{args.alpha}_agg_full'
-        
+        experiment_name = f"s{args.seed}_alpha{args.alpha}_agg_full"
+
     else:
         cluster_batch_size = args.cluster_batch_size
-        experiment_name = f's{args.seed}_alpha{args.alpha}_agg_batch{cluster_batch_size}'
-    
-    clusterer = Clusterer(
-        data=data,
-        score_fn=batched_score_eval,
-        prior=prior,
-        cluster_batch_size = cluster_batch_size
-    )
+        experiment_name = f"s{args.seed}_alpha{args.alpha}_agg_batch{cluster_batch_size}"
+
+    clusterer = Clusterer(data=data, score_fn=batched_score_eval, prior=prior, cluster_batch_size=cluster_batch_size)
 
     # Run clustering
-    best = - np.inf
+    best = -np.inf
     t = 0
     total_iters = 0
     iters_since_change = 0
-    while (t < args.max_t and total_iters < args.max_iter and iters_since_change < args.stop_cond):
+    while t < args.max_t and total_iters < args.max_iter and iters_since_change < args.stop_cond:
         rng, cl_rng = jax.random.split(rng)
-        start = time.time()      
+        start = time.time()
         clusterer.cluster(cl_rng, max_iter=args.increment)
-        t += time.time() - start  
+        t += time.time() - start
         total_iters += args.increment
-        
+
         if clusterer.objective > best:
             best = clusterer.objective
             iters_since_change = 0
@@ -292,25 +298,25 @@ def main(argv: list[str] | None = None) -> None:
         lp = clusterer.objective
 
         clustering = clusterer.list_cluster_labels()
-        clustering = [clustering[idx] for idx in unshuffled_idx] # cluster labels for the data in the original order
-        
+        clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
-        with open(os.path.join(args.out, experiment_name + f'_it{total_iters}_clustering'), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"), "w", encoding="utf-8") as f:
             for cluster in clustering:
                 f.write(str(cluster) + "\n")
-    
-        metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + f'_it{total_iters}_clustering')))
-        metrics['t'] = t
-        metrics['total_evals'] = len(clusterer.score_cache)
-        metrics['LL'] = ll
-        metrics['LP'] = lp
-    
-        print(f'Iteration {total_iters}, time {t}')
+
+        metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering")))
+        metrics["t"] = t
+        metrics["total_evals"] = len(clusterer.score_cache)
+        metrics["LL"] = ll
+        metrics["LP"] = lp
+
+        print(f"Iteration {total_iters}, time {t}")
         for key, val in metrics.items():
             logging.info(f"{key}: {val:.6f}")
             print(f"{key}: {val:.6f}")
-            
-        with open(os.path.join(args.out, experiment_name + f'_it{total_iters}_metrics.pickle'), "wb") as f:
+
+        with open(os.path.join(args.out, experiment_name + f"_it{total_iters}_metrics.pickle"), "wb") as f:
             pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # save final clustering and metrics
@@ -318,21 +324,22 @@ def main(argv: list[str] | None = None) -> None:
     lp = clusterer.objective
 
     clustering = clusterer.list_cluster_labels()
-    clustering = [clustering[idx] for idx in unshuffled_idx] # cluster labels for the data in the original order
-    
+    clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(os.path.join(args.out, experiment_name + '_final_clustering'), "w", encoding="utf-8") as f:
+    with open(os.path.join(args.out, experiment_name + "_final_clustering"), "w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
 
-    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + '_final_clustering')))
-    metrics['t'] = t
-    metrics['total_evals'] = len(clusterer.score_cache)
-    metrics['LL'] = ll
-    metrics['LP'] = lp
-        
-    with open(os.path.join(args.out, experiment_name + '_final_metrics.pickle'), "wb") as f:
+    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_final_clustering")))
+    metrics["t"] = t
+    metrics["total_evals"] = len(clusterer.score_cache)
+    metrics["LL"] = ll
+    metrics["LP"] = lp
+
+    with open(os.path.join(args.out, experiment_name + "_final_metrics.pickle"), "wb") as f:
         pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == "__main__":
     main()

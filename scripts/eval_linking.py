@@ -31,7 +31,7 @@ from kebab.contracts.task import Task
 from tokenizers import Tokenizer as HFTokenizer
 
 from jsonlm.models.scoring import compute_deltas_batched
-from jsonlm.models.transformer import TinyTransformerLM, TransformerConfig
+from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from jsonlm.tokenization.vocab import Vocabulary
 
@@ -57,9 +57,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     return tok, cfg
 
 
-def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TinyTransformerLM:
+def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) -> TransformerLM:
     """Load model from checkpoint."""
-    model = TinyTransformerLM(cfg).to(device).eval()
+    model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(ckpt_path, map_location=device)
     state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
     if "state_dict" in ckpt:
@@ -95,7 +95,7 @@ def build_argparser() -> argparse.ArgumentParser:
         help="Whether or not to calibrate the scores",
     )
     p.add_argument("--out", default="./output/scores.txt", help="Output file path for Δ values")
-    p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
+    p.add_argument("--batch_size", type=int, default=64, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     p.add_argument(
         "--offset",

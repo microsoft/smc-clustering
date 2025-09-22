@@ -10,9 +10,9 @@ Example:
         --dataset ./data_vm/datasets/clustering/test/rebel_clustering_dataset.jsonl \
         --labels ./data_vm/datasets/clustering/test/rebel_clustering_ground_truth.jsonl \
         --confusing-map ./data_vm/datasets/rebel_confusing_entities_map.jsonl \
-        --max-unique 100 \
-        --min-confusing-cluster-size 2 \
-        --max-confusing-cluster-entities 4 \
+        --max-unique 20 \
+        --min-confusing-cluster-size 1 \
+        --max-confusing-cluster-entities 2 \
         --out ./data_vm/datasets/clustering_small/test/rebel_clustering_dataset.jsonl \
         --out-labels ./data_vm/datasets/clustering_small/test/rebel_clustering_ground_truth.jsonl
 """

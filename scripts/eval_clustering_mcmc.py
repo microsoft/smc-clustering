@@ -2,7 +2,7 @@
 Evaluate MCMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_clustering_mcmc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-XS
+    uv run scripts/eval_clustering_mcmc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --offset 6.2146 --task_instance Clustering-REBEL-10
 """
 
 from __future__ import annotations

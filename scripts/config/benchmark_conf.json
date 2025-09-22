@@ -15,20 +15,36 @@
       "ground_truth": "./data_vm/datasets/clustering_easy/test/rebel_clustering_ground_truth.jsonl"
     }
   },
-  "Clustering-REBEL-XS": {
+  "Clustering-REBEL-10": {
     "task": "Clustering",
     "data": {
-      "entity_fragments": "./data_vm/datasets/clustering_xs/test/rebel_clustering_dataset.jsonl",
+      "entity_fragments": "./data_vm/datasets/clustering_10/test/rebel_clustering_dataset.jsonl",
       "schema": "",
-      "ground_truth": "./data_vm/datasets/clustering_xs/test/rebel_clustering_ground_truth.jsonl"
+      "ground_truth": "./data_vm/datasets/clustering_10/test/rebel_clustering_ground_truth.jsonl"
     }
   },
-  "Clustering-REBEL-Small": {
+  "Clustering-REBEL-20": {
     "task": "Clustering",
     "data": {
-      "entity_fragments": "./data_vm/datasets/clustering_small/test/rebel_clustering_dataset.jsonl",
+      "entity_fragments": "./data_vm/datasets/clustering_20/test/rebel_clustering_dataset.jsonl",
       "schema": "",
-      "ground_truth": "./data_vm/datasets/clustering_small/test/rebel_clustering_ground_truth.jsonl"
+      "ground_truth": "./data_vm/datasets/clustering_20/test/rebel_clustering_ground_truth.jsonl"
+    }
+  },
+  "Clustering-REBEL-50": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data_vm/datasets/clustering_50/test/rebel_clustering_dataset.jsonl",
+      "schema": "",
+      "ground_truth": "./data_vm/datasets/clustering_50/test/rebel_clustering_ground_truth.jsonl"
+    }
+  },
+  "Clustering-REBEL-100": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data_vm/datasets/clustering_100/test/rebel_clustering_dataset.jsonl",
+      "schema": "",
+      "ground_truth": "./data_vm/datasets/clustering_100/test/rebel_clustering_ground_truth.jsonl"
     }
   },
   "Clustering-REBEL-500": {

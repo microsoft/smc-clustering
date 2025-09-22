@@ -1,4 +1,20 @@
 {
+  "Clustering-REBEL-Old": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data_vm/datasets/clustering_old/test/rebel_clustering_dataset.jsonl",
+      "schema": "",
+      "ground_truth": "./data_vm/datasets/clustering_old/test/rebel_clustering_ground_truth.jsonl"
+    }
+  },
+  "Clustering-REBEL-XS": {
+    "task": "Clustering",
+    "data": {
+      "entity_fragments": "./data_vm/datasets/clustering_xs/test/rebel_clustering_dataset.jsonl",
+      "schema": "",
+      "ground_truth": "./data_vm/datasets/clustering_xs/test/rebel_clustering_ground_truth.jsonl"
+    }
+  },
   "Clustering-REBEL-Small": {
     "task": "Clustering",
     "data": {

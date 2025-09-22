@@ -311,6 +311,8 @@ def main(argv: list[str] | None = None) -> None:
         for key, val in subproblem_metrics.items():
             metrics[key + "_subproblems"] = val
 
+    print("METRICS")
+
     for key, val in metrics.items():
         logging.info(f"{key}: {val:.6f}")
         print(f"{key}: {val:.6f}")

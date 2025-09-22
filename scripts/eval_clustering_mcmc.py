@@ -243,7 +243,11 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     clusterer = GibbsClusterer(
-        data=data, score_fn=batched_score_eval, prior=prior, surrogate=surrogate, ClusterClass=NameBigramCluster
+        data=data,
+        score_fn=batched_score_eval,
+        prior=prior,
+        ClusterClass=NameBigramCluster,
+        # data=data, score_fn=batched_score_eval, prior=prior, surrogate=surrogate, ClusterClass=NameBigramCluster
     )
     experiment_name = f"s{args.seed}_alpha{args.alpha}_mcmc"
 

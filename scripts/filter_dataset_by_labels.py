@@ -10,9 +10,9 @@ Example:
         --dataset ./data_vm/datasets/clustering/test/rebel_clustering_dataset.jsonl \
         --labels ./data_vm/datasets/clustering/test/rebel_clustering_ground_truth.jsonl \
         --confusing-map ./data_vm/datasets/rebel_confusing_entities_map.jsonl \
-        --max-unique 10 \
+        --max-unique 100 \
         --min-confusing-cluster-size 2 \
-        --max-confusing-cluster-entities 5 \
+        --max-confusing-cluster-entities 4 \
         --out ./data_vm/datasets/clustering_small/test/rebel_clustering_dataset.jsonl \
         --out-labels ./data_vm/datasets/clustering_small/test/rebel_clustering_ground_truth.jsonl
 """
@@ -64,7 +64,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--max-confusing-cluster-entities",
         type=int,
-        default=5,
+        default=4,
         help="Optional cap on number of labels taken from a confusing cluster (0 = no cap). Root label always included; remaining members truncated deterministically (sorted order).",
     )
     return p
@@ -93,36 +93,46 @@ def _derive_default_paths(dataset_path: Path, max_unique: int) -> tuple[Path, Pa
     return dataset_out, labels_out
 
 
-def _load_confusing_map(path: Path) -> dict[str, set[str]]:
-    """Load confusing entities map from JSONL where each line is [entity_id, [confusing_ids...]].
+def _load_confusing_map(path: Path, allowed_entities: set[str] | None = None) -> dict[str, set[str]]:
+    """Load confusing entities map from JSONL lines where each line is [entity_id, [confusing_ids...]].
 
-    Returns a dict mapping entity -> set of confusing entities INCLUDING the entity itself.
-    No filtering or merging is performed; data is used as-is. Missing or unreadable file results in empty dict.
+    Filtering semantics when `allowed_entities` is provided:
+      - Root entities not in the allowed set are only kept if at least one confusing id is in the allowed set; otherwise dropped.
+      - After loading, the cluster is intersected with the allowed set; if the root is removed by intersection, the cluster is dropped.
+      - Returned mapping always includes the (retained) root in its own cluster.
+
+    Returns dict[root] = set(confusing_entities_including_root). Missing/unreadable file -> empty dict.
     """
     if not path or str(path) == "":  # disabled
         return {}
     if not path.exists():
         logging.info("Confusing map file '%s' not found; proceeding without it.", path)
         return {}
+
     mapping: dict[str, set[str]] = {}
     processed = 0
     try:
         with path.open(encoding="utf-8") as fin:
-            for line_no, raw in enumerate(fin, 1):
+            for line_no, raw_line in enumerate(fin, 1):
                 processed += 1
                 if processed % 500_000 == 0:
                     logging.info(f"Processed {processed:,} lines of confusing map...")
 
-                raw = raw.strip()
-                if not raw:
+                line = raw_line.strip()
+                if not line:
                     continue
                 try:
-                    root, conf_list = json.loads(raw)
+                    root, conf_list = json.loads(line)
                     if not isinstance(root, str) or not isinstance(conf_list, list):
                         raise TypeError("Invalid line structure; expected [str, list]")
-                    # Normalize and filter
                     confusing_set = {c for c in conf_list if isinstance(c, str)}
                     confusing_set.add(root)
+                    if allowed_entities is not None:
+                        if root not in allowed_entities and not (confusing_set & allowed_entities):
+                            continue
+                        confusing_set &= allowed_entities
+                        if root not in confusing_set:
+                            continue
                     mapping[root] = confusing_set
                 except Exception as e:  # noqa: BLE001
                     logging.warning("Failed to parse confusing map line %d: %s", line_no, e)
@@ -183,7 +193,7 @@ def filter_dataset(
 
     confusing_map: dict[str, set[str]] = {}
     if confusing_map_path:
-        confusing_map = _load_confusing_map(Path(confusing_map_path))
+        confusing_map = _load_confusing_map(Path(confusing_map_path), allowed_entities=all_labels)
         if confusing_map:
             logging.info("Loaded confusing map clusters: %d", len(confusing_map))
         else:
@@ -196,8 +206,21 @@ def filter_dataset(
 
     # Construct label -> cluster mapping directly from map; unseen labels are singletons.
     label_to_cluster: dict[str, set[str]] = {root: set(cluster) for root, cluster in confusing_map.items()}
+    missing_singletons: list[str] = []
     for lbl in all_labels:
-        label_to_cluster.setdefault(lbl, {lbl})
+        if lbl not in label_to_cluster:
+            label_to_cluster[lbl] = {lbl}
+            missing_singletons.append(lbl)
+
+    if missing_singletons:
+        sample = ", ".join(sorted(missing_singletons)[:CLUSTER_LOG_SAMPLE])
+        if len(missing_singletons) > CLUSTER_LOG_SAMPLE:
+            sample += "..."
+        logging.warning(
+            "%d labels not present in confusing map; treated as singletons. Sample: %s",
+            len(missing_singletons),
+            sample,
+        )
 
     accepted_labels: set[str] = set()
     kept = 0

@@ -64,7 +64,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument(
         "--max-confusing-cluster-entities",
         type=int,
-        default=4,
+        default=5,
         help="Optional cap on number of labels taken from a confusing cluster (0 = no cap). Root label always included; remaining members truncated deterministically (sorted order).",
     )
     return p
@@ -217,7 +217,7 @@ def filter_dataset(
             # Decide whether to keep this record (possibly introducing entire cluster)
             if label in accepted_labels:
                 dout_data.write(raw_line)
-                dout_labels.write(label + "\n")
+                dout_labels.write(json.dumps(label) + "\n")
                 kept += 1
                 continue
 
@@ -227,7 +227,7 @@ def filter_dataset(
             if not new_labels:
                 # All labels already accepted
                 dout_data.write(raw_line)
-                dout_labels.write(label + "\n")
+                dout_labels.write(json.dumps(label) + "\n")
                 kept += 1
                 continue
 
@@ -248,7 +248,7 @@ def filter_dataset(
             if len(accepted_labels) + len(new_effective) <= max_unique:
                 accepted_labels.update(new_effective)
                 dout_data.write(raw_line)
-                dout_labels.write(label + "\n")
+                dout_labels.write(json.dumps(label) + "\n")
                 kept += 1
                 if len(new_effective) > 1:
                     logging.info(

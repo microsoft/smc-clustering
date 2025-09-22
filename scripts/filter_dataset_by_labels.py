@@ -10,11 +10,11 @@ Example:
         --dataset ./data_vm/datasets/clustering/test/rebel_clustering_dataset.jsonl \
         --labels ./data_vm/datasets/clustering/test/rebel_clustering_ground_truth.jsonl \
         --confusing-map ./data_vm/datasets/rebel_confusing_entities_map.jsonl \
-        --max-unique 20 \
-        --min-confusing-cluster-size 1 \
-        --max-confusing-cluster-entities 2 \
-        --out ./data_vm/datasets/clustering_small/test/rebel_clustering_dataset.jsonl \
-        --out-labels ./data_vm/datasets/clustering_small/test/rebel_clustering_ground_truth.jsonl
+        --max-unique 500 \
+        --min-confusing-cluster-size 2 \
+        --max-confusing-cluster-entities 5 \
+        --out ./data_vm/datasets/clustering_f/test/rebel_clustering_dataset.jsonl \
+        --out-labels ./data_vm/datasets/clustering_f/test/rebel_clustering_ground_truth.jsonl
 """
 
 from __future__ import annotations

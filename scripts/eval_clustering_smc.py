@@ -2,7 +2,9 @@
 Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    # --- n-gram model ---
+    # --- n-gram model: baseline ---
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-Small --alpha 500.0 --max_particles 10
+
     # search for alpha:
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --max_evals 0
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 100.0 --max_particles 10 --max_evals 0
@@ -23,7 +25,7 @@ Example usage:
     uv run scripts/eval_clustering.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 500.0 --max_particles 10
 
     =====
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --alpha 1.0 --max_particles 10 --max_evals 0
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-Old --alpha 1.0 --max_particles 10
 """
 
 from __future__ import annotations
@@ -187,7 +189,7 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
     p.add_argument("--out", default="./output", help="Output path for results")
-    p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
+    p.add_argument("--batch_size", type=int, default=256, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     p.add_argument(
         "--offset",

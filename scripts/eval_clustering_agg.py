@@ -183,7 +183,7 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
     p.add_argument("--out", default="./output", help="Output path for results")
-    p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
+    p.add_argument("--batch_size", type=int, default=256, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     p.add_argument(
         "--offset",

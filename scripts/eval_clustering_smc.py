@@ -3,7 +3,7 @@ Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     # --- n-gram model: baseline ---
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10 --max_evals 0
 
     uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --offset 6.2146 --task_instance Clustering-REBEL-100 --alpha 1.0 --max_particles 10
 """
@@ -237,6 +237,7 @@ def main(argv: list[str] | None = None) -> None:
     surrogate = NameBigram(args.prior_scale, prior_counts)
 
     max_evals = np.inf if args.max_evals is None else args.max_evals
+    max_evals = max_evals if max_evals >= 0 else np.inf
 
     batched_score_eval = partial(
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset

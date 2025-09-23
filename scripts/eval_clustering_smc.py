@@ -3,9 +3,9 @@ Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     # --- n-gram model: baseline ---
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10 --max_evals 0
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10 --max_evals 0
 
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --offset 6.2146 --task_instance Clustering-REBEL-100 --alpha 1.0 --max_particles 10
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --offset 6.2146 --task_instance Clustering-REBEL-100 --alpha 1.0 --max_particles 100 --max_evals 100
 """
 
 from __future__ import annotations

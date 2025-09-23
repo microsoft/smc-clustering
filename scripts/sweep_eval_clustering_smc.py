@@ -62,8 +62,7 @@ Examples:
         --alpha 1.0 \
         --seed [0,1,2,3,4,5,6,7,8,9,10] \
         --max_particles 1 \
-        --max_evals [-1, 100] \
-        --split_interval [0,1]
+        --max_evals [-1,100]
 
 Use --dry-run to only print the planned commands.
 """

@@ -2,7 +2,7 @@
 Evaluate AGG + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_clustering_agg.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --offset 6.2146 --task_instance Clustering-REBEL-10
+    uv run scripts/eval_clustering_agg.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --offset 6.2146 --task_instance Clustering-REBEL-50
 """
 
 from __future__ import annotations

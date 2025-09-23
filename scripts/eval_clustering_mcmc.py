@@ -302,7 +302,7 @@ def main(argv: list[str] | None = None) -> None:
     clustering = clusterer.list_cluster_labels()
     clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    os.makedirs(args.out, exist_ok=True)
     with open(os.path.join(args.out, experiment_name + "_final_clustering"), "w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")

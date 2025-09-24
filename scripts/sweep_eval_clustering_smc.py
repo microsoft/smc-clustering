@@ -64,6 +64,81 @@ Examples:
         --max_particles 1 \
         --max_evals [-1,100]
 
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9] \
+        --max_particles 200 \
+        --max_evals 200 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-50 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10] \
+        --max_particles 100 \
+        --max_evals 100 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-50 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10] \
+        --max_particles 50 \
+        --max_evals 50 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-50 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10] \
+        --max_particles 10 \
+        --max_evals 10 \
+        --split_interval [0,1]
+
+    --->
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-50 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10] \
+        --max_particles 1 \
+        --max_evals [-1,100]
+
+    ====
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-500 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10] \
+        --max_particles 100 \
+        --max_evals 100 \
+        --split_interval [0,1]
+
 Use --dry-run to only print the planned commands.
 """
 

@@ -29,6 +29,7 @@ Examples:
 
     # SMC: 1 particle, no/100 evals, no split interval
     uv run scripts/sweep_eval_clustering.py \
+        --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -41,6 +42,7 @@ Examples:
 
     # SMC: particles=evals, all seeds
     uv run scripts/sweep_eval_clustering.py \
+        --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \

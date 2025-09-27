@@ -103,6 +103,7 @@ SWEEP_PARAMS = {
     "threshold",
     "split_interval",
     "batch_size",
+    "max_iter",
 }
 
 

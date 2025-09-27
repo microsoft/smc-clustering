@@ -251,6 +251,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     experiment_name = f"s{args.seed}_alpha{args.alpha}_mcmc"
 
+    os.makedirs(args.out, exist_ok=True)
+
     # Run clustering
     best = -np.inf
     t = 0
@@ -306,6 +308,8 @@ def main(argv: list[str] | None = None) -> None:
     with open(os.path.join(args.out, experiment_name + "_final_clustering"), "w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
+
+    print("METRICS")
 
     metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_final_clustering")))
     metrics["t"] = t

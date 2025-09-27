@@ -30,6 +30,19 @@ Examples:
         --max_evals 100 \
         --split_interval [0,1]
 
+    (tied)
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [11,12,13,14,15,16,17,18,19,20] \
+        --max_particles (50,75,100,125) \
+        --max_evals (50,75,100,125) \
+        --split_interval [0,1]
+
     uv run scripts/sweep_eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -152,6 +165,78 @@ Examples:
 
     --->
 
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 50 \
+        --max_evals 50 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 10 \
+        --max_evals 10 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 1 \
+        --max_evals [-1,100]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 125 \
+        --max_evals 125 \
+        --split_interval [0,1]
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 75 \
+        --max_evals 75 \
+        --split_interval [0,1]
+
+    ---
+
+    uv run scripts/sweep_eval_clustering_smc.py \
+        --config ./scripts/config/benchmark_conf.json \
+        --artifacts ./data_vm/artifacts \
+        --ckpt ./data_vm/artifacts/best.ckpt \
+        --offset 6.2146 \
+        --task_instance Clustering-REBEL-200 \
+        --alpha 1.0 \
+        --seed [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] \
+        --max_particles 75 \
+        --max_evals 75 \
+        --split_interval [0,1]
 
 Use --dry-run to only print the planned commands.
 """
@@ -165,6 +250,7 @@ import logging
 import os
 import shlex
 import subprocess
+from dataclasses import dataclass
 
 
 # Parameters we allow sweeping over (others are treated as scalar pass-through)
@@ -180,30 +266,40 @@ SWEEP_PARAMS = {
 }
 
 
-def _parse_list_like(value: str) -> list[str]:
-    """Parse a value that might encode a list.
+@dataclass(frozen=True)
+class SweepSpec:
+    """Container for parsed sweep values."""
 
-    Supports:
-      - JSON-like lists: [1,2,3]
-      - Comma separated: 1,2,3
-      - Single scalar: 5
-    Returns list of string tokens (no type coercion yet).
-    """
+    values: list[str]
+    tied: bool = False
+
+
+def _split_comma_tokens(raw: str) -> list[str]:
+    if not raw:
+        return []
+    return [tok.strip() for tok in raw.split(",") if tok.strip()]
+
+
+def parse_sweep_spec(value: str) -> SweepSpec:
+    """Parse a sweep argument, detecting tied (parenthesized) tuples."""
     v = value.strip()
+    if v.startswith("(") and v.endswith(")"):
+        inner = v[1:-1].strip()
+        tokens = _split_comma_tokens(inner)
+        return SweepSpec(tokens, tied=True)
     if v.startswith("[") and v.endswith("]"):
         try:
             parsed = json.loads(v)
             if isinstance(parsed, list):
-                return [str(x) for x in parsed]
+                return SweepSpec([str(x) for x in parsed])
         except json.JSONDecodeError:
-            pass  # fall back to manual
+            pass  # fall back to manual parsing
         inner = v[1:-1].strip()
-        if not inner:
-            return []
-        return [tok.strip() for tok in inner.split(",") if tok.strip()]
+        tokens = _split_comma_tokens(inner)
+        return SweepSpec(tokens)
     if "," in v:
-        return [tok.strip() for tok in v.split(",") if tok.strip()]
-    return [v]
+        return SweepSpec(_split_comma_tokens(v))
+    return SweepSpec([v])
 
 
 def build_argparser() -> argparse.ArgumentParser:
@@ -237,12 +333,12 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def _expand_param(name: str, value: str | None) -> list[str]:
+def _expand_param(name: str, value: str | None) -> SweepSpec | None:
     if value is None:
-        return []
+        return None
     if name in SWEEP_PARAMS:
-        return _parse_list_like(value)
-    return [value]
+        return parse_sweep_spec(value)
+    return SweepSpec([value])
 
 
 def _cartesian_product(param_values: dict[str, list[str]]):
@@ -255,6 +351,31 @@ def _cartesian_product(param_values: dict[str, list[str]]):
 
 def _sanitize_value(val: str) -> str:
     return val.replace(".", "_")
+
+
+def _zip_product(tied_inputs: list[tuple[str, list[str]]]) -> list[dict[str, str]]:
+    if not tied_inputs:
+        return [{}]
+
+    lengths = {len(values) for _, values in tied_inputs}
+    if len(lengths) > 1:
+        details = ", ".join(f"{name}({len(values)})" for name, values in tied_inputs)
+        raise ValueError(f"Tied parameters must share the same length; got {details}")
+
+    (length,) = lengths or (0,)
+    return [{name: values[idx] for name, values in tied_inputs} for idx in range(length)]
+
+
+def generate_combos(
+    cartesian_inputs: dict[str, list[str]], tied_inputs: list[tuple[str, list[str]]]
+) -> list[dict[str, str]]:
+    """Combine cartesian and tied sweep inputs into explicit run configurations."""
+    cartesian_combos = list(_cartesian_product(cartesian_inputs)) or [{}]
+    tied_combos = _zip_product(tied_inputs)
+    if not tied_combos:
+        return []
+
+    return [{**cartesian_combo, **tied_combo} for tied_combo in tied_combos for cartesian_combo in cartesian_combos]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -275,20 +396,30 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Gather sweep parameters
-    sweep_inputs: dict[str, list[str]] = {}
+    cartesian_inputs: dict[str, list[str]] = {}
+    tied_inputs: list[tuple[str, list[str]]] = []
     for name in SWEEP_PARAMS:
         raw = getattr(args, name)
-        if raw is not None:
-            expanded = _expand_param(name, raw)
-            if expanded:
-                sweep_inputs[name] = expanded
+        if raw is None:
+            continue
+        spec = _expand_param(name, raw)
+        if spec is None or not spec.values:
+            continue
+        if spec.tied:
+            tied_inputs.append((name, spec.values))
+        else:
+            cartesian_inputs[name] = spec.values
 
-    if not sweep_inputs:
+    if not cartesian_inputs and not tied_inputs:
         logging.error("No sweep parameters provided; specify at least one of: %s", ", ".join(sorted(SWEEP_PARAMS)))
         return 2
 
     # Generate all combinations
-    combos = list(_cartesian_product(sweep_inputs))
+    try:
+        combos = generate_combos(cartesian_inputs, tied_inputs)
+    except ValueError:
+        logging.exception("Tied parameter mismatch")
+        return 2
     logging.info("Planned %d runs", len(combos))
 
     os.makedirs(args.out_root, exist_ok=True)
@@ -312,8 +443,7 @@ def main(argv: list[str] | None = None) -> int:
     for combo in combos:
         # Build output name
         parts = ["eval_smc_clustering", _sanitize_value(args.task_instance)]
-        for k in sorted(combo):
-            parts.append(f"{k}_{_sanitize_value(combo[k])}")
+        parts.extend(f"{k}_{_sanitize_value(combo[k])}" for k in sorted(combo))
         out_dir = os.path.join(args.out_root, "_".join(parts))
         os.makedirs(out_dir, exist_ok=True)
 
@@ -332,7 +462,7 @@ def main(argv: list[str] | None = None) -> int:
             with open(log_path, "w", encoding="utf-8") as lf:
                 lf.write("Command: " + " ".join(shlex.quote(c) for c in cmd) + "\n\n")
                 lf.flush()
-                proc = subprocess.Popen(
+                proc = subprocess.Popen(  # noqa: S603
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,

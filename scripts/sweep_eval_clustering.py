@@ -4,9 +4,17 @@ Allows specifying scalar or list-valued arguments to generate a Cartesian
 product of runs. Can be used with any evaluation script (e.g., eval_clustering_smc.py,
 eval_clustering_mcmc.py, etc.).
 
+Note: The --script parameter is now required to specify which evaluation script to run.
+
+Examples:ric sweep runner for clustering evaluation scripts.
+
+Allows specifying scalar or list-valued arguments to generate a Cartesian
+product of runs. Can be used with any evaluation script (e.g., eval_clustering_smc.py,
+eval_clustering_mcmc.py, etc.).
+
 Examples:
     (test with SMC)
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -20,7 +28,7 @@ Examples:
         --split_interval [0,1]
 
     (test with MCMC)
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_mcmc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -32,7 +40,7 @@ Examples:
         --max_evals 100
 
     (200 with SMC)
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -46,7 +54,7 @@ Examples:
         --split_interval [0,1]
 
     (tied parameters with SMC)
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -59,7 +67,7 @@ Examples:
         --max_evals (50,75,100,125) \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
@@ -73,7 +81,7 @@ Examples:
         --max_evals 50 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
@@ -86,7 +94,7 @@ Examples:
         --max_evals 10 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -97,7 +105,7 @@ Examples:
         --max_particles 1 \
         --max_evals [-1,100]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -109,7 +117,7 @@ Examples:
         --max_evals 200 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -121,7 +129,7 @@ Examples:
         --max_evals 100 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -133,7 +141,7 @@ Examples:
         --max_evals 50 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -145,7 +153,7 @@ Examples:
         --max_evals 10 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -156,7 +164,7 @@ Examples:
         --max_particles 1 \
         --max_evals [-1,100]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -170,7 +178,7 @@ Examples:
 
     ====
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -184,7 +192,7 @@ Examples:
 
     --->
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -196,7 +204,7 @@ Examples:
         --max_evals 50 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -208,7 +216,7 @@ Examples:
         --max_evals 10 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -219,7 +227,7 @@ Examples:
         --max_particles 1 \
         --max_evals [-1,100]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -231,7 +239,7 @@ Examples:
         --max_evals 125 \
         --split_interval [0,1]
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
@@ -245,7 +253,7 @@ Examples:
 
     ---
 
-    uv run scripts/sweep_eval_clustering_smc.py \
+    uv run scripts/sweep_eval_clustering.py \
         --config ./scripts/config/benchmark_conf.json \
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \

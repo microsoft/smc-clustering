@@ -2,7 +2,7 @@
 import logging
 
 import jax
-import jax.numpy as jnp
+import scipy
 import numpy as np
 from tqdm import tqdm
 
@@ -37,7 +37,7 @@ class GibbsClusterer:
 
         compute_clusters = [cluster for cluster in clusters if hash(cluster) not in self.score_cache]
         if len(compute_clusters) == 0:
-            return None
+            return 0
 
         hashes = [hash(cluster) for cluster in compute_clusters]
         scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
@@ -85,7 +85,7 @@ class GibbsClusterer:
 
         rng, sample_rng = jax.random.split(rng)
         new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=jnp.exp(weights - jax.scipy.special.logsumexp(weights))
+            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
         ).item()
 
         if new_k != old_k:
@@ -143,34 +143,45 @@ class GibbsClusterer:
             cluster_sizes.append(0)
             weights[-1] = self.prior.marginal(self.data.shape[0], 0).item()
 
-        sur_LL = self.surrogate.post_predictive(self.data[i], jnp.array(cluster_sizes), summary_stats)
+        sur_LL = self.surrogate.post_predictive(self.data[i], np.array(cluster_sizes), summary_stats)
         weights += sur_LL
         surrogate_evals = len(cluster_sizes)
 
         rng, sample_rng = jax.random.split(rng)
         new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=jnp.exp(weights - jax.scipy.special.logsumexp(weights))
+            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
         ).item()
 
+        model_evals = 0
         if new_k != old_k:
             # Metropolis-Hastings accept step
-            if new_k < len(self.clusters):
-                compute_clusters = [self.clusters[old_k].data - {i}, self.clusters[new_k].add(i)]
+            compute_clusters = []
+
+            if self.clusters[old_k].size > 1:
+                old_cluster = self.clusters[old_k].data - {i}
+                compute_clusters.append(old_cluster)
             else:
-                compute_clusters = [self.clusters[old_k].data - {i}, frozenset({i})]
+                old_cluster = None
+                
+            new_cluster = self.clusters[new_k].add(i) if new_k < len(self.clusters) else frozenset({i})
+            compute_clusters.append(new_cluster)
+                
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(rng, compute_clusters)
+            
+            ll_new_cluster_without_i = self.score_cache[self.clusters[new_k].hash] if new_k < len(self.clusters) else 0
+            ll_old_cluster_without_i = self.score_cache[hash(old_cluster)] if old_cluster is not None else 0
+            
             a = (
-                self.score_cache[hash(compute_clusters[1])] - self.score_cache[self.clusters[new_k].hash]
-                if new_k < len(self.clusters)
-                else 0
+                self.score_cache[hash(new_cluster)]
+                - ll_new_cluster_without_i
                 - sur_LL[new_k]
                 - self.score_cache[self.clusters[old_k].hash]
-                + self.score_cache[hash(compute_clusters[0])]
+                + ll_old_cluster_without_i
                 + sur_LL[old_k]
             )
             rng, mh_rng = jax.random.split(rng)
-            if a > jnp.log(jax.random.uniform(mh_rng)):
+            if a > np.log(jax.random.uniform(mh_rng)):
                 # Upate state
                 if new_k < len(self.clusters):
                     self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
@@ -188,7 +199,7 @@ class GibbsClusterer:
                 else:
                     del self.clusters[old_k]
 
-            return model_evals, surrogate_evals
+        return model_evals, surrogate_evals
 
     def cluster(self, rng, sweeps=100, callback=None):
         n_evals = []
@@ -199,6 +210,7 @@ class GibbsClusterer:
             self.post_weight = sum(
                 [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
             )
+            self.best = self.clusters.copy()
             self.best_weight = self.post_weight.copy()
 
         if self.surrogate is not None:
@@ -250,13 +262,13 @@ class GibbsClusterer:
                 )
             print()
 
-    def list_cluster_labels(self):
+    def list_cluster_labels(self, best=True):
         """
         Return a list of the cluster IDs for each observation
 
         """
         cluster_lookup = {}
-        for cl in self.clusters:
+        for cl in self.best if best else self.clusters:
             for i in cl.ids:
-                cluster_lookup[i.item()] = str(cl)
+                cluster_lookup[i.item()] = str(cl.hash)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]

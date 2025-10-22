@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import nltk
 import numpy as np
+import scipy
 from unidecode import unidecode
 
 from diffusion_linking.clustering import Cluster
@@ -18,7 +19,6 @@ class Gaussian:
     """
     Gaussian model with normal-inverse-gamma prior on cluster parameters
     """
-
     def __init__(self, a, b, mu, lam):
         self.alpha_0 = a
         self.beta_0 = b
@@ -42,10 +42,12 @@ class Gaussian:
         )
 
     def post_predictive(self, x, n, summary):
-        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary))
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)))
 
-    def evidence(self, n, summary):
+    @functools.partial(jax.jit, static_argnums=(0))
+    @functools.partial(jax.vmap, in_axes=(None, 0, 0))
+    def _evidence(self, n, summary):
         Sx = summary[0]
         Sxx = summary[1]
         alpha = self.alpha_0 + n / 2
@@ -64,12 +66,15 @@ class Gaussian:
             - n / 2 * jnp.log(2 * jnp.pi)
         )
 
+    def evidence(self, n, summary):
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
+
 
 class Bernoulli:
     """
     Bernoulli model with beta prior on cluster parameters
     """
-
     def __init__(self, a, b):
         self.alpha_0 = a
         self.beta_0 = b
@@ -83,10 +88,12 @@ class Bernoulli:
         return jnp.sum(jnp.log(x * alpha + (1 - x) * beta) - jnp.log(alpha + beta))
 
     def post_predictive(self, x, n, summary):
-        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary))
-
-    def evidence(self, n, Sy):
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)))
+    
+    @functools.partial(jax.jit, static_argnums=(0))
+    @functools.partial(jax.vmap, in_axes=(None, 0, 0))
+    def _evidence(self, n, Sy):
         alpha = self.alpha_0 + Sy
         beta = self.beta_0 + n - Sy
 
@@ -98,6 +105,11 @@ class Bernoulli:
             - jax.scipy.special.gammaln(alpha + beta)
             + jax.scipy.special.gammaln(self.alpha_0 + self.beta_0)
         )
+    
+    def evidence(self, n, summary):
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
+
 
 
 def get_counts(strings):
@@ -118,7 +130,6 @@ class CountDict(dict):
     """
     Dictionary with a default value. Does not insert new keys into the dictionary.
     """
-
     def __init__(self, default_val, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.default_val = default_val
@@ -137,7 +148,6 @@ class Multinomial:
     """
     Multinomial model with Dirichlet prior on frequencies
     """
-
     def __init__(self, alpha_0):
         self.alpha_0 = alpha_0
 
@@ -155,46 +165,12 @@ class Multinomial:
         )
 
     def post_predictive(self, x, n, summary):
-        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten()
-
-    def evidence(self, n, summary):
-        sum_alpha = summary.shape[0] * self.alpha_0
-        return (
-            jax.scipy.special.gammaln(n + 1)
-            - jnp.sum(jax.scipy.special.gammaln(summary + 1))
-            + jax.scipy.special.gammaln(sum_alpha)
-            - jax.scipy.special.gammaln(sum_alpha + n)
-            + jnp.sum(jax.scipy.special.gammaln(summary + self.alpha_0) - jax.scipy.special.gammaln(self.alpha_0))
-        )
-
-
-class BagOfWords:
-    """
-    Bag-of-words model with Dirichlet prior on frequencies
-    """
-
-    def __init__(self, alpha_0):
-        self.alpha_0 = alpha_0
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten())
 
     @functools.partial(jax.jit, static_argnums=(0))
-    @functools.partial(jax.vmap, in_axes=(None, None, 0, 0))
-    def _post_predictive(self, x, n, counts):
-        alpha_n = counts + self.alpha_0
-        sum_alpha = jnp.sum(alpha_n)
-        return (
-            jax.scipy.special.gammaln(n + 1)
-            - jnp.sum(jax.scipy.special.gammaln(x + 1))
-            + jax.scipy.special.gammaln(sum_alpha)
-            - jax.scipy.special.gammaln(sum_alpha + jnp.sum(x))
-            + jnp.sum(jax.scipy.special.gammaln(x + alpha_n) - jax.scipy.special.gammaln(alpha_n))
-        )
-
-    def post_predictive(self, x, n, summary):
-        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
-        return batched_eval(self._post_predictive, batch_size, (1, 2), get_counts(x), n, summary)
-
-    def evidence(self, n, summary):
+    @functools.partial(jax.vmap, in_axes=(None, 0, 0))
+    def _evidence(self, n, summary):
         sum_alpha = summary.shape[0] * self.alpha_0
         return (
             jax.scipy.special.gammaln(n + 1)
@@ -203,6 +179,10 @@ class BagOfWords:
             - jax.scipy.special.gammaln(sum_alpha + n)
             + jnp.sum(jax.scipy.special.gammaln(summary + self.alpha_0) - jax.scipy.special.gammaln(self.alpha_0))
         )
+    
+    def evidence(self, n, summary):
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
+        return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
 
 
 def get_ngrams(string, n):
@@ -237,12 +217,17 @@ def dirichlet_categorical_logpmf(x, alphas, sum_alpha):
         + jnp.sum(jax.scipy.special.gammaln(x + alphas) - jax.scipy.special.gammaln(alphas))
     )
 
+def dirichlet_categorical_logpmf_numpy(x, alphas, sum_alpha):
+    return (
+        scipy.special.gammaln(sum_alpha)
+        - scipy.special.gammaln(sum_alpha + np.sum(x))
+        + np.sum(scipy.special.gammaln(x[None,:] + alphas) - scipy.special.gammaln(alphas), axis=-1)
+    )
 
 class Ngram:
     """
     N-gram model with Dirichlet prior on n-gram frequencies
     """
-
     def __init__(self, prior_scale, prior_counts, n=2):
         self.prior_scale = prior_scale
         self.n = n
@@ -253,21 +238,21 @@ class Ngram:
             raise ValueError("Count dictionary must contain unigram counts.")
 
     def post_predictive(self, obs, n, summary):
-        batch_size = 2 ** int(jnp.log2(n.shape[0]).item())
+        batch_size = 2 ** int(np.log2(n.shape[0]).item())
         counts = get_ngram_counts(obs, self.n)
         histories = [h for h in counts.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
 
         LL = np.zeros(len(summary))
         for h in histories:
             continuations = [ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n]
-            x = jnp.array([counts[ngram] for ngram in continuations])
-            alphas = jnp.array(
+            x = np.array([counts[ngram] for ngram in continuations])
+            alphas = np.array(
                 [
                     [summary[i][ngram] + self.prior_scale * self.prior_counts[ngram] for ngram in continuations]
                     for i in range(n.shape[0])
                 ]
             )
-            sum_alphas = jnp.array(
+            sum_alphas = np.array(
                 [
                     summary[i][h] + self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])
                     for i in range(n.shape[0])
@@ -276,27 +261,31 @@ class Ngram:
 
             if counts[h] == 1:
                 # just one n-gram observation with this history, so equivalent to cheaper categorical pmf
-                LL += jnp.log(alphas).flatten() - jnp.log(sum_alphas).flatten()
+                LL += np.log(alphas).flatten() - np.log(sum_alphas).flatten()
             else:
-                LL += batched_eval(dirichlet_categorical_logpmf, batch_size, (1, 2), x, alphas, sum_alphas)
+                # LL += np.array(batched_eval(dirichlet_categorical_logpmf, batch_size, (1, 2), x, alphas, sum_alphas))
+                LL += dirichlet_categorical_logpmf_numpy(x, alphas, sum_alphas)
 
         return LL
 
-    def evidence(self, n, summary):
+    def _evidence(self, n, summary):
         histories = [h for h in summary.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
         LL = 0
         for h in histories:
             continuations = [ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n]
-            x = jnp.array([summary[ngram] for ngram in continuations])
-            alphas = jnp.array([self.prior_scale * self.prior_counts[ngram] for ngram in continuations])
+            x = np.array([summary[ngram] for ngram in continuations])
+            alphas = np.array([self.prior_scale * self.prior_counts[ngram] for ngram in continuations])
             sum_alphas = self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])
 
             if summary[h] == 1:
-                LL += jnp.log(alphas) - jnp.log(sum_alphas)
+                LL += np.log(alphas) - np.log(sum_alphas)
             else:
-                LL += dirichlet_categorical_logpmf(x, alphas[None, :], jnp.array([sum_alphas])[None, :]).flatten()
+                LL += dirichlet_categorical_logpmf_numpy(x, alphas[None, :], np.array([sum_alphas])[None, :]).flatten()
 
         return LL
+    
+    def evidence(self, n, summary):
+        return np.array([self._evidence(n[i], summary[i]) for i in range(len(n))])
 
 
 class Bigram(Ngram):
@@ -316,7 +305,6 @@ class GaussianCluster(Cluster):
     """
     Cluster subclass with summary statistics for a Gaussian model
     """
-
     def __init__(self, data_ids, dim=2, Sx=None, Sxx=None, data=None):
         super().__init__(data_ids)
 
@@ -325,16 +313,16 @@ class GaussianCluster(Cluster):
         if Sx is not None:
             self.Sx = Sx
         elif data is not None:
-            self.Sx = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
+            self.Sx = np.sum(data, axis=0) if len(data.shape) > 1 else data
         else:
-            self.Sx = jnp.zeros((dim,))
+            self.Sx = np.zeros((dim,))
 
         if Sxx is not None:
             self.Sxx = Sxx
         elif data is not None:
-            self.Sxx = jnp.sum(data**2, axis=0) if len(data.shape) > 1 else data**2
+            self.Sxx = np.sum(data**2, axis=0) if len(data.shape) > 1 else data**2
         else:
-            self.Sxx = jnp.zeros((dim,))
+            self.Sxx = np.zeros((dim,))
 
     @property
     def summary(self):
@@ -352,7 +340,6 @@ class BernoulliCluster(Cluster):
     """
     Cluster subclass with summary statistics for a Bernoulli model
     """
-
     def __init__(self, data_ids, dim=1, Sy=None, data=None):
         super().__init__(data_ids)
 
@@ -361,9 +348,9 @@ class BernoulliCluster(Cluster):
         if Sy is not None:
             self.Sy = Sy
         elif data is not None:
-            self.Sy = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
+            self.Sy = np.sum(data, axis=0) if len(data.shape) > 1 else data
         else:
-            self.Sy = jnp.zeros((dim,))
+            self.Sy = np.zeros((dim,))
 
     @property
     def summary(self):
@@ -380,14 +367,13 @@ class MultinomialCluster(Cluster):
     """
     Cluster subclass with summary statistics for a multinomial model
     """
-
     def __init__(self, data_ids, dim, data=None):
         super().__init__(data_ids)
         self.dim = dim
         if data is not None:
-            self.counts = jnp.sum(data, axis=0) if len(data.shape) > 1 else data
+            self.counts = np.sum(data, axis=0) if len(data.shape) > 1 else data
         else:
-            self.counts = jnp.zeros((dim,))
+            self.counts = np.zeros((dim,))
 
     @property
     def summary(self):
@@ -401,7 +387,6 @@ class WordCluster(Cluster):
     """
     Cluster subclass with summary statistics for a bag-of-words model
     """
-
     def __init__(self, data_ids, dim=26, counts=None, data=None):
         super().__init__(data_ids)
         self.dim = dim
@@ -410,7 +395,7 @@ class WordCluster(Cluster):
         elif data is not None:
             self.counts = get_counts(data)
         else:
-            self.counts = jnp.zeros((dim,))
+            self.counts = np.zeros((dim,))
 
     @property
     def summary(self):
@@ -425,7 +410,6 @@ class NgramCluster(Cluster):
     """
     Cluster subclass with summary statistics for an n-gram model
     """
-
     def __init__(self, data_ids, n=2, counts=None, data=None):
         super().__init__(data_ids)
         self.n = n

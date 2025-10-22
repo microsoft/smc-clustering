@@ -1,6 +1,5 @@
 # Licensed under the MIT license.
 import jax
-import jax.numpy as jnp
 import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -39,13 +38,13 @@ class Cluster:
 
 
 class Clusterer:
-    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None):
+    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):
         self.data = data
         self.score_fn = score_fn
         self.link_threshold = link_threshold
         self.cluster_batch_size = cluster_batch_size
         self.clusters = [Cluster({d}) for d in range(data.shape[0])]
-        self.score_cache = {}
+        self.score_cache = {} if score_cache is None else score_cache
         self.prior = prior if prior is not None else lambda s: 0
         self.objective = None
 
@@ -61,7 +60,7 @@ class Clusterer:
 
         compute_clusters = [cluster for cluster in clusters if hash(cluster) not in self.score_cache]
         if len(compute_clusters) == 0:
-            return None
+            return 0
 
         hashes = [hash(cluster) for cluster in compute_clusters]
         scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
@@ -72,7 +71,7 @@ class Clusterer:
 
     def generate_batch_ids(self, rng):
         # select a batch at random
-        indices = jnp.arange(len(self.clusters))
+        indices = np.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
         batch_indices = jax.random.choice(rng, indices, (batch_size,), replace=False)
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
@@ -84,6 +83,9 @@ class Clusterer:
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append(model_evals)
+            self.objective = sum(
+                    [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
+                )
 
         for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)
@@ -105,10 +107,10 @@ class Clusterer:
                 - self.score_cache[self.clusters[j].hash]
                 for (i, j), pc in zip(ijs, proposed_clusters, strict=False)
             ]
-            linking_scores = jnp.stack(linking_scores)
+            linking_scores = np.stack(linking_scores)
 
             # find the best pair in the batch, execute merge if threshold reached
-            best_pair = ijs[jnp.argmax(linking_scores).item()]
+            best_pair = ijs[np.argmax(linking_scores).item()]
             best_score = linking_scores.max()
 
             if best_score > self.link_threshold:
@@ -156,7 +158,7 @@ class Clusterer:
         cluster_lookup = {}
         for cl in self.clusters:
             for i in cl.ids:
-                cluster_lookup[i.item()] = str(cl)
+                cluster_lookup[i.item()] = str(cl.hash)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]
 
 

@@ -123,6 +123,9 @@ def main(argv: list[str] | None = None) -> None:
     pairs = list(_read_pairs(args.pairs))
     deltas = compute_deltas_batched(pairs, model=model, tokenizer=tok, batch_size=args.batch_size, device=device)
 
+    for pair, delta in zip(pairs, deltas, strict=False):
+        print(f"Δ({pair[0]}, {pair[1]}) = {delta:.8f}")
+
     if args.format == "txt":
         _write_out_txt(args.out, deltas)
     else:

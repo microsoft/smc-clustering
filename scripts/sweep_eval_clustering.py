@@ -49,11 +49,13 @@ Examples:
         --offset 6.2146 \
         --task_instance Clustering-REBEL-200 \
         --alpha 1.0 \
-        --seed [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] \
-        --max_particles 100 \
-        --max_evals 100 \
+        --seed [16,17,18,19,20] \
+        --max_particles 200 \
+        --max_evals 200 \
         --split_interval [0,1]
 
+
+        --seed [11,12,13,14,15] \
     MCMC
     uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_mcmc.py \
@@ -61,7 +63,7 @@ Examples:
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
         --offset 6.2146 \
-        --task_instance Clustering-REBEL-200 \
+        --task_instance Clustering-REBEL-50 \
         --alpha 1.0 \
         --max_iter 150 \
         --seed [0,1,2,3,4,5,6,7,8,9,10]
@@ -72,7 +74,7 @@ Examples:
         --artifacts ./data_vm/artifacts \
         --ckpt ./data_vm/artifacts/best.ckpt \
         --offset 6.2146 \
-        --task_instance Clustering-REBEL-200 \
+        --task_instance Clustering-REBEL-50 \
         --alpha 1.0 \
         --max_iter 150 \
         --seed [11,12,13,14,15,16,17,18,19,20]

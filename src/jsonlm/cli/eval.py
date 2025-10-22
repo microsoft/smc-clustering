@@ -109,7 +109,7 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
             if not line:
                 continue
             try:
-                a_str, b_str = line.split("\t", 1)
+                a_str, b_str = line.split("$", 1)
                 a = _json.loads(a_str)
                 b = _json.loads(b_str)
                 if not isinstance(a, dict) or not isinstance(b, dict):
@@ -173,6 +173,7 @@ def main(argv: list[str] | None = None) -> None:
                                 normalize=args.normalize,
                                 device=device,
                             )
+                            print(f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}")
                         else:
                             raise ValueError(
                                 f"Expected a JSON object or array in {args.data}:{lineno}, got {type(obj).__name__}",
@@ -192,7 +193,9 @@ def main(argv: list[str] | None = None) -> None:
         vals: list[float] = []
         with torch.no_grad():
             for a, b in _iter_pairs(args.pairs):
-                vals.append(delta(a, b, model=model, tokenizer=tok))
+                d = delta(a, b, model=model, tokenizer=tok)
+                vals.append(d)
+                print(f"[debug] {args.pairs}\tΔ={d:.6f}\tA={a}\tB={b}")
         if not vals:
             print(f"No pairs found in {args.pairs}.")
         else:

@@ -1,20 +1,33 @@
 [project]
 name = "diffusion_linking"
 version = "0.0.1"
-description = "Research on entity linking using SMC and diffusion models."
+description = "Research on entity clustering using SMC methods."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "evaluate>=0.4.5",
     "flax",
     "jax",
     "jaxlib",
     "matplotlib",
     "nltk",
+    "numpy",
     "optax",
+    "pandas",
+    "plotly",
+    "pyarrow>=21.0.0",
+    "pytorch-lightning",
+    "scikit-learn",
+    "scipy",
     "seaborn",
+    "tokenizers",
     "torch",
+    "torchaudio",
+    "torchvision",
     "tqdm",
+    "transformers",
     "unidecode",
+    "wandb",
 ]
 
 [build-system]
@@ -28,7 +41,7 @@ dev = ["jupyter", "pyright", "pytest", "pytest-mock", "ruff"]
 gpu = ["jax[cuda12]"]
 
 [tool.pyright]
-typeCheckingMode = "standard"
+typeCheckingMode = "basic"
 useLibraryCodeForTypes = false
 pythonVersion = "3.12"
 exclude = ["**/__pycache__", "**/.*"]

@@ -1,5 +1,5 @@
 # Licensed under the MIT license.
-import logging, time, collections
+import logging
 
 import jax
 import numpy as np
@@ -451,7 +451,7 @@ class SMCClusterer:
         )
         for score, hash_ in zip(scores, hashes, strict=False):
             self.state.score_cache[hash_] = score
-            
+
         return len(hashes)
 
     def update_step(self, rng, new_obs, verbose):
@@ -484,7 +484,7 @@ class SMCClusterer:
             putative_particles[i] = np.array(putative_particles[i], dtype=np.int64)
             cluster_sizes[i] = np.array(cluster_sizes[i])
             old_weights[i] = np.array(old_weights[i])
-        
+
         # Normalise old subproblem weights, compute prior
         putative_weights = [
             old_weights[i]
@@ -492,10 +492,10 @@ class SMCClusterer:
             + self.prior.marginal(self.state.n_obs, cluster_sizes[i])
             for i in range(n_probs)
         ]
-        
+
         # Evaluate surrogate model
         sur_LL = [self.surrogate.post_predictive(new_obs, cluster_sizes[i], summary_stats[i]) for i in range(n_probs)]
-        
+
         surrogate_evals = sum([len(cluster_sizes[i]) for i in range(n_probs)])
         single_LL = sur_LL[-1][-1]
 
@@ -504,7 +504,7 @@ class SMCClusterer:
             putative_particles = putative_particles[0]
             putative_weights = putative_weights[0]
             sur_LL = sur_LL[0]
-            
+
             non_empty = cluster_sizes[0] > 0
 
             singleton_putative_particles = putative_particles[:, np.logical_not(non_empty)]
@@ -514,7 +514,7 @@ class SMCClusterer:
             putative_weights = putative_weights[non_empty]
 
             sur_LL = sur_LL[non_empty]
-            
+
         else:
             # Remove duplicate singleton clusters
 
@@ -545,24 +545,24 @@ class SMCClusterer:
             sur_LL = sur_LL[keep_ids]
             if p.size > 1:
                 p = p[keep_ids]
-                
+
         if self.max_evals > 0:
             if len(putative_particles[1]) > self.max_evals:
                 # Resample max_evals particles if number of new clusters exceeds max_evals
                 rng, resample_rng = jax.random.split(rng)
                 new_particle_ids, putative_weights = self.resample(resample_rng, putative_weights, self.max_evals)
                 putative_particles = putative_particles[:, new_particle_ids]
-                sur_LL = sur_LL[new_particle_ids]                
+                sur_LL = sur_LL[new_particle_ids]
 
                 if p.size > 1:
                     p = p[new_particle_ids]
-            
+
             # Reweight according to model
             putative_weights -= sur_LL
             new_clusters = [self.state.clusters[cluster].add(self.state.n_obs) for cluster in putative_particles[1]]
             model_evals = self.compute_scores(update_rng, new_clusters + [frozenset({self.state.n_obs})])
             single_LL = self.state.score_cache[hash(frozenset({self.state.n_obs}))]
-            
+
             update = np.array(
                 [
                     self.state.score_cache[hash(new_cluster)] - self.state.score_cache[old_cluster_id]
@@ -586,11 +586,11 @@ class SMCClusterer:
             putative_particles = np.concatenate([putative_particles, singleton_putative_particles[p_max]], axis=-1)
             putative_weights = np.concatenate([putative_weights, singleton_putative_weights[p_max] + single_LL])
             p = np.concatenate([p, np.full((len(singleton_putative_weights[p_max])), p_max)])
-            
+
         else:
             putative_particles = np.concatenate([putative_particles, singleton_putative_particles], axis=-1)
             putative_weights = np.concatenate([putative_weights, singleton_putative_weights + single_LL])
-            
+
         new_particle_ids = None
         if putative_weights.shape[0] > self.max_particles:
             # Resample
@@ -600,17 +600,16 @@ class SMCClusterer:
             if p.size > 1:
                 p = p[new_particle_ids]
 
-        
         if self.max_evals == 0:
             # update score cache
             if n_probs > 1:
                 sur_LL = np.concatenate([sur_LL, np.full((len(singleton_putative_weights[p_max])), single_LL)])
             else:
                 sur_LL = np.concatenate([sur_LL, np.full((len(singleton_putative_weights)), single_LL)])
-            
+
             if new_particle_ids is not None:
                 sur_LL = sur_LL[new_particle_ids]
-                
+
             for i, cl in enumerate(putative_particles[1]):
                 new_hash = hash(self.state.clusters[cl].add(self.state.n_obs))
                 if new_hash not in self.state.score_cache:
@@ -655,7 +654,7 @@ class SMCClusterer:
                 logger.info(
                     f"-> Weight {np.exp(w):.2g}, score {score:.2g}: {', '.join([str(i) for i in self.state.retrieve_cluster_data(np.int64(cl.item()))])}"
                 )
-        
+
         # Update particle set, merging subproblems if necessary
         if (putative_particles[1] == empty_hash).all() and self.split_interval is not None:
             # If new observation is in a cluster on its own on all particles, add it to a new subproblem and do not update other subproblems
@@ -747,7 +746,7 @@ class SMCClusterer:
             if verbose:
                 if self.callback is not None:
                     self.callback(self.state, highlight=self.state.n_obs, title=f"Pre merge, {self.state.n_obs}")
-            
+
             if n_pairs > self.max_particles:
                 # Resample again to bring new subproblem to correct size
                 rng, resample_rng = jax.random.split(rng)
@@ -857,7 +856,6 @@ class SMCClusterer:
                     logger.info(old_summary)
                     logger.info("Split problem:")
                     logger.info(self.summary(problems=problems, print_summary=False))
-                    
 
         # Return number of model evaluations made
         return model_evals, surrogate_evals
@@ -887,8 +885,8 @@ class SMCClusterer:
 
             model_evals, surrogate_evals = self.update_step(update_rng, new_obs, verbose)
             n_evals.append([model_evals, surrogate_evals])
-            n_subprobs.append(len(self.state.particles))               
-            
+            n_subprobs.append(len(self.state.particles))
+
             self.state.n_obs += 1
 
             pbar.set_postfix({"Subproblems": f"{len(self.state.particles)}", "Evals": f"{model_evals}"})

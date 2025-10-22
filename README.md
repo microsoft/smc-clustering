@@ -2,7 +2,7 @@
 
 This repository contains the code and experiments for research on entity linking using SMC and diffusion models.
 
-The work is done in collaboration between Microsoft Research and Lancaster University. 
+The work is done in collaboration between Microsoft Research and Lancaster University.
 
 The recommended way to install the code is to clone the repository, clone DiSK and MS-KeBAB repositories, and install
 everything via `uv`.
@@ -14,10 +14,11 @@ everything via `uv`.
    ```
 
 2. Install DiSK (assuming DiSK is cloned in the parent directory of this repository):
+
    ```bash
    uv pip install -e ../DiSK
    ```
-   
+
    Install DiSK's extra dependencies.
    With CUDA support (12.6 or higher):
 
@@ -33,12 +34,20 @@ everything via `uv`.
 
 3. Install MS-KeBAB package:
    Assuming MS-KEBAB project is cloned in the parent directory of this repository, you can install it as follows:
-   
+
    ```bash
    uv pip install --no-deps -e ../MS-KeBAB
    ```
 
+4. Temporary fix:
+
+   ```
+   uv add pyarrow
+   uv add evaluate
+   ```
+
 To sidestep some of the issues with CUDA memory allocation, you can set the following environment variables:
+
 ```bash
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

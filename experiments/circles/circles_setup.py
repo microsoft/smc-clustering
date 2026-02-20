@@ -20,7 +20,7 @@ surrogate = Gaussian(a, b, mu, lam)
 prior = DirichletProcess(alpha)
 ClusterClass = GaussianCluster
 
-def load_model(checkpoint_path='data/checkpoints'):
+def load_model(checkpoint_path='checkpoints'):
     rng = jax.random.PRNGKey(1)
     schedule = LinearSchedule()
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)

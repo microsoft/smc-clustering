@@ -2,8 +2,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from diffusion_linking.surrogate_models import Gaussian, GaussianCluster
-from diffusion_linking.smc_clustering import DirichletProcess
+from smc_clustering.surrogate_models import Gaussian, GaussianCluster
+from smc_clustering.clustering import DirichletProcess
 
 d = 2
 a=2; b=.5; mu=0; lam=0.0002

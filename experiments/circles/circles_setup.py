@@ -7,11 +7,11 @@ import numpy as np
 from flax.training import checkpoints
 
 
-import diffusion_linking
-from diffusion_linking.surrogate_models import Gaussian, GaussianCluster
-from diffusion_linking.smc_clustering import DirichletProcess
-from diffusion_linking.schedule import LinearSchedule
-from diffusion_linking.diffusion import VariationalDiffusion
+import smc_clustering
+from smc_clustering.surrogate_models import Gaussian, GaussianCluster
+from smc_clustering.clustering import DirichletProcess
+from diffusion.schedule import LinearSchedule
+from diffusion.diffusion import VariationalDiffusion
 
 theta = np.array([1.4e3, 1.7e3, 2.7e2, 3e2, -9.6e-2, -3.2e-2, 2.1e-2,-2e-2])
 a = theta[0:2]; b = theta[2:4]; mu = theta[4:6]; lam = jnp.abs(theta[6:8])
@@ -33,7 +33,7 @@ def load_model(checkpoint_path='checkpoints'):
     def score_func(rng, data, masks):
         scores, _ = model.log_prob_ode(rng, data, masks, num_time_steps=num_time_steps)
         return scores
-    batched_score_eval = diffusion_linking.utils.generate_batched_score_func(score_func, batch_shape=(8,8))
+    batched_score_eval = smc_clustering.utils.generate_batched_score_func(score_func, batch_shape=(8,8))
     
     return batched_score_eval
 

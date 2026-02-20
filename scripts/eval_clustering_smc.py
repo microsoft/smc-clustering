@@ -30,9 +30,10 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from diffusion_linking.clustering import Cluster
-from diffusion_linking.smc_clustering import DirichletProcess, SMCClusterer, resample_greedy
-from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.clustering import Cluster, DirichletProcess
+from smc_clustering.smc import SMCClusterer, resample_greedy
+from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+
 from jsonlm.models.scoring import score_entities_batched
 from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer

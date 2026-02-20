@@ -4,38 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-
-class Cluster:
-    """
-    Represents a cluster as a frozen set of datapoint ids.
-    """
-
-    def __init__(self, data_ids, **kwargs):
-        self.data = frozenset(data_ids)
-        self.size = len(data_ids)
-
-    @property
-    def ids(self):
-        # Convert to numpy array for easier retrieval of datapoints
-        return np.fromiter(self.data, dtype=np.int64)
-
-    @property
-    def hash(self):
-        return hash(self.data)
-
-    @property
-    def summary(self):
-        return []
-
-    def add(self, data_id):
-        return self.data.union({data_id})
-
-    def merge_point(self, data_id, data):
-        return Cluster(self.data.union({data_id}))
-
-    def merge(self, other):
-        return Cluster(self.data.union(other.data))
-
+from smc_clustering.clustering import Cluster
 
 class Clusterer:
     def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):

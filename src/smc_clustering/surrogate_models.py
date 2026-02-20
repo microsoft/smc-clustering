@@ -10,8 +10,8 @@ import numpy as np
 import scipy
 from unidecode import unidecode
 
-from diffusion_linking.clustering import Cluster
-from diffusion_linking.utils import batched_eval
+from smc_clustering.clustering import Cluster
+from smc_clustering.utils import batched_eval
 
 
 # ====================== Surrogate models ======================

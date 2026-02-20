@@ -5,8 +5,8 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from diffusion_linking.model import SetFormer
-from diffusion_linking.schedule import LinearSchedule
+from diffusion.model import SetFormer
+from diffusion.schedule import LinearSchedule
 
 
 class VariationalDiffusion:

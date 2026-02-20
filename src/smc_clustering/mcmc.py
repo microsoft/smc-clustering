@@ -6,7 +6,7 @@ import scipy
 import numpy as np
 from tqdm import tqdm
 
-from diffusion_linking.clustering import Cluster
+from smc_clustering.clustering import Cluster
 
 
 logger = logging.getLogger(__name__)

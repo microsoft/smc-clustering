@@ -5,9 +5,9 @@ import cloudpickle
 import jax
 import numpy as np
 
-import diffusion_linking
-from diffusion_linking.mcmc_clustering import GibbsClusterer
-from diffusion_linking.metrics import cluster_metrics
+import smc_clustering
+from smc_clustering.mcmc import GibbsClusterer
+from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

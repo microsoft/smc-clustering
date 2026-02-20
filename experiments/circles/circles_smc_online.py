@@ -7,10 +7,10 @@ import jax
 import scipy.special
 import numpy as np
 
-import diffusion_linking
-from diffusion_linking.surrogate_models import GaussianCluster
-from diffusion_linking.smc_clustering import SMCClusterer, resample_greedy, plot_particles_2D
-from diffusion_linking.metrics import cluster_metrics
+import smc_clustering
+from smc_clustering.surrogate_models import GaussianCluster
+from smc_clustering.smc import SMCClusterer, resample_greedy, plot_particles_2D
+from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

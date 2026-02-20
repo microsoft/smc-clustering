@@ -26,7 +26,7 @@ from kebab import mskebab
 from kebab.contracts.entity import Entity
 from kebab.contracts.task import Task
 
-from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
 
 
 class NameBigram(Bigram):

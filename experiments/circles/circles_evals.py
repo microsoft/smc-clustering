@@ -7,26 +7,18 @@ import jax
 import scipy.special
 import jax.numpy as jnp
 import numpy as np
-from matplotlib import pyplot as plt
-from flax.training import checkpoints
 
-
-import diffusion_linking
-from diffusion_linking.utils import batched_eval
-from diffusion_linking.circles import generate_circles
-from diffusion_linking.schedule import LinearSchedule
-from diffusion_linking.diffusion import VariationalDiffusion
-from diffusion_linking.surrogate_models import Gaussian, GaussianCluster
-from diffusion_linking.smc_clustering import SMCClusterer, DirichletProcess, resample_optimal, resample_greedy, plot_particles_2D
-from diffusion_linking.metrics import cluster_metrics
+import smc_clustering
+from smc_clustering.surrogate_models import Gaussian, GaussianCluster
+from smc_clustering.smc import SMCClusterer, resample_greedy, plot_particles_2D
+from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
 
-from circles_setup import *
-
+from circles_setup import load_model, generate_circles_dataset, prior, surrogate, alpha
 batched_score_eval = load_model()
 data, labels = generate_circles_dataset()
 
@@ -38,12 +30,6 @@ labels = labels[shuffled_idx]
 data = data[shuffled_idx]
 
 ground_truth = [str(i) for i in labels]
-gt_clusters = collections.defaultdict(set)
-gt_cluster_map = {}
-for i, cluster_id in enumerate(ground_truth):
-    cluster = gt_clusters[cluster_id]
-    cluster.add(i)
-    gt_cluster_map[i] = cluster
     
 ##################### 
 

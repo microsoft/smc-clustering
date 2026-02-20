@@ -6,9 +6,9 @@ import jax
 import numpy as np
 
 
-import diffusion_linking
-from diffusion_linking.clustering import Clusterer
-from diffusion_linking.metrics import cluster_metrics
+import smc_clustering
+from smc_clustering.agglomerative import Clusterer
+from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

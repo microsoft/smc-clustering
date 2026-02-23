@@ -10,7 +10,7 @@ import numpy as np
 
 import smc_clustering
 from smc_clustering.surrogate_models import Gaussian, GaussianCluster
-from smc_clustering.smc import SMCClusterer, resample_greedy, plot_particles_2D
+from smc_clustering.smc import SMCClusterer, resample_greedy
 from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
@@ -34,27 +34,22 @@ ground_truth = [str(i) for i in labels]
 ##################### 
 
 
-surrogate_threshold = None
-model_threshold = None
 evals = [0, 5, 10, 20, 50, 100, 200, 300, 500, 1000, 1500, 2000, 3000, 4000]
 p = 50
 results = collections.defaultdict(lambda: collections.defaultdict(lambda: []))
 
-configs={
-         'smc': (None,None,1,False,False),
-         'split': (1,None,1,False,False),
-        'greedy': (None,None,1,False,False),
-         }
+configs = ['split', 'smc', 'greedy']
 
 resample_fn = resample_greedy
-score_cache=None
 for e in evals:
-    for conf in configs.keys():
+    for conf in configs:
         if conf=='greedy' or e >= p or e == 0:
-            max_particles = 1 if conf=='greedy' else p; max_evals = e          
-            split_interval, surrogate_threshold, split_quantile, entropy_condition, reweight_splits = configs[conf]
-            method=f'{e}, {resample_fn}, {conf}'
-            clusterer = SMCClusterer(data=data, split_interval=split_interval, entropy_condition=entropy_condition, split_quantile=split_quantile, surrogate_threshold=surrogate_threshold, model_threshold=model_threshold, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster, callback=plot_particles_2D, score_cache=score_cache)
+            max_particles = 1 if conf=='greedy' else p
+            split_interval = 1 if conf=='split' else None            
+            max_evals = e
+
+            method = f'{e}, {conf}'
+            clusterer = SMCClusterer(data=data, split_interval=split_interval, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
             rng = jax.random.PRNGKey(seed)
             
             t = time.time()
@@ -70,8 +65,7 @@ for e in evals:
             metrics["LP"] = lp
             metrics['total_evals'] = len(clusterer.state.score_cache)
             metrics['t'] = t
-            print(f'{method}\n {t:.4g} {metrics["LL"], metrics["f1"]}')
-            print(sum([clusterer.state.score_cache[h] for s in range(len(clusterer.state.particles)) for h in clusterer.state.particles[s][np.argmax(clusterer.state.weights[s])] ]))
+            print(f'{method}\n {t:.4g} {metrics["LP"], metrics["f1"]}')
             
             for metric in metrics.keys():
                 results[method][metric].append(metrics[metric])

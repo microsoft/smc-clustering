@@ -9,7 +9,7 @@ import numpy as np
 
 import smc_clustering
 from smc_clustering.surrogate_models import GaussianCluster
-from smc_clustering.smc import SMCClusterer, resample_greedy, plot_particles_2D
+from smc_clustering.smc import SMCClusterer, resample_greedy
 from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
@@ -32,29 +32,26 @@ ground_truth = [str(i) for i in labels]
 
 ##################### 
 
-surrogate_threshold = None
-model_threshold = None
 
 ps = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 1500, 2000, 3000]
 
 results = collections.defaultdict(lambda: collections.defaultdict(lambda: []))
 
-configs={'smc': (None,None,1,False),
-         'split': (1,None,1,False)
-         }
+configs = ['split', 'smc']
 
 resample_fn = resample_greedy
 t_max = 60*60
-score_cache=None
 
-for conf in configs.keys():
+for conf in configs:
     t = 0
     for p in ps:
         if t < t_max:
-            max_particles = p; max_evals = 0         
-            split_interval, surrogate_threshold, split_quantile, entropy_condition = configs[conf]
-            method=f'{p}, {conf}'
-            clusterer = SMCClusterer(data=data, split_interval=split_interval, entropy_condition=entropy_condition, split_quantile=split_quantile, surrogate_threshold=surrogate_threshold, model_threshold=model_threshold, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster, callback=plot_particles_2D, score_cache=score_cache)
+            max_particles = p
+            max_evals = 0         
+            split_interval = 1 if conf=='split' else None
+            method = f'{p}, {conf}'
+
+            clusterer = SMCClusterer(data=data, split_interval=split_interval, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
             rng = jax.random.PRNGKey(seed)
             
             t = time.time()

@@ -1,5 +1,6 @@
 # Licensed under the MIT license.
 import numpy as np
+import scipy
 
 class Cluster:
     """

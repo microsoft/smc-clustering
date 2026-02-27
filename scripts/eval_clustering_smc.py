@@ -186,7 +186,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--max_particles", type=int, default=10)
     p.add_argument("--max_evals", type=int, default=None)
     p.add_argument("--threshold", type=float, default=None)
-    p.add_argument("--split_interval", type=int, default=None)
+    p.add_argument("--split", type=int, default=None)
 
     return p
 
@@ -244,13 +244,11 @@ def main(argv: list[str] | None = None) -> None:
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset
     )
 
-    split_interval = args.split_interval
-    if split_interval == 0:
-        split_interval = None
+    split = args.split
 
     clusterer = SMCClusterer(
         data=data,
-        split_interval=split_interval,
+        split=split,
         model_threshold=args.threshold,
         score_fn=batched_score_eval,
         max_particles=args.max_particles,
@@ -260,7 +258,7 @@ def main(argv: list[str] | None = None) -> None:
         resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
-    experiment_name = f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split_interval is not None else '_smc'}"
+    experiment_name = f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split else '_smc'}"
 
     # Run clustering
     t = time.time()
@@ -298,7 +296,7 @@ def main(argv: list[str] | None = None) -> None:
     metrics["LL"] = ll
     metrics["LP"] = lp
 
-    if args.split_interval is not None:
+    if args.split is not None:
         # check accuracy of subproblem partition
         clustering = clusterer.state.list_cluster_labels()
         subprob_labels = [

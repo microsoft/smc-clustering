@@ -43,10 +43,10 @@ increment = 10
 for conf in configs:
     max_particles = 1 if conf=='greedy' else p
     max_evals = 0      
-    split_interval = 1 if conf=='split' else None
+    split = True if conf=='split' else False
     method = f'{p}, {conf}'
 
-    clusterer = SMCClusterer(data=data, split_interval=split_interval, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
+    clusterer = SMCClusterer(data=data, split=split, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
     rng = jax.random.PRNGKey(seed)
 
     for i in range(increment, data.shape[0]+increment, increment):

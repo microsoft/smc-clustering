@@ -20,9 +20,9 @@ class GibbsClusterer:
         self.surrogate = surrogate
         self.ClusterClass = ClusterClass
         self.clusters = [ClusterClass({d}, data=self.data[d]) for d in range(data.shape[0])]
-        self.post_weight = None
-        self.best = self.clusters.copy()
-        self.best_weight = None
+        self.logpost = None
+        self.best_clustering = self.clusters.copy()
+        self.best_logpost = None
         self.score_cache = {} if score_cache is None else score_cache
 
     def compute_scores(self, rng, clusters, force_recompute=False):
@@ -94,7 +94,7 @@ class GibbsClusterer:
                 self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
             else:
                 self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-            self.post_weight = sum(
+            self.logpost = sum(
                 [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
             )
 
@@ -187,7 +187,7 @@ class GibbsClusterer:
                     self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
                 else:
                     self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-                self.post_weight = sum(
+                self.logpost = sum(
                     [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
                 )
 
@@ -203,15 +203,15 @@ class GibbsClusterer:
 
     def cluster(self, rng, sweeps=100, callback=None):
         n_evals = []
-        if self.post_weight is None:
+        if self.logpost is None:
             rng, compute_rng = jax.random.split(rng)
             evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append([evals, 0])
-            self.post_weight = sum(
+            self.logpost = sum(
                 [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
             )
-            self.best = self.clusters.copy()
-            self.best_weight = self.post_weight.copy()
+            self.best_clustering = self.clusters.copy()
+            self.best_logpost = self.logpost.copy()
 
         if self.surrogate is not None:
             update_step = self.update_mh
@@ -226,11 +226,11 @@ class GibbsClusterer:
                 model_evals, surrogate_evals = update_step(update_rng, idx.item())
                 n_evals.append([model_evals, surrogate_evals])
 
-                if self.post_weight >= self.best_weight:
-                    self.best_weight = self.post_weight.copy()
-                    self.best = self.clusters.copy()
+                if self.logpost >= self.best_logpost:
+                    self.best_logpost = self.logpost.copy()
+                    self.best_clustering = self.clusters.copy()
 
-                pbar.set_postfix({"Sweep progress": f"{i + 1}/{len(ids)}", "Best": f"{self.best_weight:.4g}", "Current": f"{self.post_weight:.4g}"})
+                pbar.set_postfix({"Sweep progress": f"{i + 1}/{len(ids)}", "Best": f"{self.best_logpost:.4g}", "Current": f"{self.logpost:.4g}"})
 
             if callback is not None:
                 callback(self.clusters, iteration)
@@ -240,7 +240,7 @@ class GibbsClusterer:
 
     def summary(self, print_cluster_data=False):
         # Print out summary of clustering
-        print(f"Current (weight {self.post_weight:.4g}):")
+        print(f"Current (weight {self.logpost:.4g}):")
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
         if print_cluster_data:
@@ -251,8 +251,8 @@ class GibbsClusterer:
                 )
             print()
 
-        print(f"Estimated MAP (weight {self.best_weight:.4g}):")
-        clusters = sorted(self.best, key=lambda c: c.size, reverse=True)
+        print(f"Estimated MAP (weight {self.best_logpost:.4g}):")
+        clusters = sorted(self.best_clustering, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
         if print_cluster_data:
             for c in clusters:
@@ -268,7 +268,7 @@ class GibbsClusterer:
 
         """
         cluster_lookup = {}
-        for cl in self.best if best else self.clusters:
+        for cl in self.best_clustering if best else self.clusters:
             for i in cl.ids:
                 cluster_lookup[i.item()] = str(cl.hash)
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]

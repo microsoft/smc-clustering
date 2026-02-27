@@ -53,8 +53,8 @@ for i, s in enumerate(steps):
         t += time.time() - start
         
         metrics = cluster_metrics(clusterer.list_cluster_labels(), ground_truth)
-        metrics["LL"] = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best])
-        metrics['LP'] = clusterer.best_weight
+        metrics["LL"] = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best_clustering])
+        metrics['LP'] = clusterer.best_logpost
         metrics ['t'] = t
         metrics['evals'] = evals
         metrics['total_evals'] = len(clusterer.score_cache)
@@ -67,8 +67,8 @@ for i, s in enumerate(steps):
         with open(f'data/circles_mcmc_s{seed}.pickle', 'wb') as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
             
-        if clusterer.best_weight > best:
-            best = clusterer.best_weight
+        if clusterer.best_logpost > best:
+            best = clusterer.best_logpost
             iters_since_change = 0
         else:
             iters_since_change += s
@@ -95,8 +95,8 @@ for i, s in enumerate(steps):
         t += time.time() - start
         
         metrics = cluster_metrics(clusterer.list_cluster_labels(), ground_truth)
-        metrics["LL"] = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best])
-        metrics['LP'] = clusterer.best_weight
+        metrics["LL"] = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best_clustering])
+        metrics['LP'] = clusterer.best_logpost
         metrics ['t'] = t
         metrics['evals'] = evals
         metrics['total_evals'] = len(clusterer.score_cache)
@@ -109,8 +109,8 @@ for i, s in enumerate(steps):
         with open(f'data/circles_mcmc_s{seed}.pickle', 'wb') as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
             
-        if clusterer.best_weight > best:
-            best = clusterer.best_weight
+        if clusterer.best_logpost > best:
+            best = clusterer.best_logpost
             iters_since_change = 0
         else:
             iters_since_change += s

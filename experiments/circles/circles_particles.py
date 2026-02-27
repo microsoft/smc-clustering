@@ -47,10 +47,10 @@ for conf in configs:
         if t < t_max and not (p>1 and conf=='greedy'):
             max_particles = p
             max_evals = np.inf if conf=='greedy' else p          
-            split_interval = 1 if conf=='split' else None
+            split = True if conf=='split' else False
             method = f'{p}, {conf}'
 
-            clusterer = SMCClusterer(data=data, split_interval=split_interval, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
+            clusterer = SMCClusterer(data=data, split=split, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
             rng = jax.random.PRNGKey(seed)
             
             t = time.time()

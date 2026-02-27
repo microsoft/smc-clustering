@@ -212,7 +212,6 @@ class SMCClustererState:
         """
         Return a list of the cluster IDs for each observation,
         obtained from the top-weighted particle or best particle according to some metric
-
         """
         cluster_lookup = {}
         for s in range(len(self.weights)):
@@ -258,7 +257,7 @@ class SMCClusterer:
         surrogate,
         ClusterClass,
         resample_fn,
-        split_interval=None,
+        split=False,
         surrogate_threshold=None,
         model_threshold=None,
         callback=None,
@@ -272,7 +271,7 @@ class SMCClusterer:
         self.max_evals = max_evals
         self.max_particles = max_particles
         self.resample = resample_fn
-        self.split_interval = split_interval
+        self.split = split
         self.surrogate_threshold = surrogate_threshold
         self.model_threshold = model_threshold
         self.callback = callback
@@ -511,7 +510,7 @@ class SMCClusterer:
                 )
         
         # Update particle set, merging subproblems if necessary
-        if (putative_particles[1] == empty_hash).all() and self.split_interval is not None:
+        if (putative_particles[1] == empty_hash).all() and self.split:
             # If new observation is in a cluster on its own on all particles, add it to a new subproblem and do not update other subproblems
             self.state.add_subproblem(self.state.n_obs)
             p = len(self.state.particles) - 1
@@ -690,11 +689,7 @@ class SMCClusterer:
                     self.summary(problems=[p])
 
         # Split the subproblem that was just updated
-        if (
-            self.split_interval is not None
-            and len(np.concatenate([self.state.clusters[cl].ids for cl in self.state.particles[p][0]]))
-            > self.split_interval
-        ):
+        if self.split:
             if logger.level <= 20:
                 old_summary = self.summary(problems=[p], print_summary=False)
 
@@ -790,6 +785,22 @@ class SMCClusterer:
             print(summary_text)
 
         return summary_text
+    
+    def list_cluster_labels(self):
+        """
+        Return a list of the cluster IDs for each observation obtained from the top-weighted particle
+        """
+        return self.state.list_cluster_labels()
+    
+    @property
+    def best_logpost(self):
+        """
+        Calculate the unnormalised log-posterior density of the clustering on the highest-weighted particle in the particle set.
+        """
+        ll = sum([self.state.score_cache[h] for s in range(len(self.state.particles)) for h in self.state.particles[s][np.argmax(self.state.weights[s])] ])
+        lp = ll + sum([ self.prior(np.array([self.state.clusters[h].size])) for s in range(len(self.state.particles)) for h in self.state.particles[s][np.argmax(self.state.weights[s])] ])
+        return lp
+
 
 
 def plot_particles_2D(state, subprob=None, n_plots=5, fig_scale=3, highlight=None, title=None, **kwargs):

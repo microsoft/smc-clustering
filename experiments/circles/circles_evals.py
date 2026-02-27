@@ -45,11 +45,11 @@ for e in evals:
     for conf in configs:
         if conf=='greedy' or e >= p or e == 0:
             max_particles = 1 if conf=='greedy' else p
-            split_interval = 1 if conf=='split' else None            
+            split = True if conf=='split' else False            
             max_evals = e
 
             method = f'{e}, {conf}'
-            clusterer = SMCClusterer(data=data, split_interval=split_interval, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
+            clusterer = SMCClusterer(data=data, split=split, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
             rng = jax.random.PRNGKey(seed)
             
             t = time.time()

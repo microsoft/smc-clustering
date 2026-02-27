@@ -230,7 +230,7 @@ class GibbsClusterer:
                     self.best_weight = self.post_weight.copy()
                     self.best = self.clusters.copy()
 
-                pbar.set_postfix({"Sweep progress": f"{i + 1}/{len(ids)}", "Best": f"{self.best_weight:.4g}"})
+                pbar.set_postfix({"Sweep progress": f"{i + 1}/{len(ids)}", "Best": f"{self.best_weight:.4g}", "Current": f"{self.post_weight:.4g}"})
 
             if callback is not None:
                 callback(self.clusters, iteration)

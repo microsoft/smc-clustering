@@ -14,7 +14,7 @@ Example usage:
 Output format (tab separated):
 
   Configuration    LL              LP
-  [alpha=1.0, max_evals=10, max_particles=10, split_interval=0]\t-1100+-50\t-13111+-132
+  [alpha=1.0, max_evals=10, max_particles=10, split=0]\t-1100+-50\t-13111+-132
 
 Notes:
   * By default uses population standard deviation (divide by N) since

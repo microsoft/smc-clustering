@@ -25,7 +25,7 @@ Examples:
         --seed [0,1] \
         --max_particles 10 \
         --max_evals 0 \
-        --split_interval [0,1]
+        --split [0,1]
 
     # SMC: 1 particle, no/100 evals, no split interval
     uv run scripts/sweep_eval_clustering.py \
@@ -52,7 +52,7 @@ Examples:
         --seed [16,17,18,19,20] \
         --max_particles 200 \
         --max_evals 200 \
-        --split_interval [0,1]
+        --split [0,1]
 
 
         --seed [11,12,13,14,15] \
@@ -103,7 +103,7 @@ SWEEP_PARAMS = {
     "max_particles",
     "max_evals",
     "threshold",
-    "split_interval",
+    "split",
     "batch_size",
     "max_iter",
 }

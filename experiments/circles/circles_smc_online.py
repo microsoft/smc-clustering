@@ -7,10 +7,10 @@ import jax
 import scipy.special
 import numpy as np
 
-import diffusion_linking
-from diffusion_linking.surrogate_models import GaussianCluster
-from diffusion_linking.smc_clustering import SMCClusterer, resample_greedy, plot_particles_2D
-from diffusion_linking.metrics import cluster_metrics
+import smc_clustering
+from smc_clustering.surrogate_models import GaussianCluster
+from smc_clustering.smc import SMCClusterer, resample_greedy
+from smc_clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
@@ -33,28 +33,21 @@ ground_truth = [str(i) for i in labels]
     
 ##################### 
 
-
-surrogate_threshold = None
-model_threshold = None
 p = 100
 
 results = collections.defaultdict(lambda: collections.defaultdict(lambda: []))
 
-configs={
-        'greedy': (None,None,1,False,False),
-         'smc': (None,None,1,False,False),
-         'split': (1,None,1,False,False),
-         }
+configs = ['split', 'smc', 'greedy']
 
 resample_fn = resample_greedy
-score_cache=None
 increment = 10
-for conf in configs.keys():
+for conf in configs:
     max_particles = 1 if conf=='greedy' else p
-    max_evals = np.inf if conf=='greedy' else p       
-    split_interval, surrogate_threshold, split_quantile, entropy_condition, reweight_splits = configs[conf]
+    max_evals = np.inf if conf=='greedy' else p          
+    split = True if conf=='split' else False    
     method = f'{p}, {conf}'
-    clusterer = SMCClusterer(data=data, split_interval=split_interval, entropy_condition=entropy_condition, split_quantile=split_quantile, surrogate_threshold=surrogate_threshold, model_threshold=model_threshold, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster, callback=plot_particles_2D, score_cache=score_cache)
+    
+    clusterer = SMCClusterer(data=data, split=split, score_fn=batched_score_eval, max_particles=max_particles, max_evals = max_evals, prior = prior, surrogate = surrogate, resample_fn=resample_fn, ClusterClass=GaussianCluster)
     rng = jax.random.PRNGKey(seed)
 
     for i in range(increment, data.shape[0]+increment, increment):

@@ -26,10 +26,10 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from diffusion_linking.clustering import Cluster
-from diffusion_linking.mcmc_clustering import GibbsClusterer
-from diffusion_linking.smc_clustering import DirichletProcess
-from diffusion_linking.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.clustering import Cluster, DirichletProcess
+from smc_clustering.mcmc import GibbsClusterer
+from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+
 from jsonlm.models.scoring import score_entities_batched
 from jsonlm.models.transformer import TransformerConfig, TransformerLM
 from jsonlm.tokenization.tokenizer import JsonLMTokenizer
@@ -179,6 +179,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument("--prior_scale", type=float, default=25)
+    p.add_argument("--use_surrogate", type=int, default=0)
     p.add_argument("--increment", type=int, default=10, help="Number of iterations to do between each evaluation")
     p.add_argument("--max_iter", type=int, default=np.inf, help="Maximum number of iterations")
     p.add_argument("--max_t", type=int, default=np.inf, help="Maximum runtime")
@@ -229,14 +230,18 @@ def main(argv: list[str] | None = None) -> None:
     logging.info(f"Loaded model from {args.ckpt}")
 
     # Set up the SMC clustering components
-    with open(args.surrogate, "rb") as f:
-        count_dict = pickle.load(f)
-
-    logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
-
-    prior_counts = CountDict(count_dict["<UNK>"], count_dict)
     prior = DirichletProcess(args.alpha)
-    surrogate = NameBigram(args.prior_scale, prior_counts)
+
+    if args.use_surrogate:        
+        with open(args.surrogate, "rb") as f:
+            count_dict = pickle.load(f)
+
+        logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
+
+        prior_counts = CountDict(count_dict["<UNK>"], count_dict)        
+        surrogate = NameBigram(args.prior_scale, prior_counts)
+    else:
+        surrogate = None
 
     batched_score_eval = partial(
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset
@@ -246,8 +251,8 @@ def main(argv: list[str] | None = None) -> None:
         data=data,
         score_fn=batched_score_eval,
         prior=prior,
-        ClusterClass=NameBigramCluster,
-        # data=data, score_fn=batched_score_eval, prior=prior, surrogate=surrogate, ClusterClass=NameBigramCluster
+        surrogate=surrogate,
+        ClusterClass=NameBigramCluster
     )
     experiment_name = f"s{args.seed}_alpha{args.alpha}_mcmc"
 
@@ -265,15 +270,15 @@ def main(argv: list[str] | None = None) -> None:
         t += time.time() - start
         total_iters += args.increment
 
-        if clusterer.best_weight > best:
-            best = clusterer.best_weight
+        if clusterer.best_logpost > best:
+            best = clusterer.best_logpost
             iters_since_change = 0
         else:
             iters_since_change += args.increment
 
         # save clustering and metrics
-        ll = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best])
-        lp = clusterer.best_weight
+        ll = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best_clustering])
+        lp = clusterer.best_logpost
 
         clustering = clusterer.list_cluster_labels()
         clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
@@ -298,8 +303,8 @@ def main(argv: list[str] | None = None) -> None:
             pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # save final clustering and metrics
-    ll = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best])
-    lp = clusterer.best_weight
+    ll = sum([clusterer.score_cache[cl.hash] for cl in clusterer.best_clustering])
+    lp = clusterer.best_logpost
 
     clustering = clusterer.list_cluster_labels()
     clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order

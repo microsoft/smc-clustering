@@ -296,7 +296,7 @@ class SMCClusterer:
         callback: Callable[..., Any] | None = None,
         score_cache: dict[int, float] | None = None,
         print_cluster_data: bool = False,
-        **kwargs: Any,
+        **_kwargs: Any,
     ):
         """Initialize SMCClusterer with the given clustering components."""
         self.score_fn = score_fn
@@ -914,7 +914,7 @@ def plot_particles_2D(
     fig_scale: float = 3,
     highlight: int | None = None,
     title: str | None = None,
-    **kwargs: Any,
+    **_kwargs: Any,
 ) -> plt.Figure:
     """Plot particles with highest weights."""
     subprob = 0 if len(state.particles) == 1 else subprob
@@ -1100,7 +1100,7 @@ def plot_particles_2D(
 
 
 def resample_multinomial(
-    rng: jax.Array, weights: np.ndarray, max_particles: int, **kwargs: Any
+    rng: jax.Array, weights: np.ndarray, max_particles: int, **_kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:
     """Simple multinomial resampling scheme."""
     w = np.exp(weights - scipy.special.logsumexp(weights))
@@ -1110,7 +1110,7 @@ def resample_multinomial(
 
 
 def resample_stratified(
-    rng: jax.Array, weights: np.ndarray, max_particles: int, **kwargs: Any
+    rng: jax.Array, weights: np.ndarray, max_particles: int, **_kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:
     """Stratified resampling scheme of Carpenter et al. (1999)."""
     w = np.exp(weights - scipy.special.logsumexp(weights))  # can the rest be done in log space?
@@ -1133,7 +1133,7 @@ def resample_stratified(
 
 
 def resample_optimal(
-    rng: jax.Array, weights: np.ndarray, max_particles: int, **kwargs: Any
+    rng: jax.Array, weights: np.ndarray, max_particles: int, **_kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:
     """Optimal resampling scheme of Fearnhead and Clifford (2003) -.
 
@@ -1187,7 +1187,7 @@ def resample_optimal(
 
 
 def resample_greedy(
-    rng: jax.Array, weights: np.ndarray, max_particles: int, **kwargs: Any
+    _rng: jax.Array, weights: np.ndarray, max_particles: int, **_kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:
     """Deterministically chooses the top weighted particles."""
     idx = np.argsort(weights)

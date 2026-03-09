@@ -72,7 +72,7 @@ def generate_gauss_dataset() -> tuple[np.ndarray, np.ndarray]:
     return data, labels
 
 
-def batched_score_eval(rng: jax.Array, clusters: list[np.ndarray]) -> jax.Array:
+def batched_score_eval(_rng: jax.Array, clusters: list[np.ndarray]) -> jax.Array:
     """Score Gaussian clusters in batches."""
     n = np.array([cl.shape[0] for cl in clusters])
     summary = np.concatenate(

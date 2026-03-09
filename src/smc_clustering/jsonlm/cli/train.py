@@ -151,9 +151,9 @@ class PeriodicDecodeCallback(Callback):
         self,
         trainer: Trainer,
         pl_module: LitConstrainedLM,
-        outputs: torch.Tensor,
-        batch: torch.Tensor,
-        batch_idx: int,
+        _outputs: torch.Tensor,
+        _batch: torch.Tensor,
+        _batch_idx: int,
     ) -> None:
         """Print a decode every `every_n_steps`."""
         if self.every <= 0:

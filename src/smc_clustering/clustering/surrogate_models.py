@@ -274,7 +274,6 @@ class Ngram:
         summary: list[collections.Counter[tuple[str, ...]]],
     ) -> np.ndarray:
         """Evaluate the posterior predictive score."""
-        batch_size = 2 ** int(np.log2(n.shape[0]).item())
         counts = get_ngram_counts(obs, self.n)
         histories = [h for h in counts if len(h) == (self.n - 1) and h[-1] != "E"]
 
@@ -308,7 +307,9 @@ class Ngram:
 
         return LL
 
-    def _evidence(self, n: np.intp, summary: collections.Counter[tuple[str, ...]]) -> float | np.ndarray:
+    def _evidence(
+        self, _n: np.intp, summary: collections.Counter[tuple[str, ...]]
+    ) -> float | np.ndarray:
         histories = [h for h in summary if len(h) == (self.n - 1) and h[-1] != "E"]
         LL = 0
         for h in histories:

@@ -18,7 +18,7 @@ import scipy
 class Cluster:
     """Represents a cluster as a frozen set of datapoint ids."""
 
-    def __init__(self, data_ids: Iterable[int], **kwargs: Any):
+    def __init__(self, data_ids: Iterable[int], **_kwargs: Any):
         """Initialize Cluster with the given data identifiers."""
         self.data = frozenset(data_ids)
         self.size = len(data_ids)
@@ -43,7 +43,7 @@ class Cluster:
         """Return the cluster contents with one additional data point."""
         return self.data.union({data_id})
 
-    def merge_point(self, data_id: int, data: np.ndarray) -> Cluster:
+    def merge_point(self, data_id: int, _data: np.ndarray) -> Cluster:
         """Return a new cluster after adding the given data point."""
         return Cluster(self.data.union({data_id}))
 
@@ -55,11 +55,11 @@ class Cluster:
 class Uniform:
     """Uniform prior on cluster sizes."""
 
-    def __call__(self, cluster_sizes: np.ndarray, **kwargs: Any) -> np.ndarray:
+    def __call__(self, _cluster_sizes: np.ndarray, **_kwargs: Any) -> np.ndarray:
         """Return a constant prior score for the provided cluster sizes."""
         return np.zeros((1,))
 
-    def marginal(self, n_obs: int, cluster_size: np.ndarray, **kwargs: Any) -> np.ndarray:
+    def marginal(self, _n_obs: int, cluster_size: np.ndarray, **_kwargs: Any) -> np.ndarray:
         """Return the marginal prior term for candidate cluster sizes."""
         return np.zeros(cluster_size.shape[0])
 
@@ -71,14 +71,14 @@ class DirichletProcess:
         """Initialize DirichletProcess with the given concentration parameter."""
         self.alpha = alpha
 
-    def __call__(self, cluster_sizes: np.ndarray, **kwargs: Any) -> float:
+    def __call__(self, cluster_sizes: np.ndarray, **_kwargs: Any) -> float:
         # Prior probability of a clustering, based on cluster sizes and hyperparameter alpha
         """Return the prior log probability of a clustering."""
         return (
             len(cluster_sizes) * np.log(self.alpha) + np.sum(scipy.special.gammaln(cluster_sizes))
         ).item()
 
-    def marginal(self, n_obs: int, cluster_size: np.ndarray, **kwargs: Any) -> np.ndarray:
+    def marginal(self, _n_obs: int, cluster_size: np.ndarray, **_kwargs: Any) -> np.ndarray:
         # Prior probability of a single assignment, based on cluster size and hyperparameter alpha
         """Return the marginal prior term for candidate cluster sizes."""
         return np.where(cluster_size > 0, np.log(cluster_size), np.log(self.alpha))

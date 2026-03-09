@@ -163,7 +163,7 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 
 def score_entities(
-    rng: jax.Array,
+    _rng: jax.Array,
     clusters: list[list[Entity]],
     model: nn.Module,
     tokenizer: JsonLMTokenizer,

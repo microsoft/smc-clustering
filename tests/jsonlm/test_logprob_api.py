@@ -193,7 +193,6 @@ def test_logprob_sequence_normalizations_consistent() -> None:
     entities = [{"a": ["x"]}, {"b": ["y", "z"]}]
 
     # Get scores with different normalizations (include_eos=False)
-    lp_sum = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="sum")
     lp_mean = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="mean")
     bpt = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="bpt")
 

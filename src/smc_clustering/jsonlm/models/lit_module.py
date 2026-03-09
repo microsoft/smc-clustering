@@ -192,12 +192,12 @@ class LitConstrainedLM(LightningModule):
         logs = {"loss": loss, "invalid_mass": inv_mass_mean, "acc": acc}
         return loss, logs
 
-    def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: torch.Tensor, _batch_idx: int) -> torch.Tensor:
         """Lightning training_step: compute loss and return it for optimization."""
         loss, _ = self._shared_step(batch, stage="train")
         return loss
 
-    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> None:
+    def validation_step(self, batch: torch.Tensor, _batch_idx: int) -> None:
         """Lightning validation_step: log metrics; Lightning aggregates automatically."""
         _loss, _ = self._shared_step(batch, stage="val")
 

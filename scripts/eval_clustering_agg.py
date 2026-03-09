@@ -146,7 +146,7 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 
 def score_entities(
-    rng: jax.Array,
+    _rng: jax.Array,
     clusters: list[list[Entity]],
     model: nn.Module,
     tokenizer: JsonLMTokenizer,
@@ -277,15 +277,7 @@ def main(argv: list[str] | None = None) -> None:
     model = _load_model(args.ckpt, cfg, device=device)
     logging.info(f"Loaded model from {args.ckpt}")
 
-    # Set up the SMC clustering components
-    with Path(args.surrogate).open("rb") as f:
-        count_dict = pickle.load(f)
-
-    logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
-
-    prior_counts = CountDict(count_dict["<UNK>"], count_dict)
     prior = DirichletProcess(args.alpha)
-    surrogate = NameBigram(args.prior_scale, prior_counts)
 
     batched_score_eval = partial(
         score_entities, model=model, tokenizer=tok, batch_size=args.batch_size, offset=args.offset

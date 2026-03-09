@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     _ = model.load_state_dict(state, strict=False)
 
-    for i in range(args.num):
+    for _ in range(args.num):
         if args.mode == "greedy":
             text = decode_greedy(model=model, tokenizer=tok, max_steps=args.max_steps, device=device)
         else:

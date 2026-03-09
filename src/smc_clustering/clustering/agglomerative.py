@@ -38,7 +38,7 @@ class Clusterer:
         self.cluster_batch_size = cluster_batch_size
         self.clusters = [Cluster({d}) for d in range(data.shape[0])]
         self.score_cache = {} if score_cache is None else score_cache
-        self.prior = prior if prior is not None else lambda s: 0
+        self.prior = prior if prior is not None else lambda _: 0
         self.objective = None
 
     def compute_scores(

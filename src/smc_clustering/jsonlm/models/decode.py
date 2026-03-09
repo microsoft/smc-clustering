@@ -63,7 +63,7 @@ def decode_greedy(
     automaton = GrammarAutomaton(tokenizer)
     gs = automaton.start()
 
-    for step in range(max_steps):
+    for _ in range(max_steps):
         # Model forward on current prefix (without EOS).
         inp = torch.tensor(seq, dtype=torch.long, device=device).unsqueeze(0)  # [1, T]
         logits = model(inp)  # [1, T, V]

@@ -1,13 +1,11 @@
 # Licensed under the MIT license.
 
 import flax.linen as nn
-import jax
 import jax.numpy as jnp
 
 
 class LinearSchedule:
-    """
-    We use gamma(x) = a + (b-a) * x
+    """We use gamma(x) = a + (b-a) * x
 
     so that gamma(0) = a and gamma(1) = b
 

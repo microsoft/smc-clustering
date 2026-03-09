@@ -1,5 +1,4 @@
-"""
-Provides Vocabulary, a deterministic mapping between token strings and IDs (specials-first).
+"""Provides Vocabulary, a deterministic mapping between token strings and IDs (specials-first).
 
 We use special tokens to represent JSON structure symbols, and to support grammar-constrained decoding.
 """

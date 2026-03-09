@@ -1,5 +1,4 @@
-"""
-Evaluation CLI: score entities and (optionally) compute Δ on pairs.
+"""Evaluation CLI: score entities and (optionally) compute Δ on pairs.
 
 This script reloads a trained model and tokenizer artifacts, then:
   * Computes average log-likelihood (sum / mean / bits-per-token) on a JSONL file; and/or
@@ -58,7 +57,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg_dict = json.load(f)
@@ -90,7 +91,9 @@ def _load_model_from_ckpt(ckpt_path: str, cfg: TransformerConfig, device: torch.
 
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Evaluate a trained JSON-entity LM.")
-    p.add_argument("--artifacts", required=True, help="Directory containing vocab.json, bpe.json, config.json.")
+    p.add_argument(
+        "--artifacts", required=True, help="Directory containing vocab.json, bpe.json, config.json."
+    )
     p.add_argument("--ckpt", required=True, help="Path to model checkpoint (.ckpt or state_dict).")
     p.add_argument("--data", default=None, help="JSONL file to score (dict or list[dict] per line).")
     p.add_argument("--pairs", default=None, help="TSV with two JSON objects per line to compute Δ.")
@@ -148,7 +151,9 @@ def main(argv: list[str] | None = None) -> None:
                         if isinstance(obj, dict):
                             # Normalize entity by removing legacy "properties" wrapper if present
                             normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
-                            assert isinstance(normalized_obj, dict), "Single entity normalization should return dict"
+                            assert isinstance(normalized_obj, dict), (
+                                "Single entity normalization should return dict"
+                            )
                             # Single entity: use logprob_entity
                             lp = logprob_entity(
                                 normalized_obj,
@@ -164,7 +169,9 @@ def main(argv: list[str] | None = None) -> None:
 
                             # Normalize sequence by removing legacy "properties" wrappers if present (lenient mode)
                             normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
-                            assert isinstance(normalized_obj, list), "Sequence normalization should return list"
+                            assert isinstance(normalized_obj, list), (
+                                "Sequence normalization should return list"
+                            )
                             lp = logprob_sequence(
                                 normalized_obj,
                                 model=model,
@@ -173,7 +180,9 @@ def main(argv: list[str] | None = None) -> None:
                                 normalize=args.normalize,
                                 device=device,
                             )
-                            print(f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}")
+                            print(
+                                f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}"
+                            )
                         else:
                             raise ValueError(
                                 f"Expected a JSON object or array in {args.data}:{lineno}, got {type(obj).__name__}",

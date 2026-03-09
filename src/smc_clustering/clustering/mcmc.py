@@ -26,8 +26,7 @@ class GibbsClusterer:
         self.score_cache = {} if score_cache is None else score_cache
 
     def compute_scores(self, rng, clusters, force_recompute=False):
-        """
-        For a list of clusters, compute the score for each cluster
+        """For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
         """
@@ -40,16 +39,16 @@ class GibbsClusterer:
             return 0
 
         hashes = [hash(cluster) for cluster in compute_clusters]
-        scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
+        scores = self.score_fn(
+            rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters]
+        )
         for score, hash_ in zip(scores, hashes, strict=False):
             self.score_cache[hash_] = score
 
         return len(compute_clusters)
 
     def update_exact(self, rng, i):
-        """
-        Gibbs update for assignment i
-        """
+        """Gibbs update for assignment i"""
         compute_clusters = []
         hashes = []
         weights = np.zeros(len(self.clusters) + 1)
@@ -69,7 +68,9 @@ class GibbsClusterer:
             else:
                 hashes.append(hash(C_k.add(i)))
                 compute_clusters.append(C_k.add(i))
-                weights[k] = self.prior.marginal(self.data.shape[0], N_k).item() - self.score_cache[C_k.hash]
+                weights[k] = (
+                    self.prior.marginal(self.data.shape[0], N_k).item() - self.score_cache[C_k.hash]
+                )
 
         rng, compute_rng = jax.random.split(rng)
         model_evals = self.compute_scores(compute_rng, compute_clusters)
@@ -94,7 +95,9 @@ class GibbsClusterer:
                 self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
             else:
                 self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-            self.logpost = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
+            self.logpost = sum(
+                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
+            )
 
             if self.clusters[old_k].size > 1:
                 self.clusters[old_k] = self.ClusterClass(self.clusters[old_k].data - {i})
@@ -104,9 +107,7 @@ class GibbsClusterer:
         return model_evals, 0
 
     def update_mh(self, rng, i):
-        """
-        Metropolis-within-Gibbs update, using the surrogate model as the proposal distribution
-        """
+        """Metropolis-within-Gibbs update, using the surrogate model as the proposal distribution"""
         model_evals = 0
         summary_stats = []
         cluster_sizes = []
@@ -167,8 +168,12 @@ class GibbsClusterer:
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(rng, compute_clusters)
 
-            ll_new_cluster_without_i = self.score_cache[self.clusters[new_k].hash] if new_k < len(self.clusters) else 0
-            ll_old_cluster_without_i = self.score_cache[hash(old_cluster)] if old_cluster is not None else 0
+            ll_new_cluster_without_i = (
+                self.score_cache[self.clusters[new_k].hash] if new_k < len(self.clusters) else 0
+            )
+            ll_old_cluster_without_i = (
+                self.score_cache[hash(old_cluster)] if old_cluster is not None else 0
+            )
 
             a = (
                 self.score_cache[hash(new_cluster)]
@@ -205,7 +210,9 @@ class GibbsClusterer:
             rng, compute_rng = jax.random.split(rng)
             evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append([evals, 0])
-            self.logpost = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
+            self.logpost = sum(
+                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
+            )
             self.best_clustering = self.clusters.copy()
             self.best_logpost = self.logpost.copy()
 
@@ -265,10 +272,7 @@ class GibbsClusterer:
             print()
 
     def list_cluster_labels(self, best=True):
-        """
-        Return a list of the cluster IDs for each observation
-
-        """
+        """Return a list of the cluster IDs for each observation"""
         cluster_lookup = {}
         for cl in self.best_clustering if best else self.clusters:
             for i in cl.ids:

@@ -1,22 +1,26 @@
 # Licensed under the MIT license.
 import collections
+
 import numpy as np
+
 
 def cluster_precision(pred_cluster_map, gt_cluster_map):
     fragment_count = len(gt_cluster_map)
     precision = 0
     for i in gt_cluster_map.keys():
         tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
-        precision += (tp / len(pred_cluster_map[i]))
+        precision += tp / len(pred_cluster_map[i])
     return precision / fragment_count
+
 
 def cluster_recall(pred_cluster_map, gt_cluster_map):
     fragment_count = len(gt_cluster_map)
     recall = 0
     for i in gt_cluster_map.keys():
         tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
-        recall += (tp / len(gt_cluster_map[i]))
+        recall += tp / len(gt_cluster_map[i])
     return recall / fragment_count
+
 
 def cluster_f1(pred_cluster_map, gt_cluster_map):
     fragment_count = len(gt_cluster_map)
@@ -27,7 +31,8 @@ def cluster_f1(pred_cluster_map, gt_cluster_map):
         fn = len(gt_cluster_map[i].difference(pred_cluster_map[i]))
         f1 += tp / (tp + 0.5 * (fp + fn))
     return f1 / fragment_count
-    
+
+
 def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
     """Evaluate an output for the clustering task instance."""
     fragment_count = len(predictions)
@@ -40,7 +45,6 @@ def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
         cluster = pred_clusters[cluster_id]
         cluster.add(i)
         pred_cluster_map[i] = cluster
-
 
     # construct the ground truth {element_idx -> set of element_idx} map
     gt_clusters = collections.defaultdict(set)
@@ -73,4 +77,3 @@ def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
 
     metrics = dict(metrics)
     return metrics
-    

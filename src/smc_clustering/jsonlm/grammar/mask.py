@@ -1,5 +1,4 @@
-"""
-Allowed-token masking for the grammar to enforce 100% valid sequences.
+"""Allowed-token masking for the grammar to enforce 100% valid sequences.
 
 This module exposes `allowed_token_mask`, which returns a Bool mask over the joint vocabulary for the next token given
 the current grammar state. It disallows BOS/PAD in all positions and only allows EOS after the END state. Inside string
@@ -15,7 +14,9 @@ from smc_clustering.jsonlm.grammar.spec import State
 from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
-def allowed_token_mask(gs: GrammarState, automaton: GrammarAutomaton, tokenizer: JsonLMTokenizer) -> torch.BoolTensor:
+def allowed_token_mask(
+    gs: GrammarState, automaton: GrammarAutomaton, tokenizer: JsonLMTokenizer
+) -> torch.BoolTensor:
     """Return a Bool mask over the joint vocabulary for valid next tokens.
 
     Uses precomputed tables if automaton has runtime, otherwise falls back to explicit logic.

@@ -64,11 +64,15 @@ def unwrap_properties_sequence(
         if "properties" in obj[0]:
             # All items must have properties in strict mode
             if not all("properties" in item for item in obj):
-                raise ValueError("In strict mode, if first item has 'properties', all items must have 'properties'")
+                raise ValueError(
+                    "In strict mode, if first item has 'properties', all items must have 'properties'"
+                )
             return [item["properties"] for item in obj]
         # No items should have properties in strict mode
         if any("properties" in item for item in obj):
-            raise ValueError("In strict mode, if first item lacks 'properties', no items should have 'properties'")
+            raise ValueError(
+                "In strict mode, if first item lacks 'properties', no items should have 'properties'"
+            )
         return obj
 
     if mode == "lenient":

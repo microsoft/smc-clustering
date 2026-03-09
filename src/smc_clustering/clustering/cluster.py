@@ -2,10 +2,9 @@
 import numpy as np
 import scipy
 
+
 class Cluster:
-    """
-    Represents a cluster as a frozen set of datapoint ids.
-    """
+    """Represents a cluster as a frozen set of datapoint ids."""
 
     def __init__(self, data_ids, **kwargs):
         self.data = frozenset(data_ids)
@@ -35,9 +34,7 @@ class Cluster:
 
 
 class Uniform:
-    """
-    Uniform prior on cluster sizes
-    """
+    """Uniform prior on cluster sizes"""
 
     def __call__(self, cluster_sizes, **kwargs):
         return np.zeros((1,))
@@ -47,19 +44,17 @@ class Uniform:
 
 
 class DirichletProcess:
-    """
-    Dirichlet process prior on cluster sizes
-    """
+    """Dirichlet process prior on cluster sizes"""
 
     def __init__(self, alpha):
         self.alpha = alpha
 
     def __call__(self, cluster_sizes, **kwargs):
         # Prior probability of a clustering, based on cluster sizes and hyperparameter alpha
-        return (len(cluster_sizes) * np.log(self.alpha) + np.sum(scipy.special.gammaln(cluster_sizes))).item()
+        return (
+            len(cluster_sizes) * np.log(self.alpha) + np.sum(scipy.special.gammaln(cluster_sizes))
+        ).item()
 
     def marginal(self, n_obs, cluster_size, **kwargs):
         # Prior probability of a single assignment, based on cluster size and hyperparameter alpha
         return np.where(cluster_size > 0, np.log(cluster_size), np.log(self.alpha))
-
-

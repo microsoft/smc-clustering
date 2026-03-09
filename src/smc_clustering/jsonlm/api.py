@@ -1,5 +1,4 @@
-"""
-Public API surface for encoding entities and computing constrained log-likelihoods.
+"""Public API surface for encoding entities and computing constrained log-likelihoods.
 
 This module exposes core entry points for both single entities and entity sequences: `encode_entity`/`encode_sequence`
 (raw dict/list → BOS…EOS IDs) and `logprob_entity`/`logprob_sequence` (teacher-forced log-likelihood under grammar
@@ -29,7 +28,9 @@ from smc_clustering.jsonlm.serialization.encoder import (
 from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
-def encode_entity(entity: dict[str, list[str]], tokenizer: JsonLMTokenizer, add_bos_eos: bool = True) -> list[int]:
+def encode_entity(
+    entity: dict[str, list[str]], tokenizer: JsonLMTokenizer, add_bos_eos: bool = True
+) -> list[int]:
     """Convert a raw entity dict into BOS…EOS token IDs using the given tokenizer.
 
     Canonicalization is performed on the fly, then the entity is serialized with <K>/<V> sentinels and tokenized.
@@ -288,7 +289,9 @@ def decode_entity(
     device: torch.device | None = None,
 ) -> dict[str, list[str]]:
     """Decode a valid entity via constrained greedy and return it as a canonical dict."""
-    text = decode_greedy(model=model, tokenizer=tokenizer, max_steps=max_steps, device=device, stop_at_end=True)
+    text = decode_greedy(
+        model=model, tokenizer=tokenizer, max_steps=max_steps, device=device, stop_at_end=True
+    )
     return parse_entity(text)
 
 

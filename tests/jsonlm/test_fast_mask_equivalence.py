@@ -1,5 +1,4 @@
-"""
-Tests to verify that the new runtime implementation produces correct results.
+"""Tests to verify that the new runtime implementation produces correct results.
 
 This module tests the runtime implementation across various entity structures and edge cases,
 particularly with the new Kleene-plus grammar that allows multiple entities. Since the runtime

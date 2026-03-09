@@ -1,5 +1,4 @@
-"""
-Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
+"""Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     # --- n-gram model ---
@@ -104,7 +103,9 @@ class NameBigramCluster(Cluster):
         return self.counts
 
     def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts([entity.properties["name"] for entity in data], self.n)
+        new_counts = self.counts + get_ngram_counts(
+            [entity.properties["name"] for entity in data], self.n
+        )
         return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts)
 
 
@@ -121,7 +122,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
@@ -160,13 +163,17 @@ def score_entities(
         if len(cluster) < max_cluster_size:
             entities.append(cluster)
         else:
-            entities.append(cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :])
+            entities.append(
+                cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :]
+            )
             logging.warning(
                 f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties['name']}, ... Entity N = {cluster[-1].properties['name']}"
             )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
-    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size)
+    scores = score_entities_batched(
+        entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size
+    )
 
     return scores
 
@@ -174,11 +181,24 @@ def score_entities(
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
-    p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
-    p.add_argument("--out", default="./output/predictions.txt", help="Output file path for predicted clusters")
+    p.add_argument(
+        "--config", default="./config/benchmark_conf.json", help="Path to benchmark config file"
+    )
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--task_instance",
+        type=str,
+        default="Clustering-REBEL-Small",
+        help="MS-KeBAB Linking task instance",
+    )
+    p.add_argument(
+        "--out", default="./output/predictions.txt", help="Output file path for predicted clusters"
+    )
     p.add_argument("--batch_size", type=int, default=512, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     p.add_argument(
@@ -220,7 +240,9 @@ def main(argv: list[str] | None = None) -> None:
     data = ListWrapper(data)  # TODO: get rid of that
 
     # Set up the JSON-LM model
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)

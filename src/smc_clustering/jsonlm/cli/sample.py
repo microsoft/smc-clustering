@@ -1,5 +1,4 @@
-"""
-Sampling CLI: generate entities from a trained checkpoint (greedy or stochastic).
+"""Sampling CLI: generate entities from a trained checkpoint (greedy or stochastic).
 
 Usage example:
     python -m jsonlm.cli.sample --artifacts ./runs/exp1 --ckpt ./runs/exp1/last.ckpt --num 10 --mode sample --top_p 0.9 --temperature 0.8
@@ -41,14 +40,18 @@ def main(argv=None) -> None:
 
     vocab = Vocabulary.from_tokens(json.load(open(f"{args.artifacts}/vocab.json", encoding="utf-8")))
     bpe = HFTokenizer.from_file(f"{args.artifacts}/bpe.json")
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
     cfg = TransformerConfig(**json.load(open(f"{args.artifacts}/config.json", encoding="utf-8")))
 
     model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(args.ckpt, map_location=device)
     state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
     state = (
-        {k[len("model.") :]: v for k, v in state.items() if k.startswith("model.")} if "state_dict" in ckpt else state
+        {k[len("model.") :]: v for k, v in state.items() if k.startswith("model.")}
+        if "state_dict" in ckpt
+        else state
     )
     _ = model.load_state_dict(state, strict=False)
 

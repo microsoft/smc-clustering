@@ -1,5 +1,4 @@
-"""
-Tests for the decode wrapper: it returns a canonical dict and matches parse(decode_greedy).
+"""Tests for the decode wrapper: it returns a canonical dict and matches parse(decode_greedy).
 
 We use a uniform-logit dummy model so constrained greedy emits the minimal valid entity '{}'.
 """

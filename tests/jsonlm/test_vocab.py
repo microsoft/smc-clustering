@@ -1,5 +1,4 @@
-"""
-Unit tests for token constants and the Vocabulary dataclass.
+"""Unit tests for token constants and the Vocabulary dataclass.
 
 We assert uniqueness, ordering stability, and correctness of id↔token mappings. Using a fixed snapshot of
 SPECIAL_TOKENS helps catch accidental reorderings that would break trainings/checkpoints and grammar masks.

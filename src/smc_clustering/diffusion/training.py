@@ -34,7 +34,9 @@ def train_model(
             for i, batch in enumerate(pbar):
                 x, masks = batch
                 rng, step_rng = jax.random.split(rng)
-                loss, model.params, opt_state = update_step(step_rng, model.params, x.numpy(), masks.numpy(), opt_state)
+                loss, model.params, opt_state = update_step(
+                    step_rng, model.params, x.numpy(), masks.numpy(), opt_state
+                )
 
                 if i % loss_interval == 0:
                     loss_history.append(loss.item())
@@ -43,10 +45,14 @@ def train_model(
                 callback(model, loss_history)
 
         if checkpoint_path is not None and epoch % 5 == 0:
-            state = train_state.TrainState.create(apply_fn=model.net.apply, params=model.params["params"], tx=optimizer)
+            state = train_state.TrainState.create(
+                apply_fn=model.net.apply, params=model.params["params"], tx=optimizer
+            )
             save_dict = {"model": state, "loss_history": loss_history}
 
-            checkpoints.save_checkpoint(ckpt_dir=checkpoint_path, target=save_dict, step=epoch, overwrite=True, keep=2)
+            checkpoints.save_checkpoint(
+                ckpt_dir=checkpoint_path, target=save_dict, step=epoch, overwrite=True, keep=2
+            )
 
     model.compile_net()
     return loss_history

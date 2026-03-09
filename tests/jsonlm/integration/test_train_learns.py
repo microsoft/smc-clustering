@@ -43,7 +43,10 @@ def _corpus_lines(paths: list[Path]):
 
 def _avg_logprob(items: list[dict], model: torch.nn.Module, tok, normalize="sum") -> float:
     with torch.no_grad():
-        vals = [float(logprob_entity(x, model=model.eval(), tokenizer=tok, normalize=normalize)) for x in items]
+        vals = [
+            float(logprob_entity(x, model=model.eval(), tokenizer=tok, normalize=normalize))
+            for x in items
+        ]
     return float(np.mean(vals))
 
 
@@ -74,7 +77,7 @@ def test_tiny_model_learns(tmp_path: Path):
     train_ds = EntityDataset([str(train_path)], tokenizer=tok, max_length=max_len, add_bos_eos=True)
     val_ds = EntityDataset([str(val_path)], tokenizer=tok, max_length=max_len, add_bos_eos=True)
 
-    collate = lambda batch: pad_collate(batch, tokenizer=tok)  # noqa: E731
+    collate = lambda batch: pad_collate(batch, tokenizer=tok)
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=True, num_workers=0, collate_fn=collate)
     val_loader = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=0, collate_fn=collate)
 
@@ -129,4 +132,6 @@ def test_tiny_model_learns(tmp_path: Path):
 
     # 9) Assert improvement (higher log-probability == better)
     # A small but reliable margin to avoid flakiness on CI.
-    assert post > pre + 1.0, f"Expected training to improve log-probability: pre={pre:.3f}, post={post:.3f}"
+    assert post > pre + 1.0, (
+        f"Expected training to improve log-probability: pre={pre:.3f}, post={post:.3f}"
+    )

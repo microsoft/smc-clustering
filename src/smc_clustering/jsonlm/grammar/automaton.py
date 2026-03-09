@@ -1,5 +1,4 @@
-"""
-Prefix automaton and transitions for the constrained JSON-with-<K>/<V> grammar.
+"""Prefix automaton and transitions for the constrained JSON-with-<K>/<V> grammar.
 
 This module advances a compact State enum given observed token IDs from the tokenizer. It uses only the tokenizer's
 special token IDs plus knowledge that BPE pieces occupy a contiguous range after specials. The automaton validates
@@ -189,7 +188,9 @@ class GrammarAutomaton:
             if t == self._id_lbrace:
                 return GrammarState(State.AFTER_LBRACE)
             # Any other token is invalid (EOS is handled by caller).
-            raise ValueError("Only '{' or EOS are valid after top-level '}' (to start another entity or terminate).")
+            raise ValueError(
+                "Only '{' or EOS are valid after top-level '}' (to start another entity or terminate)."
+            )
 
         # Should be unreachable.
         raise ValueError(f"Unhandled state {s} with token id {t}.")

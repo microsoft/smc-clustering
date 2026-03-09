@@ -1,5 +1,4 @@
-"""
-Unit tests for the grammar automaton and allowed-token masks.
+"""Unit tests for the grammar automaton and allowed-token masks.
 
 We verify local expectations at critical states and an end-to-end walk over a sample entity: each consumed token is
 allowed by the mask, and EOS becomes allowed exactly after the closing '}' token.

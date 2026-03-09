@@ -8,7 +8,9 @@ from smc_clustering.clustering.cluster import Cluster
 
 
 class Clusterer:
-    def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):
+    def __init__(
+        self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None
+    ):
         self.data = data
         self.score_fn = score_fn
         self.link_threshold = link_threshold
@@ -19,8 +21,7 @@ class Clusterer:
         self.objective = None
 
     def compute_scores(self, rng, clusters, force_recompute=False):
-        """
-        For a list of clusters, compute the score for each cluster
+        """For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
         """
@@ -33,7 +34,9 @@ class Clusterer:
             return 0
 
         hashes = [hash(cluster) for cluster in compute_clusters]
-        scores = self.score_fn(rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters])
+        scores = self.score_fn(
+            rng, [self.data[np.fromiter(cluster, dtype=np.int64)] for cluster in compute_clusters]
+        )
         for score, hash_ in zip(scores, hashes, strict=False):
             self.score_cache[hash_] = score
 
@@ -53,7 +56,9 @@ class Clusterer:
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append(model_evals)
-            self.objective = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
+            self.objective = sum(
+                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
+            )
 
         for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)
@@ -96,13 +101,14 @@ class Clusterer:
                 self.objective = sum(
                     [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
                 )
-                pbar.set_postfix({"Best score": f"{best_score:.4g}", "Objective": f"{self.objective:.4g}"})
+                pbar.set_postfix(
+                    {"Best score": f"{best_score:.4g}", "Objective": f"{self.objective:.4g}"}
+                )
 
-            else:
-                if len(self.clusters) <= self.cluster_batch_size:
-                    # in this case the batch size is larger than the number of clusters, so we've exhausted all possible links
-                    print("potential links exhausted, exiting")
-                    return n_evals, True
+            elif len(self.clusters) <= self.cluster_batch_size:
+                # in this case the batch size is larger than the number of clusters, so we've exhausted all possible links
+                print("potential links exhausted, exiting")
+                return n_evals, True
 
             if callback is not None:
                 callback(self.clusters, iteration)
@@ -119,10 +125,7 @@ class Clusterer:
             print()
 
     def list_cluster_labels(self):
-        """
-        Return a list of the cluster IDs for each observation
-
-        """
+        """Return a list of the cluster IDs for each observation"""
         cluster_lookup = {}
         for cl in self.clusters:
             for i in cl.ids:

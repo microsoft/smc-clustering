@@ -1,5 +1,4 @@
-"""
-Unit tests for canonicalization and sentinel-based serialization/parsing.
+"""Unit tests for canonicalization and sentinel-based serialization/parsing.
 
 The tests assert idempotent canonicalization, deterministic ordering, round-trip stability, and helpful error handling
 for invalid input shapes. The serialized form is whitespace-stable and parses back to a canonical dict.
@@ -9,7 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from smc_clustering.jsonlm.serialization.encoder import canonicalize_entity, entity_to_string, parse_entity
+from smc_clustering.jsonlm.serialization.encoder import (
+    canonicalize_entity,
+    entity_to_string,
+    parse_entity,
+)
 
 
 def test_canonicalization_idempotent() -> None:

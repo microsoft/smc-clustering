@@ -1,5 +1,4 @@
-"""
-Batched scoring utilities for grammar-constrained log-likelihoods and Δ-scores.
+"""Batched scoring utilities for grammar-constrained log-likelihoods and Δ-scores.
 
 This module provides:
   * score_entities_batched(...): compute constrained log-likelihoods for many entities in batches.
@@ -186,20 +185,26 @@ def score_entities_batched(
         start = pc()
         # Disallowed golds appear as -inf; surface a helpful error.
         if torch.isinf(gold_lp).any():
-            raise ValueError("Encountered disallowed gold token under grammar masks during batched scoring.")
+            raise ValueError(
+                "Encountered disallowed gold token under grammar masks during batched scoring."
+            )
 
         # Handle EOS inclusion/exclusion
         if include_eos:
             # Include all target steps (incl. EOS); rectangular tail contributes EOS terms only.
             lp_sum = gold_lp.sum(dim=1)  # [B]
-            active_T = torch.tensor([len(ids) - 1 for ids in ids_list], dtype=gold_lp.dtype, device=gold_lp.device)
+            active_T = torch.tensor(
+                [len(ids) - 1 for ids in ids_list], dtype=gold_lp.dtype, device=gold_lp.device
+            )
         else:
             # Compute per-row first_eos_index from targets
             B, T = target_ids.shape
             eos_mask = target_ids == eos_id  # [B, T]
             # Find first EOS position per row
             eos_indices = torch.arange(T, device=device).unsqueeze(0).expand(B, T)  # [B, T]
-            first_eos_index = torch.where(eos_mask, eos_indices, torch.full_like(eos_indices, T)).amin(dim=1)  # [B]
+            first_eos_index = torch.where(eos_mask, eos_indices, torch.full_like(eos_indices, T)).amin(
+                dim=1
+            )  # [B]
 
             # Build weight mask: w[b,t] = 1 if t < first_eos_index[b], else 0
             time_indices = torch.arange(T, device=device).unsqueeze(0).expand(B, T)  # [B, T]
@@ -222,7 +227,9 @@ def score_entities_batched(
             else:
                 raise ValueError(f"Unknown normalize mode: {normalize!r}")
 
-        logger.debug(f"Computed final scores for batch of size {input_ids.shape[0]} in {pc() - start:.3f}s")
+        logger.debug(
+            f"Computed final scores for batch of size {input_ids.shape[0]} in {pc() - start:.3f}s"
+        )
 
     if offset:
         scores = [s + offset for s in scores]

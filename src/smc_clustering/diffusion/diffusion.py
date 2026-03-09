@@ -9,8 +9,7 @@ from smc_clustering.diffusion.schedule import LinearSchedule
 
 
 class VariationalDiffusion:
-    """
-    Variational diffusion following https://arxiv.org/pdf/2107.00630.pdf
+    """Variational diffusion following https://arxiv.org/pdf/2107.00630.pdf
 
     In this class, we instantiate a SetFormer model, and pass it a concatenation of
     the noisy state z, with the number of (not-masked out) elements of the set, and the diffusion time.
@@ -33,7 +32,9 @@ class VariationalDiffusion:
             schedule = LinearSchedule()
         self.schedule = schedule
         self.net = SetFormer(dim, depth)
-        self.params = self.net.init(rng, jnp.zeros((1, 1, self.dim + 2)), jnp.ones((1, 1), dtype=jnp.bool), train=False)
+        self.params = self.net.init(
+            rng, jnp.zeros((1, 1, self.dim + 2)), jnp.ones((1, 1), dtype=jnp.bool), train=False
+        )
 
         self.trained_net = None
 
@@ -63,7 +64,9 @@ class VariationalDiffusion:
 
         # pass z, set_size and t through the model, concatenated
         set_size = masks.sum(axis=1)[:, None, None]
-        model_input = jnp.concat([z, jnp.tile(set_size, (1, seq_len, 1)), jnp.tile(t, (1, seq_len, 1))], axis=-1)
+        model_input = jnp.concat(
+            [z, jnp.tile(set_size, (1, seq_len, 1)), jnp.tile(t, (1, seq_len, 1))], axis=-1
+        )
         rng, dropout_rng = jax.random.split(rng)
         eps_hat = self.net.apply(params, model_input, masks, train=True, rngs={"dropout": dropout_rng})
 
@@ -99,8 +102,7 @@ class VariationalDiffusion:
         return z_t, log_weights, log_prob
 
     def logp_smc(self, rng, x, num_particles, num_time_steps, resample_thresh=0.25):
-        """
-        This runs a loop forwards in time, starting at x=z_0.
+        """This runs a loop forwards in time, starting at x=z_0.
         At each smc step we sample from q(z_t | z_s) (where s < t),
         and weight the samples by log (p(z_t | z_s) / q(z_t | z_s))
         the log weights are then normalized to sum to 1, and the product
@@ -132,8 +134,7 @@ class VariationalDiffusion:
         return log_prob, z, log_weights
 
     def moments_q_ts(self, z_s, t, s):
-        """
-        Compute the mean and variance of q(z_t | z_s).
+        """Compute the mean and variance of q(z_t | z_s).
 
         See eqs 20-22 of the paper (https://arxiv.org/pdf/2107.00630.pdf).
 
@@ -150,8 +151,7 @@ class VariationalDiffusion:
         return mu, sigma2_ts
 
     def moments_p_st(self, z, s, t, masks=None):
-        """
-        Compute the mean and variance of p(z_s | z_t)
+        """Compute the mean and variance of p(z_s | z_t)
             according to eq. 34 of the paper (https://arxiv.org/pdf/2107.00630.pdf).
 
         note s < t.
@@ -205,8 +205,7 @@ class VariationalDiffusion:
         return z
 
     def score_fn(self, z, masks, t):
-        """
-        Compute the score function, which is quite close to the noise prediction function.
+        """Compute the score function, which is quite close to the noise prediction function.
         See https://arxiv.org/pdf/2107.00630.pdf eqs 29-31.
         """
         batch_size, seq_len, _ = z.shape
@@ -228,8 +227,7 @@ class VariationalDiffusion:
         return -0.5 * beta * (z + s)
 
     def generate_ode(self, num_samples, seq_len, num_time_steps, masks=None, z=None, rng=None):
-        """
-        Using the probability flow ODE to generate samples.
+        """Using the probability flow ODE to generate samples.
 
         The ode is:
 
@@ -255,9 +253,7 @@ class VariationalDiffusion:
 
     @functools.partial(jax.jit, static_argnums=(0, 4))
     def log_prob_ode(self, rng, x, masks, num_time_steps=100):
-        """
-        Compute the log probability of x under the model, using the probability flow ODE.
-        """
+        """Compute the log probability of x under the model, using the probability flow ODE."""
 
         def update_step(carry, rng):
             # use vector-Jacobian product and Skilling-Hutchinson estimator

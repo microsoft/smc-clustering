@@ -1,5 +1,4 @@
-"""
-Unit tests for batched scoring utilities: score_entities_batched and compute_deltas_batched.
+"""Unit tests for batched scoring utilities: score_entities_batched and compute_deltas_batched.
 
 We verify:
   * Batched log-likelihoods (sum/mean/bpt) match single-item API results.

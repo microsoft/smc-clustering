@@ -1,5 +1,4 @@
-"""
-Tests for EntityDataset: offset indexing, on-the-fly canonicalization, and encoding.
+"""Tests for EntityDataset: offset indexing, on-the-fly canonicalization, and encoding.
 
 We verify that dataset items are 1-D LongTensors containing BOS/EOS by default, and that two permutations of the same
 entity yield identical ID sequences thanks to canonicalization inside serialization. Also tests support for entity
@@ -84,7 +83,11 @@ def test_dataset_handles_entity_sequences() -> None:
         sequence = [entity1, entity2]
 
         # Create corpus for tokenizer training
-        corpus = [entity_to_string(entity1), entity_to_string(entity2), entities_to_string_as_set(sequence)]
+        corpus = [
+            entity_to_string(entity1),
+            entity_to_string(entity2),
+            entities_to_string_as_set(sequence),
+        ]
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with both single entities and sequences

@@ -1,5 +1,4 @@
-"""
-Hybrid tokenizer: specials for JSON structure + Byte-Level BPE for string contents.
+"""Hybrid tokenizer: specials for JSON structure + Byte-Level BPE for string contents.
 
 This tokenizer lexes the serialized training string (with <K>/<V> sentinels), keeps structure tokens as single IDs,
 and applies Byte-Level BPE to the *interior* of quoted strings. This design avoids OOVs while preserving explicit JSON
@@ -89,7 +88,9 @@ class JsonLMTokenizer:
         )
         bpe.train_from_iterator(string_literals_generator(), trainer=trainer)
 
-        return cls(vocabulary=vocabulary, bpe=bpe, specials_size=len(vocabulary), bpe_size=bpe.get_vocab_size())
+        return cls(
+            vocabulary=vocabulary, bpe=bpe, specials_size=len(vocabulary), bpe_size=bpe.get_vocab_size()
+        )
 
     def __len__(self) -> int:
         """Return size of the joint vocabulary (specials + BPE)."""

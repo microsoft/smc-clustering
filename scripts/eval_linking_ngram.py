@@ -1,5 +1,4 @@
-"""
-Evaluate n-gram surrogate model linking performance in MS-KeBAB.
+"""Evaluate n-gram surrogate model linking performance in MS-KeBAB.
 
 Example usage:
     uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Test --prior_scale 0.01
@@ -58,10 +57,18 @@ def build_argparser() -> argparse.ArgumentParser:
         default="./data_vm/artifacts",
         help="Directory with wikipedia_names_2gram_counts.pickle",
     )
-    p.add_argument("--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance")
-    p.add_argument("--out", default="./output/scores_ngram.txt", help="Output file path for delta values")
-    p.add_argument("--prior_scale", type=float, default=0.01, help="Dirichlet prior scale (alpha multiplier)")
-    p.add_argument("--n", type=int, default=2, choices=[2], help="Order of the n-gram model (only bigram supported)")
+    p.add_argument(
+        "--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance"
+    )
+    p.add_argument(
+        "--out", default="./output/scores_ngram.txt", help="Output file path for delta values"
+    )
+    p.add_argument(
+        "--prior_scale", type=float, default=0.01, help="Dirichlet prior scale (alpha multiplier)"
+    )
+    p.add_argument(
+        "--n", type=int, default=2, choices=[2], help="Order of the n-gram model (only bigram supported)"
+    )
     return p
 
 
@@ -88,7 +95,7 @@ def compute_deltas_ngram(pairs: list[tuple[Entity, Entity]], surrogate: NameBigr
     def log_evidence(entity: Entity) -> float:
         names = entity.properties.get("name", [])
         counts = get_ngram_counts(names, surrogate.n) if names else get_ngram_counts([""], surrogate.n)
-        return float(surrogate._evidence(None, counts))  # noqa: SLF001
+        return float(surrogate._evidence(None, counts))
 
     deltas = []
     for left, right in pairs:

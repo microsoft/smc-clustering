@@ -1,5 +1,7 @@
-line-length = 120
-src = ["src", "experiments", "tests", "notebooks"]
+exclude = ["**/__pycache__", "**/.*"]
+
+line-length = 105
+src = ["src", "experiments", "scripts", "tests", "notebooks"]
 
 [format]
 quote-style = "double"
@@ -8,116 +10,109 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [lint]
-# See https://docs.astral.sh/ruff/rules for more details
-# Listing here all available rulesets and commenting out those we want to disable
 select = [
-    "F", # Pyflakes, icluded in the default set
-    "E", # pycodestyle errors
-    "W", # pycodestyle warnings
-    #"C90", # mccabe - restrictions on function complexity
-    "I",      # isort
-    "N",      # pep8-naming
-    "D",      # pydocstyle
-    "UP",     # pyupgrade
-    "YTT",    # checks for misuse of sys.version or sys.version_info
-    "ANN",    # detects the absence of PEP 3107-style function annotations
-    "ASYNC",  # errors in async code
-    "ASYNC1", # more errors in async code
-    "S",      # flake8-bandit - security issues
-    "BLE",    # prohibit catch-all exceptions
-    #"FBT", # prohibit boolean positional arguments
-    "B", # flake8-bugbear
-    "A", # Check for python builtins being used as variables or parameters
-    #"COM", # Trailing commas, handled by Black
-    #"CPY", # Require copyright headers - preview state
-    "C4", # Enforce better comprehensions
-    #"DTZ", # ban the usage of unsafe naive datetime class.
-    "T10", # flake8-debugger
-    "DJ",  # flake8-django
-    #"EM", # prohibit string literals in exceptions
-    "EXE", # executable permissions and shebangs of Python files
-    "FA",  # Verifies python 3.7+ files use from __future__ import annotations
-    #"ISC", # Implicit string concatenation
-    #"ICN", # flake8-import-conventions
-    "LOG", # proper logging
-    #"G", # logging format
-    #"INP", # ban implicit name packages
-    "PIE", # flake8-pie
-    #"T20", # ban print
-    "PYI",  # flake8-pyi
-    "PT",   # pytest style
-    "Q",    # quotes
-    "RSE",  # better exception raising
-    "RET",  # checks return values
-    "SLF",  # private member access checks
-    "SLOT", # require __slots__ to be defined for subclasses of immutable types
-    "SIM",  # code simplifications
-    "TID",  # Tidier imports
-    #"TCH", # Moving  imports in or out of type-checking blocks
-    "INT", # flake8-gettext
-    "ARG", # unused arguments
-    #"PTH", # Use pathlib
-    "TD", # TODOs formatting
-    #"FIX", # ban TODOs
-    #"ERA", # ban commented out code
-    "PD", # linting pandas code
-    #"PGH", # pygrep-hooks - ban blanket rule ignoring - won't easily work with pyright
-    "PLC",  # pylint - convention
-    "PLE",  # pylint - error
-    "PLR",  # pylint - refactor
-    "PLW",  # pylint - warning
-    "TRY",  # try.ceratops - Prevent Exception Handling AntiPatterns in Python
-    "FLY",  # flynt - move to f-strings
-    "NPY",  # NumPy-specific rules
-    "AIR",  # rules for Apache AirFlow
-    "PERF", # perflint
-    #"FURB", # refurb - preview state
-    "RUF", # Ruff-specific rules
+    "F",      # Pyflakes: undefined/unused; e.g., unused import like `import os`
+    "E",      # pycodestyle errors: spacing/indent/etc.
+    "W",      # pycodestyle warnings: minor style nits
+    "I",      # isort: import order/groups
+    "N",      # pep8-naming: snake_case/CapWords; e.g., `def MyFunc()` (bad)
+    "D",      # pydocstyle: docstring presence/format
+    "UP",     # pyupgrade: modernize; e.g., "%s" % x -> f"{x}"
+    "YTT",    # sys.version misuse; e.g., `sys.version[:3]` (prefer version_info)
+    "ANN",    # type hints; e.g., `def f(x: int) -> str: ...`
+    "ASYNC",  # async correctness; e.g., `await asyncio.sleep()` not `time.sleep`
+    "ASYNC1", # extra async checks
+    "S",      # security (bandit); e.g., avoid `eval(user_input)`
+    "BLE",    # no catch-all except; e.g., `except Exception:`
+    "B",      # bugbear: common bugs; e.g., mutable default `def f(x=[])`
+    "A",      # builtins shadowing; e.g., `list = [1,2]`
+    "COM",    # commas: trailing/missing; multiline args should end with ","
+    "C4",     # better comprehensions; e.g., `list(map(f, xs))` -> `[f(x) for x in xs]`
+    "DTZ",    # timezone-aware datetimes; e.g., `datetime.now(tz=UTC)`
+    "T10",    # debugger; e.g., `breakpoint()` / `pdb.set_trace()` (avoid)
+    "EXE",    # shebang/exec perms for scripts
+    "FA",     # require `from __future__ import annotations`
+    "LOG",    # logging best practices; e.g., `logger.info('x=%s', x)` (param style)
+    "PIE",    # flake8-pie: misc improvements (e.g., redundant `or True`)
+    "T20",    # no print calls; e.g., `print("debug")` (we'll relax via ignore)
+    "PYI",    # typing stub (.pyi) style
+    "PT",     # pytest style; e.g., `with pytest.raises(...):`
+    "Q",      # quotes consistency per formatter settings
+    "RSE",    # raise exceptions correctly; e.g., `raise ... from e`
+    "RET",    # return flow; e.g., avoid superfluous `else` after `return`
+    "SLOT",   # require __slots__ for immutable subclass; e.g., `class P(tuple): __slots__=()`
+    "SIM",    # simplify code; e.g., `if x == True` -> `if x`
+    "TID",    # tidy imports: prefer absolute; avoid star imports
+    "ARG",    # unused args; e.g., prefix "_" if intentionally unused
+    "PTH",    # prefer pathlib; e.g., `Path(p) / 'f'` not `os.path.join(...)`
+    "TD",     # TODO/FIXME formatting; e.g., `# TODO(@you): reason`
+    "PD",     # pandas best practices; e.g., prefer vectorization over `df.apply(...)`
+    "PLC",    # pylint-convention parity
+    "PLE",    # pylint-error parity
+    "PLR",    # pylint-refactor parity (design/complexity)
+    "PLW",    # pylint-warning parity
+    "TRY",    # tryceratops: exception anti-patterns; e.g., `except: pass`
+    "FLY",    # flynt: convert to f-strings
+    "NPY",    # NumPy rules; e.g., `x is np.nan` (prefer `np.isnan(x)`)
+    "PERF",   # perflint: performance nits; e.g., join vs `+=` in loops
+    "RUF",    # Ruff-only rules; e.g., RUF100: no blanket `noqa`
 ]
 
 ignore = [
-    "ANN10",   # Missing type for self/cls
-    "D100",    # Missing docstring in public module
-    "D104",    # Missing docstring in public package
-    "D205",    # blank-line-after-summary
-    "D212",    # multi-line-summary-first-line
-    "D301",    # escape-sequence-in-docstring - VS Code needs backslashes in argument descriptions
-    "E501",    # line-too-long - handled by Black
-    "PLC0414", # useless-import-alias - redundant import aliases are used for explicit re-exporting
-    "PLC0415", # import not at top level - we do that to avoid unnecessary imports based on tasks
-    "PLR09",   # too-many-* - pylint design checker
-    "PLR1702", # too-many-nested-blocks
-    "PLR5501", # collapsible-else-if
-    "RET501",  # unnecessary-return-none
-    "RET504",  # unnecessary-assign
-    "RET506",  # superfluous-else-raise - sometimes we raise a NotImplementedError as a placeholder
-    "TD003",   # Missing issue link on the line following this TODO
-    "TRY002",  # raise-vanilla-class
-    "TRY003",  # raise-vanilla-args
-    "TRY300",  # Checks for return statements in try blocks
-    "S101",    # Checks for uses of the assert keyword
-    "LOG015",  # logging-fstring-interpolation
-    "N806",
+    "ANN10",   # missing type for self/cls (methods)
+    "D301",    # allow backslashes in docstrings (escape sequences)
+    "PLR09",   # allow too-many-* (design) in places
+    "PLR1702", # allow deeply nested blocks
+    "RET506",  # allow else after raise
+    "TD003",   # TODO needn't have an issue link
+    "TRY002",  # allow `raise MyError` (class) instead of instance
+    "TRY003",  # allow generic `raise Exception('msg')`
+    "TRY300",  # allow return inside try block
+    "S101",    # allow `assert` outside tests
+    "LOG015",  # allow f-strings in logging; e.g., `logger.info(f'x={x}')`
+    "TD002",   # TODO needn't have an author
+    "N806",    # allow UPPERCASE var names in functions (e.g., constants)
+    "PLR2004", # allow magic numbers
+    "COM812",  # allow multiline with trailing comma to exceed line length
+    "T201",    # allow print calls; e.g., `print("status:", x)` (examples/notebooks)
+    "RUF003",  # allow ambiguous unicode in comments/strings; e.g., ρ, σ in text
+    "PLC2401", # allow non-ASCII identifier names; e.g., variable named Σ
+    "N802",    # allow non-lowercase function names; e.g., `test_..._N`
+    "N803",    # allow non-lowercase argument names; e.g., `N`, `B`
+    "E501",    # allow long lines (e.g., long comments/strings/URLs)
+    "E731",    # allow assigning lambda; e.g., `fn = lambda x: x + 1`
+    "E741",    # allow ambiguous single-letter names; e.g., `I`, `l`, `O`
+    "PT018",   # allow compound assertions; e.g., `assert a and b`
+    "RET504",  # allow unnecessary assignment before return; e.g., `x=foo(); return x`
+    "SLF001",  # allow private member access; e.g., `obj._internal` in tests/examples
+    "D104",    # allow missing package docstring
+    "RUF001",  # allow ambiguous unicode in comments/strings; e.g., ρ, σ in text
+    "RUF002",  # allow ambiguous unicode in comments/strings; e.g., ρ, σ in text
+    "RUF003",  # allow ambiguous unicode in comments/strings; e.g., ρ, σ in text
 ]
 
 [lint.per-file-ignores]
 "**/tests/**/*.py" = [
-    "D",       # pydocstyle
-    "ANN",     # detects the absence of PEP 3107-style function annotations
-    "S",       # flake8-bandit - security issues
-    "RUF015",  # unnecessary-iterable-allocation-for-first-element - in tests we may create lists to assert their length
-    "PLR2004", # magic-value-comparison - we often have constants as expected values in tests
+    "S",      # relax security checks in tests; e.g., tmp paths/patterns
+    "RUF015", # allow list allocation just to check first/len
+    "ARG001", # allow unused args in tests
+    "ARG002", # allow unused args in tests
 ]
 "**/*.ipynb" = [
-    "C408",
-    "PD901",
-    "F401",
-    "SIM401",
-    "SIM118",
-    "PLR2004",
-    "E402",
-    "UP015",
-] # These all should be investigatd later
+    "C408",   # allow dict()/list()/set() literal style choices
+    "PD901",  # allow "df" as a pandas variable name
+    "SIM401", # allow non-preferred comparison order
+    "SIM118", # allow non-simplified len/membership patterns
+    "D100",   # allow missing module docstring
+    "D101",   # allow missing class docstring
+    "D102",   # allow missing method docstring
+    "D103",   # allow missing function docstring
+    "D104",   # allow missing package docstring
+    "ANN001", # allow missing type annotation
+    "ANN201", # allow missing return type
+    "E402",   # allow non-top-level imports
+    "B018",   # allow useless statements
+]
 
 [lint.pydocstyle]
 convention = "google"
@@ -126,6 +121,7 @@ ignore-decorators = ["typing.overload"]
 [lint.flake8-annotations]
 suppress-none-returning = true
 mypy-init-return = true
+allow-star-arg-any = true
 
 [lint.flake8-pytest-style]
 fixture-parentheses = false

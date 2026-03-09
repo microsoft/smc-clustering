@@ -1,5 +1,4 @@
-"""
-Unit tests for constrained NLL: renormalization over allowed tokens and helpful error paths.
+"""Unit tests for constrained NLL: renormalization over allowed tokens and helpful error paths.
 
 We hand-check a tiny example to verify probabilities renormalize strictly over allowed tokens, and confirm that
 disallowed gold tokens and mask rows with no allowed tokens produce clear ValueErrors.
@@ -29,8 +28,12 @@ def test_apply_mask_and_logprobs_manual_check() -> None:
     p1 = math.exp(2.0) / Z
 
     # Check probabilities of allowed tokens; disallowed should be -inf in log-space.
-    assert torch.isclose(logp[0, 0, 0].exp(), torch.tensor(p0, dtype=torch.float32), rtol=1e-6, atol=1e-6)
-    assert torch.isclose(logp[0, 0, 1].exp(), torch.tensor(p1, dtype=torch.float32), rtol=1e-6, atol=1e-6)
+    assert torch.isclose(
+        logp[0, 0, 0].exp(), torch.tensor(p0, dtype=torch.float32), rtol=1e-6, atol=1e-6
+    )
+    assert torch.isclose(
+        logp[0, 0, 1].exp(), torch.tensor(p1, dtype=torch.float32), rtol=1e-6, atol=1e-6
+    )
     assert torch.isneginf(logp[0, 0, 2])
     assert torch.isneginf(logp[0, 0, 3])
 

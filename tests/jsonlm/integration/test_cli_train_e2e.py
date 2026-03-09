@@ -1,5 +1,4 @@
-"""
-End-to-end smoke test for the training CLI.
+"""End-to-end smoke test for the training CLI.
 
 This test creates a tiny JSONL train/val set, runs the jsonlm.cli.train entrypoint with
 a tiny Transformer configuration (1 epoch, batch_size=2, CPU), and then asserts that the

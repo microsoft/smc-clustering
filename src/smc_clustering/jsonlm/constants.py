@@ -1,5 +1,4 @@
-"""
-Defines project-wide token string constants for JSON punctuation and structural sentinels.
+"""Defines project-wide token string constants for JSON punctuation and structural sentinels.
 
 The constants are later assembled into an ordered list for Vocabulary.
 """

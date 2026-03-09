@@ -1,5 +1,4 @@
-"""
-Evaluate MCMC + JSON-LM clustering performance in MS-KeBAB.
+"""Evaluate MCMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     uv run scripts/eval_clustering_mcmc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --offset 6.2146 --task_instance Clustering-REBEL-50
@@ -87,7 +86,9 @@ class NameBigramCluster(Cluster):
         return self.counts
 
     def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts([entity.properties["name"] for entity in data], self.n)
+        new_counts = self.counts + get_ngram_counts(
+            [entity.properties["name"] for entity in data], self.n
+        )
         return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts)
 
 
@@ -104,7 +105,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
@@ -143,13 +146,17 @@ def score_entities(
         if len(cluster) < max_cluster_size:
             entities.append(cluster)
         else:
-            entities.append(cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :])
+            entities.append(
+                cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :]
+            )
             logging.warning(
                 f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties['name']}, ... Entity N = {cluster[-1].properties['name']}"
             )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
-    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size)
+    scores = score_entities_batched(
+        entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size
+    )
 
     return np.array(scores)
 
@@ -157,13 +164,26 @@ def score_entities(
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
     p.add_argument(
-        "--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters"
+        "--config", default="./config/benchmark_conf.json", help="Path to benchmark config file"
     )
-    p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--surrogate",
+        default="./data_vm/artifacts/rebel_2gram_counts.pickle",
+        help="Surrogate model parameters",
+    )
+    p.add_argument(
+        "--task_instance",
+        type=str,
+        default="Clustering-REBEL-Small",
+        help="MS-KeBAB Linking task instance",
+    )
     p.add_argument("--out", default="./output", help="Output path for results")
     p.add_argument("--batch_size", type=int, default=256, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
@@ -179,7 +199,9 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument("--prior_scale", type=float, default=25)
     p.add_argument("--use_surrogate", type=int, default=0)
-    p.add_argument("--increment", type=int, default=10, help="Number of iterations to do between each evaluation")
+    p.add_argument(
+        "--increment", type=int, default=10, help="Number of iterations to do between each evaluation"
+    )
     p.add_argument("--max_iter", type=int, default=np.inf, help="Maximum number of iterations")
     p.add_argument("--max_t", type=int, default=np.inf, help="Maximum runtime")
     p.add_argument(
@@ -219,7 +241,9 @@ def main(argv: list[str] | None = None) -> None:
     data = ListWrapper([data[i] for i in shuffled_idx])
 
     # Set up the JSON-LM model
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)
@@ -247,7 +271,11 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     clusterer = GibbsClusterer(
-        data=data, score_fn=batched_score_eval, prior=prior, surrogate=surrogate, ClusterClass=NameBigramCluster
+        data=data,
+        score_fn=batched_score_eval,
+        prior=prior,
+        surrogate=surrogate,
+        ClusterClass=NameBigramCluster,
     )
     experiment_name = f"s{args.seed}_alpha{args.alpha}_mcmc"
 
@@ -276,14 +304,22 @@ def main(argv: list[str] | None = None) -> None:
         lp = clusterer.best_logpost
 
         clustering = clusterer.list_cluster_labels()
-        clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+        clustering = [
+            clustering[idx] for idx in unshuffled_idx
+        ]  # cluster labels for the data in the original order
 
         os.makedirs(args.out, exist_ok=True)
-        with open(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             for cluster in clustering:
                 f.write(str(cluster) + "\n")
 
-        metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering")))
+        metrics = task_instance.evaluate(
+            Path(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"))
+        )
         metrics["t"] = t
         metrics["total_evals"] = len(clusterer.score_cache)
         metrics["LL"] = ll
@@ -294,7 +330,9 @@ def main(argv: list[str] | None = None) -> None:
             logging.info(f"{key}: {val:.6f}")
             print(f"{key}: {val:.6f}")
 
-        with open(os.path.join(args.out, experiment_name + f"_it{total_iters}_metrics.pickle"), "wb") as f:
+        with open(
+            os.path.join(args.out, experiment_name + f"_it{total_iters}_metrics.pickle"), "wb"
+        ) as f:
             pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # save final clustering and metrics
@@ -302,7 +340,9 @@ def main(argv: list[str] | None = None) -> None:
     lp = clusterer.best_logpost
 
     clustering = clusterer.list_cluster_labels()
-    clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+    clustering = [
+        clustering[idx] for idx in unshuffled_idx
+    ]  # cluster labels for the data in the original order
 
     os.makedirs(args.out, exist_ok=True)
     with open(os.path.join(args.out, experiment_name + "_final_clustering"), "w", encoding="utf-8") as f:

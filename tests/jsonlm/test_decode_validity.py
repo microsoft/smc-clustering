@@ -1,5 +1,4 @@
-"""
-Tests for constrained greedy decoding: validity, determinism, and mask adherence.
+"""Tests for constrained greedy decoding: validity, determinism, and mask adherence.
 
 We use a uniform dummy model that assigns equal logits to every token. Constrained greedy then always picks the lowest-ID
 allowed token at each step, which produces the smallest valid object: '{ }'. We verify that the result parses and that

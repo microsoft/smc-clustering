@@ -86,7 +86,9 @@ for conf in configs:
                 ]
             )
 
-            metrics = cluster_metrics(clusterer.state.list_cluster_labels(), ground_truth[: clusterer.state.n_obs])
+            metrics = cluster_metrics(
+                clusterer.state.list_cluster_labels(), ground_truth[: clusterer.state.n_obs]
+            )
             metrics["LL"] = ll
             metrics["LP"] = lp
             metrics["total_evals"] = len(clusterer.state.score_cache)

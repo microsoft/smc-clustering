@@ -1,5 +1,4 @@
-"""
-A Transformer model for next-token prediction.
+"""A Transformer model for next-token prediction.
 
 The model uses token + positional embeddings, pre-LN blocks with causal self-attention, and a 2-layer GELU MLP.
 It returns logits of shape [B, T, V] for input IDs [B, T].
@@ -34,7 +33,9 @@ class TransformerConfig:
     ffn_activation: str = "swiglu"  # "swiglu" | "gelu"
 
 
-def _rope_apply(q: torch.Tensor, k: torch.Tensor, rope_cache: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def _rope_apply(
+    q: torch.Tensor, k: torch.Tensor, rope_cache: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Apply RoPE rotation to query and key tensors.
 
     Args:
@@ -66,7 +67,9 @@ def _rope_apply(q: torch.Tensor, k: torch.Tensor, rope_cache: torch.Tensor) -> t
     return _apply(q), _apply(k)
 
 
-def _build_rope_cache(T: int, H: int, theta: float, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+def _build_rope_cache(
+    T: int, H: int, theta: float, device: torch.device, dtype: torch.dtype
+) -> torch.Tensor:
     """Build RoPE positional encoding cache.
 
     Args:
@@ -108,7 +111,9 @@ class RMSNorm(nn.Module):
 class FeedForward(nn.Module):
     """Two-layer MLP with configurable activation (GELU or SwiGLU) and dropout."""
 
-    def __init__(self, d_model: int, d_ff: int, dropout: float, use_bias: bool, activation: str = "swiglu") -> None:
+    def __init__(
+        self, d_model: int, d_ff: int, dropout: float, use_bias: bool, activation: str = "swiglu"
+    ) -> None:
         """Initialize FFN with configurable activation."""
         super().__init__()
         self.activation = activation
@@ -166,7 +171,9 @@ class CausalSelfAttention(nn.Module):
             )
             self.rope_theta = rope_theta
 
-    def _shape_qkv(self, qkv: torch.Tensor, B: int, T: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _shape_qkv(
+        self, qkv: torch.Tensor, B: int, T: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Reshape fused QKV [B,T,3D] into (Q,K,V) each [B, nH, T, H]."""
         q, k, v = qkv.chunk(3, dim=-1)
         # [B, T, nH, H] -> [B, nH, T, H]
@@ -184,7 +191,11 @@ class CausalSelfAttention(nn.Module):
 
         if self.use_rope:
             # Ensure cache on correct device/dtype and length
-            if self.rope_cache.device != x.device or self.rope_cache.dtype != x.dtype or self.rope_cache.size(0) < T:
+            if (
+                self.rope_cache.device != x.device
+                or self.rope_cache.dtype != x.dtype
+                or self.rope_cache.size(0) < T
+            ):
                 self.rope_cache = _build_rope_cache(T, self.head_dim, self.rope_theta, x.device, x.dtype)
             q, k = _rope_apply(q, k, self.rope_cache[:T, :])
 
@@ -230,7 +241,9 @@ class TransformerBlock(nn.Module):
         else:
             self.ln1 = nn.LayerNorm(d_model, eps=eps)
             self.ln2 = nn.LayerNorm(d_model, eps=eps)
-        self.attn = CausalSelfAttention(d_model, n_heads, dropout, use_bias, rope, rope_theta, max_seq_len)
+        self.attn = CausalSelfAttention(
+            d_model, n_heads, dropout, use_bias, rope, rope_theta, max_seq_len
+        )
         self.dropout1 = nn.Dropout(dropout)
         self.mlp = FeedForward(d_model, d_ff, dropout, use_bias, activation=ffn_activation)
         self.dropout2 = nn.Dropout(dropout)
@@ -306,7 +319,9 @@ class TransformerLM(nn.Module):
         device = input_ids.device
         x = self.tok_emb(input_ids)  # [B, T, D]
         if self.pos_emb is not None:  # learned positional embeddings
-            assert self.cfg.max_seq_len >= T, f"Sequence length {T} exceeds max_seq_len {self.cfg.max_seq_len}"
+            assert self.cfg.max_seq_len >= T, (
+                f"Sequence length {T} exceeds max_seq_len {self.cfg.max_seq_len}"
+            )
             pos = torch.arange(T, device=device, dtype=torch.long).unsqueeze(0)  # [1, T]
             x = x + self.pos_emb(pos)
         x = self.drop(x)

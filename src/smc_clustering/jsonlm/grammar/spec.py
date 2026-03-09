@@ -1,5 +1,4 @@
-"""
-Grammar state definitions for the constrained JSON-with-<K>/<V> language.
+"""Grammar state definitions for the constrained JSON-with-<K>/<V> language.
 
 The grammar models a single JSON object whose values are arrays of strings. Strings are serialized with leading/trailing
 quote tokens, and their interiors are tokenized by byte-level BPE. The state machine is intentionally small and

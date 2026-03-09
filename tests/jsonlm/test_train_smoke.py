@@ -1,5 +1,4 @@
-"""
-End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.
+"""End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.
 
 This verifies that (1) the model and Lightning wrapper interoperate, (2) grammar masks build correctly for a real batch,
 (3) the constrained loss is finite, (4) backprop produces nonzero gradients, and (5) an optimizer step updates params.

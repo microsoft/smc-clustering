@@ -15,7 +15,9 @@ def batched_eval(f, batch_size, batched_argnums, *inputs):
     batched_input = []
     for i in range(len(inputs)):
         if i in batched_argnums:
-            batched = [inputs[i][(batch_size * j) : min(batch_size * (j + 1), n)] for j in range(n_batches)]
+            batched = [
+                inputs[i][(batch_size * j) : min(batch_size * (j + 1), n)] for j in range(n_batches)
+            ]
             batched[-1] = np.concatenate(
                 [batched[-1], np.zeros((pad_by, *inputs[i].shape[1:]), dtype=inputs[i].dtype)], axis=0
             )
@@ -29,8 +31,7 @@ def batched_eval(f, batch_size, batched_argnums, *inputs):
     ]
     if pad_by > 0:
         return jnp.concatenate(batched_output, axis=0)[:-pad_by]
-    else:
-        return jnp.concatenate(batched_output, axis=0)
+    return jnp.concatenate(batched_output, axis=0)
 
 
 def generate_batched_score_func(score_func, batch_shape=(16, 16)):
@@ -46,7 +47,10 @@ def generate_batched_score_func(score_func, batch_shape=(16, 16)):
 
         scores = []
         for cluster_batch in compute_clusters:
-            max_size = batch_shape[1] + max([0, ceil((max([len(c) for c in cluster_batch]) - batch_shape[1]) / 8)]) * 8
+            max_size = (
+                batch_shape[1]
+                + max([0, ceil((max([len(c) for c in cluster_batch]) - batch_shape[1]) / 8)]) * 8
+            )
             # prepare the data and masks
             data, masks = [], []
             for cluster in cluster_batch:
@@ -61,7 +65,9 @@ def generate_batched_score_func(score_func, batch_shape=(16, 16)):
                 data.append(jnp.concat([cluster, padding], axis=0))
 
             if len(cluster_batch) < batch_shape[0]:
-                data += [jnp.full((max_size, data_dim), float("nan"))] * (batch_shape[0] - len(compute_clusters[-1]))
+                data += [jnp.full((max_size, data_dim), float("nan"))] * (
+                    batch_shape[0] - len(compute_clusters[-1])
+                )
                 masks += [jnp.zeros((max_size,))] * (batch_shape[0] - len(compute_clusters[-1]))
 
             if len(data) > 0:
@@ -84,5 +90,4 @@ class DFWrapper:
     def __getitem__(self, row_ids):
         if type(row_ids) is int:
             return [self.df.iloc[row_ids]["name"]]
-        else:
-            return list(self.df.iloc[row_ids]["name"])
+        return list(self.df.iloc[row_ids]["name"])

@@ -1,5 +1,4 @@
-"""
-Unit tests for the Lightning module: forward shapes, loss finiteness, and mask alignment.
+"""Unit tests for the Lightning module: forward shapes, loss finiteness, and mask alignment.
 
 We build a tiny toy tokenizer and a minimal per-token linear LM to verify that training_step runs end-to-end, that
 logits/masks have the right shapes, and that the constrained loss is finite. To avoid dataloader/padding complexity,

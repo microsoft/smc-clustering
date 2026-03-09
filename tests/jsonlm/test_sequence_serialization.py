@@ -1,5 +1,4 @@
-"""
-Tests for sequence serialization functions in encoder module.
+"""Tests for sequence serialization functions in encoder module.
 
 This module tests the new entities_to_string and parse_sequence functions that handle
 multiple entities, ensuring they work correctly with the Kleene-plus grammar and maintain
@@ -313,9 +312,7 @@ def test_parse_sequence_with_braces_in_strings():
     assert parsed == entities
 
     # Also test manually constructed problematic cases
-    problematic_text = (
-        '{ <K> "code" : [ <V> "if (x) { return \\"}\\"; }" ] } { <K> "data" : [ <V> "{\\"nested\\": \\"value\\"}" ] }'
-    )
+    problematic_text = '{ <K> "code" : [ <V> "if (x) { return \\"}\\"; }" ] } { <K> "data" : [ <V> "{\\"nested\\": \\"value\\"}" ] }'
 
     parsed_problematic = parse_sequence(problematic_text)
     expected_problematic = [{"code": ['if (x) { return "}"; }']}, {"data": ['{"nested": "value"}']}]

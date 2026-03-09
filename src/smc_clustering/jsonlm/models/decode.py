@@ -1,5 +1,4 @@
-"""
-Constrained greedy decoding for valid JSON entities with <K>/<V> sentinels.
+"""Constrained greedy decoding for valid JSON entities with <K>/<V> sentinels.
 
 This decoder uses the grammar automaton to mask disallowed tokens at each step, then greedily selects the
 argmax among the allowed set. It returns a sentinel-serialized string (no BOS/EOS) that always parses into a valid

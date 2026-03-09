@@ -1,5 +1,4 @@
-"""
-Torch Dataset that reads JSONL entities or entity sequences, canonicalizes on-the-fly, and encodes to token IDs.
+"""Torch Dataset that reads JSONL entities or entity sequences, canonicalizes on-the-fly, and encodes to token IDs.
 
 The dataset builds a byte-offset index for each provided JSONL file so it can seek to a line on demand without loading
 everything into memory. For each item, it parses JSON into either dict[str, list[str]] or list[dict[str, list[str]]],
@@ -119,7 +118,9 @@ class EntityDataset(Dataset):
             assert isinstance(normalized_obj, list), "Sequence normalization should return list"
             s = entities_to_string_as_set(normalized_obj)
         else:
-            raise ValueError(f"Expected a JSON object or array in {ref.path}:{ref.lineno}, got {type(obj).__name__}")
+            raise ValueError(
+                f"Expected a JSON object or array in {ref.path}:{ref.lineno}, got {type(obj).__name__}"
+            )
 
         # Encode to IDs with BOS before sequence and EOS after sequence
         ids: list[int] = self.tokenizer.encode(s, add_bos_eos=self.add_bos_eos)

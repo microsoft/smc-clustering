@@ -1,5 +1,4 @@
-"""
-Δ-scoring CLI: read JSONL of [entity_1, entity_2] and write Δ = logP(A∪B) − logP(A) − logP(B).
+"""Δ-scoring CLI: read JSONL of [entity_1, entity_2] and write Δ = logP(A∪B) − logP(A) − logP(B).
 
 Input format:
     Each line is a JSON array with two objects, e.g.:
@@ -48,7 +47,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
@@ -77,7 +78,10 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
             try:
                 arr = json.loads(line)
                 if not (
-                    isinstance(arr, list) and len(arr) == 2 and isinstance(arr[0], dict) and isinstance(arr[1], dict)
+                    isinstance(arr, list)
+                    and len(arr) == 2
+                    and isinstance(arr[0], dict)
+                    and isinstance(arr[1], dict)
                 ):
                     raise ValueError("Line must be a JSON array of two objects.")
                 yield arr[0], arr[1]
@@ -106,7 +110,9 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--ckpt", required=True, help="Checkpoint (.ckpt or raw state_dict)")
     p.add_argument("--pairs", required=True, help="Input JSONL file with [A, B] per line")
     p.add_argument("--out", required=True, help="Output file path for Δ values")
-    p.add_argument("--format", choices=["txt", "jsonl"], default="txt", help="Output format (default: txt)")
+    p.add_argument(
+        "--format", choices=["txt", "jsonl"], default="txt", help="Output format (default: txt)"
+    )
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     return p
@@ -121,7 +127,9 @@ def main(argv: list[str] | None = None) -> None:
     model = _load_model(args.ckpt, cfg, device=device)
 
     pairs = list(_read_pairs(args.pairs))
-    deltas = compute_deltas_batched(pairs, model=model, tokenizer=tok, batch_size=args.batch_size, device=device)
+    deltas = compute_deltas_batched(
+        pairs, model=model, tokenizer=tok, batch_size=args.batch_size, device=device
+    )
 
     for pair, delta in zip(pairs, deltas, strict=False):
         print(f"Δ({pair[0]}, {pair[1]}) = {delta:.8f}")

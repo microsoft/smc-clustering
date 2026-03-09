@@ -1,5 +1,4 @@
-"""
-Tests for the tiny GPT-style Transformer: shapes, weight tying, and causality.
+"""Tests for the tiny GPT-style Transformer: shapes, weight tying, and causality.
 
 We verify logits shapes match input sizes, that lm_head is tied to tok_emb if requested, and that
 changing future tokens does not affect earlier timestep logits (causal masking).
@@ -79,7 +78,9 @@ def test_causality_no_peek_ahead() -> None:
     t_cut = min(len(idsA) - 3, 3)  # compare up to this step
     # Modify a future token deterministically: swap with BOS (harmless change).
     idsB[-3] = (
-        tok.vocabulary.token_id(",") if idsA[-3] != tok.vocabulary.token_id(",") else tok.vocabulary.token_id(":")
+        tok.vocabulary.token_id(",")
+        if idsA[-3] != tok.vocabulary.token_id(",")
+        else tok.vocabulary.token_id(":")
     )
 
     inpA = torch.tensor([idsA[:-1]], dtype=torch.long)  # [1, T]
@@ -274,7 +275,9 @@ def test_rope_configuration_options() -> None:
     assert not torch.allclose(logits1, logits2, atol=1e-3)
 
     # Test learned positional embeddings still work
-    cfg_learned = TransformerConfig(vocab_size=V, d_model=64, n_layers=1, n_heads=4, d_ff=128, pos_encoding="learned")
+    cfg_learned = TransformerConfig(
+        vocab_size=V, d_model=64, n_layers=1, n_heads=4, d_ff=128, pos_encoding="learned"
+    )
     model_learned = TransformerLM(cfg_learned).eval()
 
     with torch.no_grad():

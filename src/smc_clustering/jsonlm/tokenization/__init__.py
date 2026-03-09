@@ -1,5 +1,4 @@
-"""
-Tokenization package exposing Vocabulary and (later) tokenizer utilities.
+"""Tokenization package exposing Vocabulary and (later) tokenizer utilities.
 
 We keep vocabulary (special tokens, ids, and lookups) separate from the tokenizer implementation so that
 grammar and serialization can depend on a stable set of IDs even before BPE training. The `Vocabulary`

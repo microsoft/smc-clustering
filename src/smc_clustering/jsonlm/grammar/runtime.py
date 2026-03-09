@@ -1,5 +1,4 @@
-"""
-Vectorized grammar mask construction runtime for training and scoring.
+"""Vectorized grammar mask construction runtime for training and scoring.
 
 This module provides a cached, device-local runtime that precomputes allowed token masks and state transitions
 for all grammar states.
@@ -90,7 +89,9 @@ class GrammarRuntime:
         # First EOS position per row (T if none)
         eos_bt = self.eos_id == Y  # [B, T], bool
         idxs = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-        first_eos = torch.where(eos_bt, idxs, torch.full_like(idxs, T)).amin(dim=1)  # [B], value in [0..T]
+        first_eos = torch.where(eos_bt, idxs, torch.full_like(idxs, T)).amin(
+            dim=1
+        )  # [B], value in [0..T]
 
         # Prepare output: initialize everything to EOS-only for padding positions
         eos_only = torch.zeros(V, dtype=torch.bool, device=device)  # [V]

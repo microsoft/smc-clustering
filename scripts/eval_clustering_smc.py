@@ -1,5 +1,4 @@
-"""
-Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
+"""Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     # --- n-gram model: baseline ---
@@ -91,7 +90,9 @@ class NameBigramCluster(Cluster):
         return self.counts
 
     def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts([entity.properties["name"] for entity in data], self.n)
+        new_counts = self.counts + get_ngram_counts(
+            [entity.properties["name"] for entity in data], self.n
+        )
         return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts)
 
 
@@ -108,7 +109,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
@@ -147,13 +150,17 @@ def score_entities(
         if len(cluster) < max_cluster_size:
             entities.append(cluster)
         else:
-            entities.append(cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :])
+            entities.append(
+                cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :]
+            )
             logging.warning(
                 f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties['name']}, ... Entity N = {cluster[-1].properties['name']}"
             )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
-    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size)
+    scores = score_entities_batched(
+        entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size
+    )
 
     return np.array(scores)
 
@@ -161,13 +168,26 @@ def score_entities(
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
     p.add_argument(
-        "--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters"
+        "--config", default="./config/benchmark_conf.json", help="Path to benchmark config file"
     )
-    p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--surrogate",
+        default="./data_vm/artifacts/rebel_2gram_counts.pickle",
+        help="Surrogate model parameters",
+    )
+    p.add_argument(
+        "--task_instance",
+        type=str,
+        default="Clustering-REBEL-Small",
+        help="MS-KeBAB Linking task instance",
+    )
     p.add_argument("--out", default="./output", help="Output path for results")
     p.add_argument("--batch_size", type=int, default=256, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
@@ -217,7 +237,9 @@ def main(argv: list[str] | None = None) -> None:
     data = ListWrapper([data[i] for i in shuffled_idx])
 
     # Set up the JSON-LM model
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)
@@ -257,9 +279,7 @@ def main(argv: list[str] | None = None) -> None:
         resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
-    experiment_name = (
-        f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split else '_smc'}"
-    )
+    experiment_name = f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split else '_smc'}"
 
     # Run clustering
     t = time.time()
@@ -284,7 +304,9 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     clustering = clusterer.state.list_cluster_labels()
-    clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+    clustering = [
+        clustering[idx] for idx in unshuffled_idx
+    ]  # cluster labels for the data in the original order
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(os.path.join(args.out, experiment_name + "_clustering"), "w", encoding="utf-8") as f:
@@ -302,7 +324,10 @@ def main(argv: list[str] | None = None) -> None:
         clustering = clusterer.state.list_cluster_labels()
         subprob_labels = [
             np.where(
-                [int(cl) in clusterer.state.cluster_partition[s] for s in range(len(clusterer.state.cluster_partition))]
+                [
+                    int(cl) in clusterer.state.cluster_partition[s]
+                    for s in range(len(clusterer.state.cluster_partition))
+                ]
             )[0].item()
             for cl in clustering
         ]
@@ -312,7 +337,9 @@ def main(argv: list[str] | None = None) -> None:
             for cluster in subprob_labels:
                 f.write(str(cluster) + "\n")
 
-        subproblem_metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_subproblems")))
+        subproblem_metrics = task_instance.evaluate(
+            Path(os.path.join(args.out, experiment_name + "_subproblems"))
+        )
         for key, val in subproblem_metrics.items():
             metrics[key + "_subproblems"] = val
 

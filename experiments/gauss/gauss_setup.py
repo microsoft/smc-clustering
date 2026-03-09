@@ -48,7 +48,9 @@ def generate_gauss_dataset():
     logprops = jnp.array([jnp.log(beta[k]) + jnp.sum(jnp.log(1 - beta[:k])) for k in range(len(beta))])
 
     z_rng, rng = jax.random.split(rng)
-    z = jax.random.choice(z_rng, n_c, shape=(n,), p=jnp.exp(logprops - jax.scipy.special.logsumexp(logprops)))
+    z = jax.random.choice(
+        z_rng, n_c, shape=(n,), p=jnp.exp(logprops - jax.scipy.special.logsumexp(logprops))
+    )
 
     c_rng, rng = jax.random.split(rng)
     cluster_data = sd[z] * jax.random.normal(c_rng, (n, 2)) + means[z]
@@ -64,7 +66,9 @@ def batched_score_eval(rng, clusters):
     summary = np.concatenate(
         [
             np.array([np.sum(cl, axis=0) if len(cl.shape) > 1 else cl for cl in clusters])[:, None, :],
-            np.array([np.sum(cl**2, axis=0) if len(cl.shape) > 1 else cl**2 for cl in clusters])[:, None, :],
+            np.array([np.sum(cl**2, axis=0) if len(cl.shape) > 1 else cl**2 for cl in clusters])[
+                :, None, :
+            ],
         ],
         axis=1,
     )

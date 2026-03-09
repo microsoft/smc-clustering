@@ -162,10 +162,14 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--out-root", default="./sweep_outputs", help="Root directory for sweep outputs")
     p.add_argument("--dry-run", action="store_true", help="Print commands without running them")
     # Collect arbitrary passthrough args after '--'
-    p.add_argument("--", dest="passthrough", nargs=argparse.REMAINDER, help="Arguments after -- are passed verbatim")
+    p.add_argument(
+        "--", dest="passthrough", nargs=argparse.REMAINDER, help="Arguments after -- are passed verbatim"
+    )
 
     # Known arguments (may be swept)
-    p.add_argument("--task_instance", required=True, help="Task instance name (always included in output path)")
+    p.add_argument(
+        "--task_instance", required=True, help="Task instance name (always included in output path)"
+    )
     for arg in sorted(SWEEP_PARAMS):
         p.add_argument(f"--{arg}", required=False, help=f"Value or list for {arg}")
 
@@ -222,7 +226,11 @@ def generate_combos(
     if not tied_combos:
         return []
 
-    return [{**cartesian_combo, **tied_combo} for tied_combo in tied_combos for cartesian_combo in cartesian_combos]
+    return [
+        {**cartesian_combo, **tied_combo}
+        for tied_combo in tied_combos
+        for cartesian_combo in cartesian_combos
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -258,7 +266,9 @@ def main(argv: list[str] | None = None) -> int:
             cartesian_inputs[name] = spec.values
 
     if not cartesian_inputs and not tied_inputs:
-        logging.error("No sweep parameters provided; specify at least one of: %s", ", ".join(sorted(SWEEP_PARAMS)))
+        logging.error(
+            "No sweep parameters provided; specify at least one of: %s", ", ".join(sorted(SWEEP_PARAMS))
+        )
         return 2
 
     # Generate all combinations

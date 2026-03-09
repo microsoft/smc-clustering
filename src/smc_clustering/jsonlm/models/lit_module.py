@@ -1,5 +1,4 @@
-"""
-PyTorch Lightning module that trains a next-token LM with grammar-constrained NLL.
+"""PyTorch Lightning module that trains a next-token LM with grammar-constrained NLL.
 
 This module wraps an arbitrary model that maps input token IDs → logits [B, T, V] and enforces the project grammar
 (<K>/<V>, quotes, JSON punctuation) via per-step allowed-token masks. Targets are teacher-forced (shifted by one),
@@ -111,13 +110,19 @@ class LitConstrainedLM(LightningModule):
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Run the underlying model to produce logits [B, T, V]."""
         logits = self.model(input_ids)  # expected shape [B, T, V]
-        assert logits.dim() == 3 and logits.shape[0] == input_ids.shape[0] and logits.shape[1] == input_ids.shape[1], (
+        assert (
+            logits.dim() == 3
+            and logits.shape[0] == input_ids.shape[0]
+            and logits.shape[1] == input_ids.shape[1]
+        ), (
             f"Model must return [B, T, V] logits for input [B, T]; got {tuple(logits.shape)} "
             f"for input {tuple(input_ids.shape)}"
         )
         return logits
 
-    def _shared_step(self, batch: torch.Tensor, stage: str) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def _shared_step(
+        self, batch: torch.Tensor, stage: str
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Compute constrained loss + metrics for a batch and log scalar summaries.
 
         Args:
@@ -128,7 +133,9 @@ class LitConstrainedLM(LightningModule):
             loss: Scalar tensor used by Lightning for optimization.
             logs: Dict of logged metrics for potential external consumption.
         """
-        assert batch.dim() == 2 and batch.dtype == torch.long, f"Batch must be [B, T] long, got {tuple(batch.shape)}"
+        assert batch.dim() == 2 and batch.dtype == torch.long, (
+            f"Batch must be [B, T] long, got {tuple(batch.shape)}"
+        )
         # Inputs predict "next" tokens; targets are the shifted stream.
         input_ids = batch[:, :-1]  # [B, T]
         target_ids = batch[:, 1:]  # [B, T]
@@ -166,8 +173,17 @@ class LitConstrainedLM(LightningModule):
             acc = (pred == target_ids).float().mean()  # scalar
 
         # Log scalars (Lightning handles aggregation).
-        self.log(f"{stage}/loss", loss, prog_bar=True, on_step=(stage == "train"), on_epoch=True, batch_size=B)
-        self.log(f"{stage}/invalid_mass", inv_mass_mean, prog_bar=False, on_step=False, on_epoch=True, batch_size=B)
+        self.log(
+            f"{stage}/loss", loss, prog_bar=True, on_step=(stage == "train"), on_epoch=True, batch_size=B
+        )
+        self.log(
+            f"{stage}/invalid_mass",
+            inv_mass_mean,
+            prog_bar=False,
+            on_step=False,
+            on_epoch=True,
+            batch_size=B,
+        )
         self.log(f"{stage}/acc", acc, prog_bar=True, on_step=False, on_epoch=True, batch_size=B)
 
         logs = {"loss": loss, "invalid_mass": inv_mass_mean, "acc": acc}

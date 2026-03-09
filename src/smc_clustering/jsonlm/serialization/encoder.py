@@ -1,5 +1,4 @@
-"""
-Canonicalization and textual serialization/parsing for JSON-entity dicts.
+"""Canonicalization and textual serialization/parsing for JSON-entity dicts.
 
 This module converts raw Python entities of type dict[str, list[str]] into a deterministic, canonical form and a stable
 training string that includes structural sentinels (<K>, <V>) alongside JSON punctuation. Parsing performs strict
@@ -241,7 +240,9 @@ def parse_entity(text: str, *, _tokens: list[Token] | None = None) -> dict[str, 
         # STRING token contains the decoded Python str value at index 1.
         key_tok = tokens[pos]
         if key_tok[0] != "STRING":
-            raise ValueError(f"Expected string literal for key after <K>, got {key_tok[0]!r} at position {pos}")
+            raise ValueError(
+                f"Expected string literal for key after <K>, got {key_tok[0]!r} at position {pos}"
+            )
         key = key_tok[1]  # type: ignore[index]
         pos += 1
 

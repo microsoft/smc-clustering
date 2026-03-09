@@ -1,5 +1,4 @@
-"""
-Padding-aware collate utilities for batching BOS…EOS sequences.
+"""Padding-aware collate utilities for batching BOS…EOS sequences.
 
 We batch variable-length [T] LongTensors returned by EntityDataset by padding each row to the batch maximum length.
 To keep the constrained-loss well-defined and grammar-friendly, we fill the padded tail with **EOS** (not PAD). The

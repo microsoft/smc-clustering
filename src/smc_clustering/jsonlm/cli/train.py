@@ -1,5 +1,4 @@
-"""
-Training CLI for grammar-constrained JSON-entity language modeling.
+"""Training CLI for grammar-constrained JSON-entity language modeling.
 
 This script:
   1) Trains the Byte-Level BPE tokenizer on the interiors of quoted strings from the TRAIN JSONL files.
@@ -70,7 +69,9 @@ def _is_wandb_configured() -> bool:
         return False
 
 
-def _save_artifacts(save_dir: str, vocab: Vocabulary, tokenizer_bpe_json: str, cfg: TransformerConfig) -> None:
+def _save_artifacts(
+    save_dir: str, vocab: Vocabulary, tokenizer_bpe_json: str, cfg: TransformerConfig
+) -> None:
     """Persist artifacts: `vocab.json`, `bpe.json`, and `config.json` in `save_dir`."""
     os.makedirs(save_dir, exist_ok=True)
     # Save Vocabulary as ordered token list (strings).
@@ -82,7 +83,10 @@ def _save_artifacts(save_dir: str, vocab: Vocabulary, tokenizer_bpe_json: str, c
     bpe_target = os.path.join(save_dir, "bpe.json")
     if tokenizer_bpe_json != bpe_target:
         # Copy by reading & writing to avoid shutil dependency.
-        with open(tokenizer_bpe_json, encoding="utf-8") as src, open(bpe_target, "w", encoding="utf-8") as dst:
+        with (
+            open(tokenizer_bpe_json, encoding="utf-8") as src,
+            open(bpe_target, "w", encoding="utf-8") as dst,
+        ):
             dst.write(src.read())
 
     # Save transformer config (dataclass -> dict).
@@ -109,16 +113,22 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
                             raise ValueError(f"List items must all be dicts in {p}:{lineno}")
                         # Normalize sequence by removing legacy "properties" wrappers if present
                         normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
-                        assert isinstance(normalized_obj, list), "Sequence normalization should return list"
+                        assert isinstance(normalized_obj, list), (
+                            "Sequence normalization should return list"
+                        )
                         yield entities_to_string_as_set(normalized_obj)
                     elif isinstance(obj, dict):
                         # Normalize entity by removing legacy "properties" wrapper if present
                         normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
-                        assert isinstance(normalized_obj, dict), "Single entity normalization should return dict"
+                        assert isinstance(normalized_obj, dict), (
+                            "Single entity normalization should return dict"
+                        )
                         # Single entity: serialize with entity_to_string
                         yield entity_to_string(normalized_obj)
                     else:
-                        raise ValueError(f"Expected a JSON object or array in {p}:{lineno}, got {type(obj).__name__}")
+                        raise ValueError(
+                            f"Expected a JSON object or array in {p}:{lineno}, got {type(obj).__name__}"
+                        )
                 except json.JSONDecodeError as e:
                     raise ValueError(f"JSON parse error in {p}:{lineno}: {e.msg}") from e
 
@@ -160,10 +170,17 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--train", nargs="+", required=True, help="Path(s) to train JSONL file(s).")
     p.add_argument("--val", nargs="+", required=True, help="Path(s) to val JSONL file(s).")
     p.add_argument("--save_dir", required=True, help="Directory to save artifacts and checkpoints.")
-    p.add_argument("--resume_from", default=None, help="Path to Lightning checkpoint (.ckpt) to resume from.")
+    p.add_argument(
+        "--resume_from", default=None, help="Path to Lightning checkpoint (.ckpt) to resume from."
+    )
 
     # Tokenizer / vocab
-    p.add_argument("--bpe_vocab_size", type=int, default=1200, help="Byte-Level BPE vocab size for string interiors.")
+    p.add_argument(
+        "--bpe_vocab_size",
+        type=int,
+        default=1200,
+        help="Byte-Level BPE vocab size for string interiors.",
+    )
 
     # Model
     p.add_argument("--d_model", type=int, default=256)
@@ -206,7 +223,9 @@ def build_argparser() -> argparse.ArgumentParser:
 
     # Misc
     p.add_argument("--num_workers", type=int, default=0)
-    p.add_argument("--decode_every", type=int, default=200, help="If >0, print a decode every N train steps.")
+    p.add_argument(
+        "--decode_every", type=int, default=200, help="If >0, print a decode every N train steps."
+    )
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     return p
 
@@ -234,7 +253,9 @@ def main(argv: list[str] | None = None) -> None:
         len(args.train),
     )
     vocab = Vocabulary.from_default()
-    tok = train_tokenizer(_train_corpus_lines(args.train), vocabulary=vocab, bpe_vocab_size=args.bpe_vocab_size)
+    tok = train_tokenizer(
+        _train_corpus_lines(args.train), vocabulary=vocab, bpe_vocab_size=args.bpe_vocab_size
+    )
 
     # Save tokenizer artifacts (HF tokenizer save returns a path).
     tmp_bpe_path = os.path.join(args.save_dir, "_tmp_bpe.json")
@@ -271,8 +292,12 @@ def main(argv: list[str] | None = None) -> None:
 
     # Datasets / loaders
     logger.info("Indexing training and validation datasets from JSONL files")
-    train_ds = EntityDataset(paths=list(args.train), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True)
-    val_ds = EntityDataset(paths=list(args.val), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True)
+    train_ds = EntityDataset(
+        paths=list(args.train), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True
+    )
+    val_ds = EntityDataset(
+        paths=list(args.val), tokenizer=tok, max_length=args.max_seq_len, add_bos_eos=True
+    )
     try:  # noqa: SIM105
         logger.info("Dataset sizes: train=%d, val=%d", len(train_ds), len(val_ds))
     except Exception:  # noqa: BLE001, S110
@@ -383,7 +408,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.resume_from:
         logger.info("Resuming from checkpoint: %s", args.resume_from)
     logger.info("Starting training loop")
-    trainer.fit(lit, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=args.resume_from)
+    trainer.fit(
+        lit, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=args.resume_from
+    )
 
     # Cleanup tmp file if present
     try:

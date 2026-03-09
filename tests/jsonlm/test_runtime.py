@@ -1,5 +1,4 @@
-"""
-Unit tests for the unified grammar runtime system.
+"""Unit tests for the unified grammar runtime system.
 
 Tests verify equivalence with the old per-step automaton approach, proper EOS handling,
 correct shapes, and caching behavior across different devices and tokenizers.
@@ -143,7 +142,9 @@ def test_post_eos_behavior():
     for t in range(1, T):
         expected_mask = torch.zeros(V, dtype=torch.bool, device=device)
         expected_mask[eos_id] = True
-        assert torch.equal(masks[1, t], expected_mask), f"Row 1, timestep {t} should be EOS-only after early EOS"
+        assert torch.equal(masks[1, t], expected_mask), (
+            f"Row 1, timestep {t} should be EOS-only after early EOS"
+        )
 
 
 def test_shapes_match_model_outputs():

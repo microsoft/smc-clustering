@@ -1,5 +1,4 @@
-"""
-Constrained negative log-likelihood under grammar masks for teacher forcing.
+"""Constrained negative log-likelihood under grammar masks for teacher forcing.
 
 This module masks out disallowed tokens at each step (per the grammar), renormalizes with log_softmax over the allowed
 set, and gathers the gold token's log-probabilities. It raises errors if a position has no allowed tokens or if
@@ -31,7 +30,9 @@ def apply_mask_and_logprobs(logits: torch.Tensor, mask: torch.BoolTensor) -> tor
         ValueError: If any timestep has no allowed tokens (mask all False along V).
     """
     assert logits.dim() == 3, f"Expected logits [B, T, V], got {tuple(logits.shape)}"
-    assert mask.shape == logits.shape, f"Mask shape {tuple(mask.shape)} must match logits {tuple(logits.shape)}"
+    assert mask.shape == logits.shape, (
+        f"Mask shape {tuple(mask.shape)} must match logits {tuple(logits.shape)}"
+    )
 
     # Ensure at least one allowed token per position to avoid NaNs from log_softmax(all -inf).
     allowed_any = mask.any(dim=-1)  # [B, T]
@@ -74,7 +75,9 @@ def constrained_nll(
     """
     assert logits.dim() == 3, f"logits must be [B, T, V], got {tuple(logits.shape)}"
     assert target_ids.dim() == 2, f"target_ids must be [B, T], got {tuple(target_ids.shape)}"
-    assert masks.shape == logits.shape, f"masks must match logits; got {tuple(masks.shape)} vs {tuple(logits.shape)}"
+    assert masks.shape == logits.shape, (
+        f"masks must match logits; got {tuple(masks.shape)} vs {tuple(logits.shape)}"
+    )
     B, T, V = logits.shape
     assert target_ids.shape == (B, T), "target_ids shape must be [B, T]"
     if weights is not None:
@@ -103,13 +106,12 @@ def constrained_nll(
             loss = nll.sum()
         else:
             raise ValueError(f"Unknown reduction: {reduction!r}")
+    elif reduction == "mean":
+        loss = nll.mean()
+    elif reduction == "sum":
+        loss = nll.sum()
     else:
-        if reduction == "mean":
-            loss = nll.mean()
-        elif reduction == "sum":
-            loss = nll.sum()
-        else:
-            raise ValueError(f"Unknown reduction: {reduction!r}")
+        raise ValueError(f"Unknown reduction: {reduction!r}")
     return loss, nll
 
 

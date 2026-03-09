@@ -1,5 +1,4 @@
-"""
-Evaluate JSON-LM linking performance in MS-KeBAB.
+"""Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:
     uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Test
@@ -49,7 +48,9 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
     vocab = Vocabulary.from_tokens(tokens)
 
     bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
     with open(cfg_path, encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
@@ -86,9 +87,15 @@ def _load_linking_pairs(task_instance: Task) -> list[tuple[dict, dict]]:
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
-    p.add_argument("--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance")
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance"
+    )
     p.add_argument(
         "--skip_calibration",
         action="store_true",
@@ -114,7 +121,9 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logging.info(f"Arguments: {args}")
 
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)
@@ -140,7 +149,12 @@ def main(argv: list[str] | None = None) -> None:
             start = pc()
 
             deltas = compute_deltas_batched(
-                pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
+                pairs,
+                model=model,
+                tokenizer=tok,
+                offset=args.offset,
+                batch_size=args.batch_size,
+                device=device,
             )
 
             end = pc()
@@ -150,7 +164,12 @@ def main(argv: list[str] | None = None) -> None:
         start = pc()
 
         deltas = compute_deltas_batched(
-            pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
+            pairs,
+            model=model,
+            tokenizer=tok,
+            offset=args.offset,
+            batch_size=args.batch_size,
+            device=device,
         )
 
         end = pc()

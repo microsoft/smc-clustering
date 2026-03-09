@@ -16,9 +16,7 @@ from smc_clustering.clustering.utils import batched_eval
 
 # ====================== Surrogate models ======================
 class Gaussian:
-    """
-    Gaussian model with normal-inverse-gamma prior on cluster parameters
-    """
+    """Gaussian model with normal-inverse-gamma prior on cluster parameters"""
 
     def __init__(self, a, b, mu, lam):
         self.alpha_0 = a
@@ -39,7 +37,9 @@ class Gaussian:
         )
 
         return jnp.sum(
-            jax.scipy.stats.t.logpdf(x, df=2 * alpha, loc=mu, scale=jnp.sqrt(beta * (lam + 1) / (alpha * lam)))
+            jax.scipy.stats.t.logpdf(
+                x, df=2 * alpha, loc=mu, scale=jnp.sqrt(beta * (lam + 1) / (alpha * lam))
+            )
         )
 
     def post_predictive(self, x, n, summary):
@@ -73,9 +73,7 @@ class Gaussian:
 
 
 class Bernoulli:
-    """
-    Bernoulli model with beta prior on cluster parameters
-    """
+    """Bernoulli model with beta prior on cluster parameters"""
 
     def __init__(self, a, b):
         self.alpha_0 = a
@@ -114,9 +112,7 @@ class Bernoulli:
 
 
 def get_counts(strings):
-    """
-    Convert strings to ASCII and get character counts
-    """
+    """Convert strings to ASCII and get character counts"""
     counts = np.zeros((26,), dtype=np.int32)
     for string in strings:
         string = unidecode(string).lower()
@@ -128,9 +124,7 @@ def get_counts(strings):
 
 
 class CountDict(dict):
-    """
-    Dictionary with a default value. Does not insert new keys into the dictionary.
-    """
+    """Dictionary with a default value. Does not insert new keys into the dictionary."""
 
     def __init__(self, default_val, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -147,9 +141,7 @@ class CountDict(dict):
 
 
 class Multinomial:
-    """
-    Multinomial model with Dirichlet prior on frequencies
-    """
+    """Multinomial model with Dirichlet prior on frequencies"""
 
     def __init__(self, alpha_0):
         self.alpha_0 = alpha_0
@@ -169,7 +161,9 @@ class Multinomial:
 
     def post_predictive(self, x, n, summary):
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
-        return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten())
+        return np.array(
+            batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten()
+        )
 
     @functools.partial(jax.jit, static_argnums=(0))
     @functools.partial(jax.vmap, in_axes=(None, 0, 0))
@@ -180,7 +174,10 @@ class Multinomial:
             - jnp.sum(jax.scipy.special.gammaln(summary + 1))
             + jax.scipy.special.gammaln(sum_alpha)
             - jax.scipy.special.gammaln(sum_alpha + n)
-            + jnp.sum(jax.scipy.special.gammaln(summary + self.alpha_0) - jax.scipy.special.gammaln(self.alpha_0))
+            + jnp.sum(
+                jax.scipy.special.gammaln(summary + self.alpha_0)
+                - jax.scipy.special.gammaln(self.alpha_0)
+            )
         )
 
     def evidence(self, n, summary):
@@ -189,9 +186,7 @@ class Multinomial:
 
 
 def get_ngrams(string, n):
-    """
-    Convert string to ASCII and get n-grams
-    """
+    """Convert string to ASCII and get n-grams"""
     string = re.sub(r"[^a-z0-9 \-]", "", unidecode(string.strip()).lower())
     return nltk.everygrams(" " * (n - 1) + string + "E", max_len=n, min_len=n - 1)
 
@@ -230,9 +225,7 @@ def dirichlet_categorical_logpmf_numpy(x, alphas, sum_alpha):
 
 
 class Ngram:
-    """
-    N-gram model with Dirichlet prior on n-gram frequencies
-    """
+    """N-gram model with Dirichlet prior on n-gram frequencies"""
 
     def __init__(self, prior_scale, prior_counts, n=2):
         self.prior_scale = prior_scale
@@ -250,17 +243,23 @@ class Ngram:
 
         LL = np.zeros(len(summary))
         for h in histories:
-            continuations = [ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n]
+            continuations = [
+                ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n
+            ]
             x = np.array([counts[ngram] for ngram in continuations])
             alphas = np.array(
                 [
-                    [summary[i][ngram] + self.prior_scale * self.prior_counts[ngram] for ngram in continuations]
+                    [
+                        summary[i][ngram] + self.prior_scale * self.prior_counts[ngram]
+                        for ngram in continuations
+                    ]
                     for i in range(n.shape[0])
                 ]
             )
             sum_alphas = np.array(
                 [
-                    summary[i][h] + self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])
+                    summary[i][h]
+                    + self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])
                     for i in range(n.shape[0])
                 ]
             )
@@ -278,7 +277,9 @@ class Ngram:
         histories = [h for h in summary.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
         LL = 0
         for h in histories:
-            continuations = [ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n]
+            continuations = [
+                ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n
+            ]
             x = np.array([summary[ngram] for ngram in continuations])
             alphas = np.array([self.prior_scale * self.prior_counts[ngram] for ngram in continuations])
             sum_alphas = self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])
@@ -286,7 +287,9 @@ class Ngram:
             if summary[h] == 1:
                 LL += np.log(alphas) - np.log(sum_alphas)
             else:
-                LL += dirichlet_categorical_logpmf_numpy(x, alphas[None, :], np.array([sum_alphas])[None, :]).flatten()
+                LL += dirichlet_categorical_logpmf_numpy(
+                    x, alphas[None, :], np.array([sum_alphas])[None, :]
+                ).flatten()
 
         return LL
 
@@ -308,9 +311,7 @@ class Trigram(Ngram):
 
 
 class GaussianCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a Gaussian model
-    """
+    """Cluster subclass with summary statistics for a Gaussian model"""
 
     def __init__(self, data_ids, dim=2, Sx=None, Sxx=None, data=None):
         super().__init__(data_ids)
@@ -344,9 +345,7 @@ class GaussianCluster(Cluster):
 
 
 class BernoulliCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a Bernoulli model
-    """
+    """Cluster subclass with summary statistics for a Bernoulli model"""
 
     def __init__(self, data_ids, dim=1, Sy=None, data=None):
         super().__init__(data_ids)
@@ -372,9 +371,7 @@ class BernoulliCluster(Cluster):
 
 
 class MultinomialCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a multinomial model
-    """
+    """Cluster subclass with summary statistics for a multinomial model"""
 
     def __init__(self, data_ids, dim, data=None):
         super().__init__(data_ids)
@@ -393,9 +390,7 @@ class MultinomialCluster(Cluster):
 
 
 class WordCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for a bag-of-words model
-    """
+    """Cluster subclass with summary statistics for a bag-of-words model"""
 
     def __init__(self, data_ids, dim=26, counts=None, data=None):
         super().__init__(data_ids)
@@ -417,9 +412,7 @@ class WordCluster(Cluster):
 
 
 class NgramCluster(Cluster):
-    """
-    Cluster subclass with summary statistics for an n-gram model
-    """
+    """Cluster subclass with summary statistics for an n-gram model"""
 
     def __init__(self, data_ids, n=2, counts=None, data=None):
         super().__init__(data_ids)

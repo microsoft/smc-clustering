@@ -29,7 +29,9 @@ def load_model(checkpoint_path="checkpoints"):
     schedule = LinearSchedule()
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
 
-    raw_restored = checkpoints.restore_checkpoint(ckpt_dir=os.path.join(os.getcwd(), checkpoint_path), target=None)
+    raw_restored = checkpoints.restore_checkpoint(
+        ckpt_dir=os.path.join(os.getcwd(), checkpoint_path), target=None
+    )
     model.params = {"params": raw_restored["model"]["params"]}
     model.compile_net()
 
@@ -88,7 +90,9 @@ def generate_circles(
 
 def generate_circles_dataset():
     rng = jax.random.PRNGKey(23)
-    circles_valid, masks_valid = generate_circles(rng, 15, min_points=10, max_points=30, min_radius=0.6, max_radius=0.6)
+    circles_valid, masks_valid = generate_circles(
+        rng, 15, min_points=10, max_points=30, min_radius=0.6, max_radius=0.6
+    )
 
     cluster_data = []
     labels = []

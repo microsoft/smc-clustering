@@ -1,5 +1,4 @@
-"""
-Filter a JSONL dataset by labels, keeping at most N unique labels.
+"""Filter a JSONL dataset by labels, keeping at most N unique labels.
 
 If a "confusing entities" map is provided (JSONL lines of [entity_id, [confusing_entity_ids...]]), then accepting a
 label will also accept all of its confusing labels (provided doing so does not exceed the unique limit). This is done
@@ -41,7 +40,11 @@ def build_argparser() -> argparse.ArgumentParser:
     """Build and return the argument parser for the script."""
     p = argparse.ArgumentParser(description="Filter a JSONL dataset by labels")
     p.add_argument("--dataset", required=True, help="Path to input JSONL dataset")
-    p.add_argument("--labels", required=True, help="Path to labels file (one label per line, in same order as dataset)")
+    p.add_argument(
+        "--labels",
+        required=True,
+        help="Path to labels file (one label per line, in same order as dataset)",
+    )
     p.add_argument(
         "--max-unique",
         type=int,
@@ -213,7 +216,9 @@ def filter_dataset(
                 )
 
     # Construct label -> cluster mapping directly from map; unseen labels are singletons.
-    label_to_cluster: dict[str, set[str]] = {root: set(cluster) for root, cluster in confusing_map.items()}
+    label_to_cluster: dict[str, set[str]] = {
+        root: set(cluster) for root, cluster in confusing_map.items()
+    }
     missing_singletons: list[str] = []
     for lbl in all_labels:
         if lbl not in label_to_cluster:
@@ -266,7 +271,10 @@ def filter_dataset(
             effective_cluster = cluster if cluster_size >= min_confusing_cluster_size else {label}
 
             original_effective_size = len(effective_cluster)
-            if max_confusing_cluster_entities and len(effective_cluster) > max_confusing_cluster_entities:
+            if (
+                max_confusing_cluster_entities
+                and len(effective_cluster) > max_confusing_cluster_entities
+            ):
                 # Deterministic truncation: always include the triggering label, then add others in sorted order
                 others = sorted(x for x in effective_cluster if x != label)
                 take = max_confusing_cluster_entities - 1  # already including label
@@ -333,7 +341,9 @@ def main(argv: list[str] | None = None) -> int:
     logging.info(
         f"Done. Wrote filtered dataset to: {args.out or '<derived>'} and labels to: {args.out_labels or '<derived>'}"
     )
-    logging.info(f"Stats -> processed: {processed}, kept: {kept}, skipped: {skipped}, unique_labels: {unique}")
+    logging.info(
+        f"Stats -> processed: {processed}, kept: {kept}, skipped: {skipped}, unique_labels: {unique}"
+    )
     return 0
 
 

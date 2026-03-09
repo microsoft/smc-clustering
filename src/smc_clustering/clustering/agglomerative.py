@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from smc_clustering.clustering import Cluster
+from clustering.cluster import Cluster
 
 class Clusterer:
     def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):

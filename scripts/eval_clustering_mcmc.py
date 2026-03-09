@@ -26,9 +26,9 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from smc_clustering.clustering import Cluster, DirichletProcess
-from smc_clustering.mcmc import GibbsClusterer
-from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+from clustering.cluster import Cluster, DirichletProcess
+from clustering.mcmc import GibbsClusterer
+from clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
 
 from jsonlm.models.scoring import score_entities_batched
 from jsonlm.models.transformer import TransformerConfig, TransformerLM
@@ -232,13 +232,13 @@ def main(argv: list[str] | None = None) -> None:
     # Set up the SMC clustering components
     prior = DirichletProcess(args.alpha)
 
-    if args.use_surrogate:        
+    if args.use_surrogate:
         with open(args.surrogate, "rb") as f:
             count_dict = pickle.load(f)
 
         logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
 
-        prior_counts = CountDict(count_dict["<UNK>"], count_dict)        
+        prior_counts = CountDict(count_dict["<UNK>"], count_dict)
         surrogate = NameBigram(args.prior_scale, prior_counts)
     else:
         surrogate = None

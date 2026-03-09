@@ -26,9 +26,9 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from smc_clustering.clustering import Cluster, DirichletProcess
-from smc_clustering.agglomerative import Clusterer
-from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+from clustering.cluster import Cluster, DirichletProcess
+from clustering.agglomerative import Clusterer
+from clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
 
 from jsonlm.models.scoring import score_entities_batched
 from jsonlm.models.transformer import TransformerConfig, TransformerLM

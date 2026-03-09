@@ -1,5 +1,5 @@
 [project]
-name = "diffusion_linking"
+name = "smc_clustering"
 version = "0.0.1"
 description = "Research on entity clustering using SMC methods."
 readme = "README.md"

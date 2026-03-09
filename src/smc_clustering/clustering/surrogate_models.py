@@ -10,8 +10,8 @@ import numpy as np
 import scipy
 from unidecode import unidecode
 
-from smc_clustering.clustering import Cluster
-from smc_clustering.utils import batched_eval
+from clustering.cluster import Cluster
+from clustering.utils import batched_eval
 
 
 # ====================== Surrogate models ======================
@@ -90,7 +90,7 @@ class Bernoulli:
     def post_predictive(self, x, n, summary):
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)))
-    
+
     @functools.partial(jax.jit, static_argnums=(0))
     @functools.partial(jax.vmap, in_axes=(None, 0, 0))
     def _evidence(self, n, Sy):
@@ -105,7 +105,7 @@ class Bernoulli:
             - jax.scipy.special.gammaln(alpha + beta)
             + jax.scipy.special.gammaln(self.alpha_0 + self.beta_0)
         )
-    
+
     def evidence(self, n, summary):
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
@@ -179,7 +179,7 @@ class Multinomial:
             - jax.scipy.special.gammaln(sum_alpha + n)
             + jnp.sum(jax.scipy.special.gammaln(summary + self.alpha_0) - jax.scipy.special.gammaln(self.alpha_0))
         )
-    
+
     def evidence(self, n, summary):
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
@@ -283,7 +283,7 @@ class Ngram:
                 LL += dirichlet_categorical_logpmf_numpy(x, alphas[None, :], np.array([sum_alphas])[None, :]).flatten()
 
         return LL
-    
+
     def evidence(self, n, summary):
         return np.array([self._evidence(n[i], summary[i]) for i in range(len(n))])
 

@@ -7,9 +7,9 @@ import numpy as np
 from flax.training import checkpoints
 
 
-import smc_clustering
-from smc_clustering.surrogate_models import Gaussian, GaussianCluster
-from smc_clustering.clustering import DirichletProcess
+import clustering
+from clustering.surrogate_models import Gaussian, GaussianCluster
+from clustering.cluster import DirichletProcess
 from diffusion.schedule import LinearSchedule
 from diffusion.diffusion import VariationalDiffusion
 
@@ -28,13 +28,13 @@ def load_model(checkpoint_path='checkpoints'):
     raw_restored = checkpoints.restore_checkpoint(ckpt_dir=os.path.join(os.getcwd(), checkpoint_path), target=None)
     model.params = {'params':raw_restored['model']['params']}
     model.compile_net()
-    
+
     num_time_steps = 100
     def score_func(rng, data, masks):
         scores, _ = model.log_prob_ode(rng, data, masks, num_time_steps=num_time_steps)
         return scores
-    batched_score_eval = smc_clustering.utils.generate_batched_score_func(score_func, batch_shape=(8,8))
-    
+    batched_score_eval = clustering.utils.generate_batched_score_func(score_func, batch_shape=(8,8))
+
     return batched_score_eval
 
 def generate_circles(
@@ -93,7 +93,7 @@ def generate_circles_dataset():
 
     labels = np.array(labels)
     data = np.array(cluster_data).squeeze(1)
-    
+
     return data, labels
 
 

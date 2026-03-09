@@ -2,8 +2,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from smc_clustering.surrogate_models import Gaussian, GaussianCluster
-from smc_clustering.clustering import DirichletProcess
+from clustering.surrogate_models import Gaussian, GaussianCluster
+from clustering.cluster import DirichletProcess
 
 d = 2
 a=2; b=.5; mu=0; lam=0.0002
@@ -47,7 +47,7 @@ def generate_gauss_dataset():
 
     labels = np.array(z)
     data = np.array(cluster_data)
-    
+
     return data, labels
 
 def batched_score_eval(rng, clusters):

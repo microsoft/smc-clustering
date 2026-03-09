@@ -6,7 +6,7 @@ import scipy
 import numpy as np
 from tqdm import tqdm
 
-from smc_clustering.clustering import Cluster
+from clustering.cluster import Cluster
 
 
 logger = logging.getLogger(__name__)
@@ -162,16 +162,16 @@ class GibbsClusterer:
                 compute_clusters.append(old_cluster)
             else:
                 old_cluster = None
-                
+
             new_cluster = self.clusters[new_k].add(i) if new_k < len(self.clusters) else frozenset({i})
             compute_clusters.append(new_cluster)
-                
+
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(rng, compute_clusters)
-            
+
             ll_new_cluster_without_i = self.score_cache[self.clusters[new_k].hash] if new_k < len(self.clusters) else 0
             ll_old_cluster_without_i = self.score_cache[hash(old_cluster)] if old_cluster is not None else 0
-            
+
             a = (
                 self.score_cache[hash(new_cluster)]
                 - ll_new_cluster_without_i

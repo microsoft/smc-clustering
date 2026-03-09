@@ -131,22 +131,23 @@ class NameBigramCluster(Cluster):
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
     """Load tokenizer and model config from artifacts directory."""
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
+    bpe = HFTokenizer.from_file(str(bpe_path))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
 
     return tok, cfg
@@ -272,7 +273,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.info(f"Loaded model from {args.ckpt}")
 
     # Set up the SMC clustering components
-    with open("./data_vm/artifacts/wikipedia_names_2gram_counts.pickle", "rb") as f:
+    with Path("./data_vm/artifacts/wikipedia_names_2gram_counts.pickle").open("rb") as f:
         count_dict = pickle.load(f)
 
     logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
@@ -305,12 +306,13 @@ def main(argv: list[str] | None = None) -> None:
 
     # Evaluate metrics and save results
     clustering = clusterer.state.list_cluster_labels()
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
 
-    metrics = task_instance.evaluate(Path(args.out))
+    metrics = task_instance.evaluate(out_path)
 
     # if n_evals[-1] > 0:
     #     ll = sum(

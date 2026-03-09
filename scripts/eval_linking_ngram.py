@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import collections
 import logging
-import os
 import pickle
 from collections.abc import Iterable
 from pathlib import Path
@@ -82,8 +81,8 @@ def build_argparser() -> argparse.ArgumentParser:
 
 def _load_ngram_prior(artifacts_dir: str) -> CountDict:
     """Load prior bigram counts (wikipedia_names_2gram_counts.pickle)."""
-    path = os.path.join(artifacts_dir, "wikipedia_names_2gram_counts.pickle")
-    with open(path, "rb") as f:
+    path = Path(artifacts_dir) / "wikipedia_names_2gram_counts.pickle"
+    with path.open("rb") as f:
         # Trusted artifact within repo context; pickle acceptable here.
         count_dict = pickle.load(f)
     if "<UNK>" not in count_dict:
@@ -146,10 +145,11 @@ def main(argv: list[str] | None = None) -> None:
     elapsed = float(end - start)
     logging.info("Time (s): %.4f", elapsed)
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    np.savetxt(args.out, deltas)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(out_path, deltas)
 
-    metrics = task_instance.evaluate(Path(args.out))
+    metrics = task_instance.evaluate(out_path)
     metrics["Total Time (s)"] = elapsed
     metrics["Candidates per Second (C/s)"] = len(pairs) / elapsed if elapsed > 0 else float("inf")
 

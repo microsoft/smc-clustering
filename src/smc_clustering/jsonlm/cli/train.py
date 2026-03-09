@@ -19,8 +19,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import random
+from pathlib import Path
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from functools import partial
@@ -77,25 +77,27 @@ def _save_artifacts(
     save_dir: str, vocab: Vocabulary, tokenizer_bpe_json: str, cfg: TransformerConfig
 ) -> None:
     """Persist artifacts: `vocab.json`, `bpe.json`, and `config.json` in `save_dir`."""
-    os.makedirs(save_dir, exist_ok=True)
+    save_path = Path(save_dir)
+    save_path.mkdir(parents=True, exist_ok=True)
     # Save Vocabulary as ordered token list (strings).
-    vocab_path = os.path.join(save_dir, "vocab.json")
-    with open(vocab_path, "w", encoding="utf-8") as f:
+    vocab_path = save_path / "vocab.json"
+    with vocab_path.open("w", encoding="utf-8") as f:
         json.dump(vocab.as_list(), f, ensure_ascii=False, indent=2)
 
     # Save HF tokenizer.json (already written by caller to a temporary location).
-    bpe_target = os.path.join(save_dir, "bpe.json")
-    if tokenizer_bpe_json != bpe_target:
+    tokenizer_bpe_path = Path(tokenizer_bpe_json)
+    bpe_target = save_path / "bpe.json"
+    if tokenizer_bpe_path != bpe_target:
         # Copy by reading & writing to avoid shutil dependency.
         with (
-            open(tokenizer_bpe_json, encoding="utf-8") as src,
-            open(bpe_target, "w", encoding="utf-8") as dst,
+            tokenizer_bpe_path.open(encoding="utf-8") as src,
+            bpe_target.open("w", encoding="utf-8") as dst,
         ):
             dst.write(src.read())
 
     # Save transformer config (dataclass -> dict).
-    cfg_path = os.path.join(save_dir, "config.json")
-    with open(cfg_path, "w", encoding="utf-8") as f:
+    cfg_path = save_path / "config.json"
+    with cfg_path.open("w", encoding="utf-8") as f:
         json.dump(asdict(cfg), f, ensure_ascii=False, indent=2)
 
 
@@ -104,7 +106,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
     import json
 
     for p in paths:
-        with open(p, encoding="utf-8") as f:
+        with Path(p).open(encoding="utf-8") as f:
             for lineno, raw in enumerate(f, start=1):
                 line = raw.rstrip("\n\r")
                 if not line.strip():

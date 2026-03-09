@@ -9,6 +9,7 @@ The script reveals Gaussian observations incrementally and records clustering me
 import argparse
 import collections
 import pickle
+from pathlib import Path
 
 import cloudpickle
 import jax
@@ -105,5 +106,5 @@ for conf in configs:
         for metric in metrics.keys():
             results[method][metric].append(metrics[metric])
 
-        with open(f"data/gauss_smc_online_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/gauss_smc_online_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

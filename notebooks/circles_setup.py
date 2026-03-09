@@ -8,8 +8,8 @@ This module mirrors the experiment setup so interactive notebooks can load the s
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
+from pathlib import Path
 
 import jax
 import jax.numpy as jnp
@@ -41,7 +41,8 @@ def load_model(checkpoint_path: str = "checkpoints") -> Callable:
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
 
     raw_restored = checkpoints.restore_checkpoint(
-        ckpt_dir=os.path.join(os.getcwd(), checkpoint_path), target=None
+        ckpt_dir=Path.cwd() / checkpoint_path,
+        target=None,
     )
     model.params = {"params": raw_restored["model"]["params"]}
     model.compile_net()

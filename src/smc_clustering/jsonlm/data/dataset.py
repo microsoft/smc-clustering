@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
+from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
@@ -27,7 +28,7 @@ from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 class _LineRef:
     """Reference to a single JSONL line by file path, byte offset, and 1-based line number."""
 
-    path: str
+    path: Path
     offset: int
     lineno: int
 
@@ -59,7 +60,7 @@ class EntityDataset(Dataset):
         super().__init__()
         if not paths:
             raise ValueError("EntityDataset requires at least one JSONL path.")
-        self.paths = list(paths)
+        self.paths = [Path(path) for path in paths]
         self.tokenizer = tokenizer
         self.add_bos_eos = add_bos_eos
         self._index: list[_LineRef] = []
@@ -68,7 +69,7 @@ class EntityDataset(Dataset):
     def _build_index(self, max_length: int) -> None:
         """Scan all files once and build a byte-offset index of non-empty lines."""
         for p in self.paths:
-            with open(p, "rb") as f:
+            with p.open("rb") as f:
                 lineno = 0
                 while True:
                     start = f.tell()
@@ -91,7 +92,7 @@ class EntityDataset(Dataset):
 
         ref = self._index[idx]
         # Read exactly one line in binary, then decode as utf-8 strictly.
-        with open(ref.path, "rb") as f:
+        with ref.path.open("rb") as f:
             f.seek(ref.offset)
             raw = f.readline()
         try:

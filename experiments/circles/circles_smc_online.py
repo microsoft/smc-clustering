@@ -9,6 +9,7 @@ The script feeds the circles data incrementally to the clusterer and records met
 import argparse
 import collections
 import pickle
+from pathlib import Path
 
 import cloudpickle
 import jax
@@ -106,5 +107,5 @@ for conf in configs:
         for metric in metrics.keys():
             results[method][metric].append(metrics[metric])
 
-        with open(f"data/circles_smc_online_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/circles_smc_online_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

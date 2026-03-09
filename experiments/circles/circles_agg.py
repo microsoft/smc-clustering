@@ -9,6 +9,7 @@ The script benchmarks several batch sizes for the agglomerative clusterer and sa
 import argparse
 import collections
 import pickle
+from pathlib import Path
 import time
 
 import cloudpickle
@@ -83,7 +84,7 @@ for batch_size in batch_sizes:
         for metric in metrics.keys():
             results[f"agg {batch_size} {total_iters}"][metric].append(metrics[metric])
 
-        with open(f"data/circles_agg_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/circles_agg_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     print(
@@ -93,5 +94,5 @@ for batch_size in batch_sizes:
     for metric in metrics.keys():
         results[f"agg {batch_size} final"][metric].append(metrics[metric])
 
-    with open(f"data/circles_agg_s{seed}.pickle", "wb") as handle:
+    with Path(f"data/circles_agg_s{seed}.pickle").open("wb") as handle:
         cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

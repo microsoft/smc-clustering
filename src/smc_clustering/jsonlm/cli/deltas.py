@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from collections.abc import Iterable
+from pathlib import Path
 
 import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
@@ -39,22 +39,23 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
+    bpe = HFTokenizer.from_file(str(bpe_path))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
     return tok, cfg
 
@@ -73,7 +74,7 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
     """Yield pairs (A,B) from a JSONL where each line is a 2-element array of objects."""
-    with open(path, encoding="utf-8") as f:
+    with Path(path).open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             line = line.strip()
             if not line:
@@ -93,15 +94,17 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
 
 
 def _write_out_txt(out_path: str, values: Iterable[float]) -> None:
-    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
         for v in values:
             f.write(f"{v:.8f}\n")
 
 
 def _write_out_jsonl(out_path: str, values: Iterable[float]) -> None:
-    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as f:
         for v in values:
             json.dump({"delta": float(v)}, f, ensure_ascii=False)
             f.write("\n")

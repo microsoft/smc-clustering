@@ -9,6 +9,7 @@ The script tracks clustering quality over time and saves intermediate metrics fo
 import argparse
 import collections
 import pickle
+from pathlib import Path
 import time
 
 import cloudpickle
@@ -85,7 +86,7 @@ for i, s in enumerate(steps):
         for metric in metrics.keys():
             results[f"mcmc gibbs {sum(steps[: (i + 1)])}"][metric].append(metrics[metric])
 
-        with open(f"data/circles_mcmc_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         if clusterer.best_logpost > best:
@@ -97,7 +98,7 @@ for i, s in enumerate(steps):
 for metric in metrics.keys():
     results["mcmc gibbs final"][metric].append(metrics[metric])
 
-with open(f"data/circles_mcmc_s{seed}.pickle", "wb") as handle:
+with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
     cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -134,7 +135,7 @@ for i, s in enumerate(steps):
         for metric in metrics.keys():
             results[f"mcmc mh {sum(steps[: (i + 1)])}"][metric].append(metrics[metric])
 
-        with open(f"data/circles_mcmc_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         if clusterer.best_logpost > best:
@@ -146,5 +147,5 @@ for i, s in enumerate(steps):
 for metric in metrics.keys():
     results["mcmc mh final"][metric].append(metrics[metric])
 
-with open(f"data/circles_mcmc_s{seed}.pickle", "wb") as handle:
+with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
     cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

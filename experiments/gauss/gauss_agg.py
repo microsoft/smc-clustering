@@ -9,6 +9,7 @@ The script benchmarks several agglomerative batch sizes and persists metrics for
 import argparse
 import collections
 import pickle
+from pathlib import Path
 import time
 
 import cloudpickle
@@ -81,7 +82,7 @@ for batch_size in batch_sizes:
         for metric in metrics.keys():
             results[f"agg {batch_size} {total_iters}"][metric].append(metrics[metric])
 
-        with open(f"data/gauss_agg_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/gauss_agg_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     print(f"agg {batch_size} final {total_iters}\n {metrics['LL'], metrics['LP'], metrics['f1']}")
@@ -89,5 +90,5 @@ for batch_size in batch_sizes:
     for metric in metrics.keys():
         results[f"agg {batch_size} final"][metric].append(metrics[metric])
 
-    with open(f"data/gauss_agg_s{seed}.pickle", "wb") as handle:
+    with Path(f"data/gauss_agg_s{seed}.pickle").open("wb") as handle:
         cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

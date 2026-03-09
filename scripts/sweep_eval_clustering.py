@@ -92,10 +92,10 @@ import argparse
 import itertools
 import json
 import logging
-import os
 import shlex
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 
 # Parameters we allow sweeping over (others are treated as scalar pass-through)
@@ -282,12 +282,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     logging.info("Planned %d runs", len(combos))
 
-    os.makedirs(args.out_root, exist_ok=True)
-    metrics_path = os.path.join(args.out_root, "metrics.txt")
-    if not os.path.exists(metrics_path):
+    out_root = Path(args.out_root)
+    out_root.mkdir(parents=True, exist_ok=True)
+    metrics_path = out_root / "metrics.txt"
+    if not metrics_path.exists():
         # Initialize empty metrics file (no header per spec)
-        with open(metrics_path, "w", encoding="utf-8"):
-            pass
+        metrics_path.touch()
 
     base_cmd_prefix = ["uv", "run", args.script]
 
@@ -302,13 +302,13 @@ def main(argv: list[str] | None = None) -> int:
 
     for combo in combos:
         # Build output name
-        script_name = os.path.basename(args.script).replace(".py", "")
+        script_name = Path(args.script).stem
         parts = [script_name, _sanitize_value(args.task_instance)]
         parts.extend(f"{k}_{_sanitize_value(combo[k])}" for k in sorted(combo))
-        out_dir = os.path.join(args.out_root, "_".join(parts))
-        os.makedirs(out_dir, exist_ok=True)
+        out_dir = out_root / "_".join(parts)
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-        cmd = [*base_cmd_prefix, "--task_instance", args.task_instance, "--out", out_dir]
+        cmd = [*base_cmd_prefix, "--task_instance", args.task_instance, "--out", str(out_dir)]
         for k, v in combo.items():
             cmd += [f"--{k}", v]
         for k, v in passthrough_scalars:
@@ -317,10 +317,10 @@ def main(argv: list[str] | None = None) -> int:
 
         logging.info("Run: %s", " ".join(shlex.quote(c) for c in cmd))
         if not args.dry_run:
-            log_path = os.path.join(out_dir, "log.txt")
+            log_path = out_dir / "log.txt"
             metrics_lines: list[str] = []
             in_metrics = False
-            with open(log_path, "w", encoding="utf-8") as lf:
+            with log_path.open("w", encoding="utf-8") as lf:
                 lf.write("Command: " + " ".join(shlex.quote(c) for c in cmd) + "\n\n")
                 lf.flush()
                 proc = subprocess.Popen(  # noqa: S603
@@ -343,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
                 exit_code = proc.returncode or 0
             # Append metrics section
             header = ", ".join(f"{k}={combo[k]}" for k in sorted(combo))
-            with open(metrics_path, "a", encoding="utf-8") as mf:
+            with metrics_path.open("a", encoding="utf-8") as mf:
                 mf.write(f"[{header}]\n")
                 if metrics_lines:
                     for ml in metrics_lines:
@@ -354,9 +354,9 @@ def main(argv: list[str] | None = None) -> int:
                     mf.write(f"<run failed exit_code={exit_code}>\n")
                 mf.write("\n")
             if exit_code != 0:
-                logging.error("Run failed (exit=%d). See %s", exit_code, log_path)
+                logging.error("Run failed (exit=%d). See %s", exit_code, str(log_path))
             else:
-                logging.info("Completed successfully -> %s", log_path)
+                logging.info("Completed successfully -> %s", str(log_path))
 
     return 0
 

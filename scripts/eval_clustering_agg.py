@@ -114,22 +114,23 @@ class NameBigramCluster(Cluster):
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
     """Load tokenizer and model config from artifacts directory."""
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
+    bpe = HFTokenizer.from_file(str(bpe_path))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
 
     return tok, cfg
@@ -243,7 +244,8 @@ def main(argv: list[str] | None = None) -> None:
     """Run the evaluation."""
     args = build_argparser().parse_args(argv)
 
-    Path(args.out).mkdir(parents=True, exist_ok=True)
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     rng = jax.random.PRNGKey(args.seed)
     torch.manual_seed(args.seed)
@@ -280,7 +282,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.info(f"Loaded model from {args.ckpt}")
 
     # Set up the SMC clustering components
-    with open(args.surrogate, "rb") as f:
+    with Path(args.surrogate).open("rb") as f:
         count_dict = pickle.load(f)
 
     logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
@@ -332,18 +334,12 @@ def main(argv: list[str] | None = None) -> None:
             clustering[idx] for idx in unshuffled_idx
         ]  # cluster labels for the data in the original order
 
-        os.makedirs(os.path.dirname(args.out), exist_ok=True)
-        with open(
-            os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"),
-            "w",
-            encoding="utf-8",
-        ) as f:
+        clustering_path = out_dir / f"{experiment_name}_it{total_iters}_clustering"
+        with clustering_path.open("w", encoding="utf-8") as f:
             for cluster in clustering:
                 f.write(str(cluster) + "\n")
 
-        metrics = task_instance.evaluate(
-            Path(os.path.join(args.out, experiment_name + f"_it{total_iters}_clustering"))
-        )
+        metrics = task_instance.evaluate(clustering_path)
         metrics["t"] = t
         metrics["total_evals"] = len(clusterer.score_cache)
         metrics["LL"] = ll
@@ -354,9 +350,7 @@ def main(argv: list[str] | None = None) -> None:
             logging.info(f"{key}: {val:.6f}")
             print(f"{key}: {val:.6f}")
 
-        with open(
-            os.path.join(args.out, experiment_name + f"_it{total_iters}_metrics.pickle"), "wb"
-        ) as f:
+        with (out_dir / f"{experiment_name}_it{total_iters}_metrics.pickle").open("wb") as f:
             pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # save final clustering and metrics
@@ -368,18 +362,18 @@ def main(argv: list[str] | None = None) -> None:
         clustering[idx] for idx in unshuffled_idx
     ]  # cluster labels for the data in the original order
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(os.path.join(args.out, experiment_name + "_final_clustering"), "w", encoding="utf-8") as f:
+    final_clustering_path = out_dir / f"{experiment_name}_final_clustering"
+    with final_clustering_path.open("w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
 
-    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_final_clustering")))
+    metrics = task_instance.evaluate(final_clustering_path)
     metrics["t"] = t
     metrics["total_evals"] = len(clusterer.score_cache)
     metrics["LL"] = ll
     metrics["LP"] = lp
 
-    with open(os.path.join(args.out, experiment_name + "_final_metrics.pickle"), "wb") as f:
+    with (out_dir / f"{experiment_name}_final_metrics.pickle").open("wb") as f:
         pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 

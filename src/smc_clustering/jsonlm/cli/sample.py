@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
@@ -41,12 +42,15 @@ def main(argv: list[str] | None = None) -> None:
     args = build_argparser().parse_args(argv)
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
 
-    vocab = Vocabulary.from_tokens(json.load(open(f"{args.artifacts}/vocab.json", encoding="utf-8")))
-    bpe = HFTokenizer.from_file(f"{args.artifacts}/bpe.json")
+    artifacts_dir = Path(args.artifacts)
+    with (artifacts_dir / "vocab.json").open(encoding="utf-8") as f:
+        vocab = Vocabulary.from_tokens(json.load(f))
+    bpe = HFTokenizer.from_file(str(artifacts_dir / "bpe.json"))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
-    cfg = TransformerConfig(**json.load(open(f"{args.artifacts}/config.json", encoding="utf-8")))
+    with (artifacts_dir / "config.json").open(encoding="utf-8") as f:
+        cfg = TransformerConfig(**json.load(f))
 
     model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(args.ckpt, map_location=device)

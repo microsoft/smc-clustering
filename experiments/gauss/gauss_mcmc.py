@@ -9,6 +9,7 @@ The script evaluates Gibbs updates over a Gaussian synthetic benchmark and saves
 import argparse
 import collections
 import pickle
+from pathlib import Path
 import time
 
 import cloudpickle
@@ -71,7 +72,7 @@ for i, s in enumerate(steps):
         for metric in metrics.keys():
             results[f"mcmc {sum(steps[: (i + 1)])}"][metric].append(metrics[metric])
 
-        with open(f"data/gauss_mcmc_s{seed}.pickle", "wb") as handle:
+        with Path(f"data/gauss_mcmc_s{seed}.pickle").open("wb") as handle:
             cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         if clusterer.best_logpost > best:
@@ -83,5 +84,5 @@ for i, s in enumerate(steps):
 for metric in metrics.keys():
     results["mcmc final"][metric].append(metrics[metric])
 
-with open(f"data/gauss_mcmc_s{seed}.pickle", "wb") as handle:
+with Path(f"data/gauss_mcmc_s{seed}.pickle").open("wb") as handle:
     cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
 from time import perf_counter as pc
 
@@ -40,22 +39,23 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
     """Load tokenizer and model config from artifacts directory."""
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
+    bpe = HFTokenizer.from_file(str(bpe_path))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
 
     return tok, cfg
@@ -181,10 +181,11 @@ def main(argv: list[str] | None = None) -> None:
     elapsed = float(end - start)
     logging.info(f"Time (s): {elapsed:.4f}")
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    np.savetxt(args.out, deltas)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(out_path, deltas)
 
-    metrics = task_instance.evaluate(Path(args.out))
+    metrics = task_instance.evaluate(out_path)
 
     metrics["Total Time (s)"] = elapsed
     metrics["Candidates per Second (C/s)"] = len(pairs) / elapsed

@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Iterable
+from pathlib import Path
 
 import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
@@ -38,11 +39,12 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
-    vocab_path = f"{artifacts_dir}/vocab.json"
-    bpe_path = f"{artifacts_dir}/bpe.json"
-    cfg_path = f"{artifacts_dir}/config.json"
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
@@ -59,12 +61,12 @@ def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerCon
             raise ValueError(f"vocab.json missing required special token: {req}")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
+    bpe = HFTokenizer.from_file(str(bpe_path))
     tok = JsonLMTokenizer(
         vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
     )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg_dict = json.load(f)
     cfg = TransformerConfig(**cfg_dict)
     return tok, cfg
@@ -109,7 +111,7 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
     """Yield pairs A,B from a TSV file where each column is a JSON object string."""
     import json as _json
 
-    with open(path, encoding="utf-8") as f:
+    with Path(path).open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             line = line.strip()
             if not line:
@@ -144,7 +146,7 @@ def main(argv: list[str] | None = None) -> None:
         count = 0
         with torch.no_grad():
             # Read raw JSON lines to handle both dict and list[dict]
-            with open(args.data, encoding="utf-8") as f:
+            with Path(args.data).open(encoding="utf-8") as f:
                 for lineno, raw in enumerate(f, start=1):
                     line = raw.rstrip("\n\r")
                     if not line.strip():

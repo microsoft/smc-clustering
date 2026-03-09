@@ -9,6 +9,7 @@ This script compares split, SMC, and greedy particle configurations on the circl
 import argparse
 import collections
 import pickle
+from pathlib import Path
 import time
 
 import cloudpickle
@@ -105,5 +106,5 @@ for conf in configs:
             for metric in metrics.keys():
                 results[method][metric].append(metrics[metric])
 
-            with open(f"data/circles_particles_s{seed}.pickle", "wb") as handle:
+            with Path(f"data/circles_particles_s{seed}.pickle").open("wb") as handle:
                 cloudpickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -9,12 +9,13 @@ The script benchmarks several agglomerative batch sizes and persists metrics for
 import argparse
 import collections
 import pickle
-from pathlib import Path
 import time
+from pathlib import Path
 
 import cloudpickle
 import jax
 import numpy as np
+from gauss_setup import batched_score_eval, generate_gauss_dataset, prior
 
 from smc_clustering.clustering.agglomerative import Clusterer
 from smc_clustering.clustering.metrics import cluster_metrics
@@ -24,8 +25,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from gauss_setup import batched_score_eval, generate_gauss_dataset, prior
 
 
 data, labels = generate_gauss_dataset()
@@ -79,7 +78,7 @@ for batch_size in batch_sizes:
 
         print(f"agg {batch_size} {t:.4f} {total_iters}\n {metrics['LL'], metrics['LP'], metrics['f1']}")
 
-        for metric in metrics.keys():
+        for metric in metrics:
             results[f"agg {batch_size} {total_iters}"][metric].append(metrics[metric])
 
         with Path(f"data/gauss_agg_s{seed}.pickle").open("wb") as handle:
@@ -87,7 +86,7 @@ for batch_size in batch_sizes:
 
     print(f"agg {batch_size} final {total_iters}\n {metrics['LL'], metrics['LP'], metrics['f1']}")
 
-    for metric in metrics.keys():
+    for metric in metrics:
         results[f"agg {batch_size} final"][metric].append(metrics[metric])
 
     with Path(f"data/gauss_agg_s{seed}.pickle").open("wb") as handle:

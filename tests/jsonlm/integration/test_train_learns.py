@@ -57,6 +57,7 @@ def _avg_logprob(
 
 
 def test_tiny_model_learns(tmp_path: Path):
+    """Verify a tiny end-to-end training run improves model fit on simple data."""
     # Reproducibility & CPU-only
     seed_everything(1234, workers=True)
     torch.set_grad_enabled(True)

@@ -9,13 +9,14 @@ The script benchmarks several batch sizes for the agglomerative clusterer and sa
 import argparse
 import collections
 import pickle
-from pathlib import Path
 import time
+from pathlib import Path
 
 import cloudpickle
 import jax
 import numpy as np
 
+from circles_setup import generate_circles_dataset, load_model, prior
 from smc_clustering.clustering.agglomerative import Clusterer
 from smc_clustering.clustering.metrics import cluster_metrics
 
@@ -24,8 +25,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from circles_setup import generate_circles_dataset, load_model, prior
 
 
 batched_score_eval = load_model()
@@ -81,7 +80,7 @@ for batch_size in batch_sizes:
             f"agg {batch_size} {t:.4f} {total_iters}\n {metrics['LL'], metrics['LP'], metrics['f1'], metrics['evals']}"
         )
 
-        for metric in metrics.keys():
+        for metric in metrics:
             results[f"agg {batch_size} {total_iters}"][metric].append(metrics[metric])
 
         with Path(f"data/circles_agg_s{seed}.pickle").open("wb") as handle:
@@ -91,7 +90,7 @@ for batch_size in batch_sizes:
         f"agg final {t:.4f} {total_iters}\n {metrics['LL'], metrics['LP'], metrics['f1'], metrics['evals']}"
     )
 
-    for metric in metrics.keys():
+    for metric in metrics:
         results[f"agg {batch_size} final"][metric].append(metrics[metric])
 
     with Path(f"data/circles_agg_s{seed}.pickle").open("wb") as handle:

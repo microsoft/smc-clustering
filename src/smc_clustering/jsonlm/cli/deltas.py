@@ -111,6 +111,7 @@ def _write_out_jsonl(out_path: str, values: Iterable[float]) -> None:
 
 
 def build_argparser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
     p = argparse.ArgumentParser(description="Compute Δ for JSONL pairs [A, B].")
     p.add_argument("--artifacts", required=True, help="Dir with vocab.json, bpe.json, config.json")
     p.add_argument("--ckpt", required=True, help="Checkpoint (.ckpt or raw state_dict)")
@@ -125,6 +126,7 @@ def build_argparser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the delta-scoring CLI."""
     args = build_argparser().parse_args(argv)
 
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)

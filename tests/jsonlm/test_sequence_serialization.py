@@ -13,6 +13,7 @@ from __future__ import annotations
 import pytest
 
 from smc_clustering.jsonlm.serialization.encoder import (
+    canonicalize_entity,
     entities_to_string_as_set,
     entity_to_string,
     parse_entity,
@@ -61,8 +62,6 @@ def test_entities_to_string_with_empty_entity():
 
     # entities_to_string now sorts entities, so we need to sort them first
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -130,8 +129,6 @@ def test_parse_sequence_round_trip():
 
     # entities_to_string now sorts entities, so we need to sort the expected result
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -177,8 +174,6 @@ def test_parse_sequence_complex_values():
 
     # entities_to_string now sorts entities, so we need to sort the expected result
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -276,8 +271,6 @@ def test_empty_and_mixed_sequences():
     ]
 
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""

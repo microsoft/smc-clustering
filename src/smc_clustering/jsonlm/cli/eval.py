@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -95,6 +96,7 @@ def _load_model_from_ckpt(ckpt_path: str, cfg: TransformerConfig, device: torch.
 
 
 def build_argparser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
     p = argparse.ArgumentParser(description="Evaluate a trained JSON-entity LM.")
     p.add_argument(
         "--artifacts", required=True, help="Directory containing vocab.json, bpe.json, config.json."
@@ -109,8 +111,6 @@ def build_argparser() -> argparse.ArgumentParser:
 
 def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
     """Yield pairs A,B from a TSV file where each column is a JSON object string."""
-    import json as _json
-
     with Path(path).open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
             line = line.strip()
@@ -118,8 +118,8 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
                 continue
             try:
                 a_str, b_str = line.split("$", 1)
-                a = _json.loads(a_str)
-                b = _json.loads(b_str)
+                a = json.loads(a_str)
+                b = json.loads(b_str)
                 if not isinstance(a, dict) or not isinstance(b, dict):
                     raise ValueError("Both columns must be JSON objects.")
             except Exception as e:
@@ -128,6 +128,7 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the evaluation CLI."""
     args = build_argparser().parse_args(argv)
 
     # Device
@@ -213,8 +214,6 @@ def main(argv: list[str] | None = None) -> None:
         if not vals:
             print(f"No pairs found in {args.pairs}.")
         else:
-            import math
-
             mean_delta = sum(vals) / len(vals)
             std_delta = math.sqrt(sum((x - mean_delta) ** 2 for x in vals) / max(1, len(vals) - 1))
             print(f"[pairs] {args.pairs}  n={len(vals)}  meanΔ={mean_delta:.6f}  stdev={std_delta:.6f}")

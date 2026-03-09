@@ -20,10 +20,10 @@ import argparse
 import json
 import logging
 import random
-from pathlib import Path
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -34,10 +34,14 @@ from torch.utils.data import DataLoader
 
 
 try:
+    import wandb
     from pytorch_lightning.loggers import WandbLogger
+    from wandb.sdk.wandb_settings import Settings
 
     _WANDB_AVAILABLE = True
 except ImportError:
+    wandb = None
+    Settings = None
     _WANDB_AVAILABLE = False
 
 from smc_clustering.jsonlm.api import decode_entity
@@ -58,12 +62,8 @@ def _is_wandb_configured() -> bool:
         return False
 
     try:
-        import wandb
-
         # Try to check if we can initialize wandb without actually initializing
         # This is done by checking if we have an API key or are in offline mode
-        from wandb.sdk.wandb_settings import Settings
-
         Settings()
         # If we can't get basic settings or there's no API key configured, wandb won't work
         api_key = wandb.api.api_key
@@ -103,8 +103,6 @@ def _save_artifacts(
 
 def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
     """Yield serialized training strings (with sentinels) from JSONL paths for tokenizer training."""
-    import json
-
     for p in paths:
         with Path(p).open(encoding="utf-8") as f:
             for lineno, raw in enumerate(f, start=1):

@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import torch
 
-from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.models.transformer import (
+    TransformerConfig,
+    TransformerLM,
+    _build_rope_cache,
+)
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
@@ -142,8 +146,6 @@ def test_rope_vs_learned_positions() -> None:
 
 def test_rope_cache_shapes_and_building() -> None:
     """RoPE cache is built with correct shapes and contains valid values."""
-    from jsonlm.models.transformer import _build_rope_cache
-
     T, H, theta = 32, 16, 10000.0
     device = torch.device("cpu")
     dtype = torch.float32

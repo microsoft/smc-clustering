@@ -9,13 +9,14 @@ The script tracks clustering quality over time and saves intermediate metrics fo
 import argparse
 import collections
 import pickle
-from pathlib import Path
 import time
+from pathlib import Path
 
 import cloudpickle
 import jax
 import numpy as np
 
+from circles_setup import generate_circles_dataset, load_model, prior, surrogate
 from smc_clustering.clustering.mcmc import GibbsClusterer
 from smc_clustering.clustering.metrics import cluster_metrics
 from smc_clustering.clustering.surrogate_models import GaussianCluster
@@ -25,8 +26,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from circles_setup import generate_circles_dataset, load_model, prior, surrogate
 
 
 batched_score_eval = load_model()
@@ -83,7 +82,7 @@ for i, s in enumerate(steps):
             f"mcmc gibbs {t:4f} {sum(steps[: (i + 1)])}\n {metrics['LL'], metrics['LP'], metrics['f1']}"
         )
 
-        for metric in metrics.keys():
+        for metric in metrics:
             results[f"mcmc gibbs {sum(steps[: (i + 1)])}"][metric].append(metrics[metric])
 
         with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
@@ -95,7 +94,7 @@ for i, s in enumerate(steps):
         else:
             iters_since_change += s
 
-for metric in metrics.keys():
+for metric in metrics:
     results["mcmc gibbs final"][metric].append(metrics[metric])
 
 with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
@@ -132,7 +131,7 @@ for i, s in enumerate(steps):
 
         print(f"mcmc mh {t:4f} {sum(steps[: (i + 1)])}\n {metrics['LL'], metrics['LP'], metrics['f1']}")
 
-        for metric in metrics.keys():
+        for metric in metrics:
             results[f"mcmc mh {sum(steps[: (i + 1)])}"][metric].append(metrics[metric])
 
         with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:
@@ -144,7 +143,7 @@ for i, s in enumerate(steps):
         else:
             iters_since_change += s
 
-for metric in metrics.keys():
+for metric in metrics:
     results["mcmc mh final"][metric].append(metrics[metric])
 
 with Path(f"data/circles_mcmc_s{seed}.pickle").open("wb") as handle:

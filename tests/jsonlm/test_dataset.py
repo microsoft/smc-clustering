@@ -10,6 +10,7 @@ sequences (list of dicts) using Kleene-plus grammar with entities_to_string seri
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -142,8 +143,6 @@ def test_dataset_sequence_vs_manual_serialization() -> None:
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with sequence
-        import json
-
         _make_jsonl(path, [json.dumps(entities)])
         ds = EntityDataset([str(path)], tokenizer=tok, add_bos_eos=True)
 
@@ -202,8 +201,6 @@ def test_dataset_mixed_single_and_sequence_lines() -> None:
         tok = train_tokenizer(corpus, vocabulary=Vocabulary.from_default(), bpe_vocab_size=64)
 
         # Create JSONL with mixed content
-        import json
-
         _make_jsonl(
             path,
             [

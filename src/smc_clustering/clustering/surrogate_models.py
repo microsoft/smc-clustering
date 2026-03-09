@@ -263,7 +263,7 @@ class Ngram:
         self.n = n
 
         self.prior_counts = prior_counts
-        self.V = len([key for key in prior_counts.keys() if len(key) == 1]) + 1
+        self.V = len([key for key in prior_counts if len(key) == 1]) + 1
         if self.V < 2:
             raise ValueError("Count dictionary must contain unigram counts.")
 
@@ -276,13 +276,11 @@ class Ngram:
         """Evaluate the posterior predictive score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         counts = get_ngram_counts(obs, self.n)
-        histories = [h for h in counts.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
+        histories = [h for h in counts if len(h) == (self.n - 1) and h[-1] != "E"]
 
         LL = np.zeros(len(summary))
         for h in histories:
-            continuations = [
-                ngram for ngram in counts.keys() if ngram[:-1] == h and len(ngram) == self.n
-            ]
+            continuations = [ngram for ngram in counts if ngram[:-1] == h and len(ngram) == self.n]
             x = np.array([counts[ngram] for ngram in continuations])
             alphas = np.array(
                 [
@@ -311,12 +309,10 @@ class Ngram:
         return LL
 
     def _evidence(self, n: np.intp, summary: collections.Counter[tuple[str, ...]]) -> float | np.ndarray:
-        histories = [h for h in summary.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
+        histories = [h for h in summary if len(h) == (self.n - 1) and h[-1] != "E"]
         LL = 0
         for h in histories:
-            continuations = [
-                ngram for ngram in summary.keys() if ngram[:-1] == h and len(ngram) == self.n
-            ]
+            continuations = [ngram for ngram in summary if ngram[:-1] == h and len(ngram) == self.n]
             x = np.array([summary[ngram] for ngram in continuations])
             alphas = np.array([self.prior_scale * self.prior_counts[ngram] for ngram in continuations])
             sum_alphas = self.prior_scale * (self.prior_counts[h] + self.V * self.prior_counts["<UNK>"])

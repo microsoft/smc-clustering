@@ -69,10 +69,7 @@ def test_one_training_step_with_transformer_smoke() -> None:
 
     # Backward and optimizer step manually (keeps test independent of Trainer).
     opt_config = lit.configure_optimizers()
-    if isinstance(opt_config, dict):
-        opt = opt_config["optimizer"]
-    else:
-        opt = opt_config
+    opt = opt_config["optimizer"] if isinstance(opt_config, dict) else opt_config
     assert isinstance(opt, torch.optim.Optimizer)
     opt.zero_grad(set_to_none=True)
     loss.backward()

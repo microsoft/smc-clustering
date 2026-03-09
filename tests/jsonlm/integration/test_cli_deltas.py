@@ -15,6 +15,7 @@ def _write_jsonl(p: Path, lines: list[str]) -> None:
 
 
 def test_deltas_cli_runs(tmp_path: Path):
+    """Train a tiny model and verify the deltas CLI writes output."""
     train_path = tmp_path / "train.jsonl"
     val_path = tmp_path / "val.jsonl"
     pairs_path = tmp_path / "pairs.jsonl"

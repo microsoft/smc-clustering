@@ -24,6 +24,7 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def build_argparser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser."""
     p = argparse.ArgumentParser(description="Sample valid JSON entities from a trained model.")
     p.add_argument("--artifacts", required=True, help="Dir with vocab.json, bpe.json, config.json")
     p.add_argument("--ckpt", required=True, help="Lightning .ckpt or raw state_dict")
@@ -39,6 +40,7 @@ def build_argparser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Run the sampling CLI."""
     args = build_argparser().parse_args(argv)
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
 

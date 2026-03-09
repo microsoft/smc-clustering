@@ -15,7 +15,7 @@ import torch
 from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
 from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
 from smc_clustering.jsonlm.grammar.runtime import get_runtime
-from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.serialization.encoder import canonicalize_entity, entity_to_string
 from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
@@ -149,8 +149,6 @@ def test_runtime_mask_equivalence_edge_cases():
     ]
 
     # Filter out invalid entities that canonicalization removes
-    from jsonlm.serialization.encoder import canonicalize_entity
-
     valid_entities = []
     for entity in entities:
         try:

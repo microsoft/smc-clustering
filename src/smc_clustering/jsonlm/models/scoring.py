@@ -26,6 +26,7 @@ from typing import Literal
 import torch
 from torch import nn
 
+from smc_clustering.jsonlm.grammar.runtime import get_runtime
 from smc_clustering.jsonlm.models.criterion import apply_mask_and_logprobs
 from smc_clustering.jsonlm.serialization.encoder import (
     canonicalize_entity,
@@ -171,8 +172,6 @@ def score_entities_batched(
 
         # Grammar masks aligned to targets (handles post-EOS by allowing EOS-only tails).
         start = pc()
-
-        from jsonlm.grammar.runtime import get_runtime
 
         rt = get_runtime(tokenizer, device)
         masks = rt.build_masks(batch)  # [B, T, V]

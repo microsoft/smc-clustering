@@ -9,13 +9,14 @@ This script benchmarks SMC variants across particle counts on the Gaussian synth
 import argparse
 import collections
 import pickle
-from pathlib import Path
 import time
+from pathlib import Path
 
 import cloudpickle
 import jax
 import numpy as np
 import scipy.special
+from gauss_setup import alpha, batched_score_eval, generate_gauss_dataset, prior, surrogate
 
 from smc_clustering.clustering.metrics import cluster_metrics
 from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
@@ -26,8 +27,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from gauss_setup import alpha, batched_score_eval, generate_gauss_dataset, prior, surrogate
 
 
 data, labels = generate_gauss_dataset()
@@ -105,7 +104,7 @@ for conf in configs:
             metrics["t"] = t
             print(f"{method}\n {t:.4g} {metrics['LP'], metrics['f1']}")
 
-            for metric in metrics.keys():
+            for metric in metrics:
                 results[method][metric].append(metrics[metric])
 
             with Path(f"data/gauss_particles_s{seed}.pickle").open("wb") as handle:

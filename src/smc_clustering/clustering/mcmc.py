@@ -242,10 +242,7 @@ class GibbsClusterer:
             self.best_clustering = self.clusters.copy()
             self.best_logpost = self.logpost.copy()
 
-        if self.surrogate is not None:
-            update_step = self.update_mh
-        else:
-            update_step = self.update_exact
+        update_step = self.update_mh if self.surrogate is not None else self.update_exact
 
         for iteration in (pbar := tqdm(range(sweeps))):
             rng, shuffle_rng = jax.random.split(rng)

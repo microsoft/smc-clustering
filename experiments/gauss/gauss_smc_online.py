@@ -15,6 +15,7 @@ import cloudpickle
 import jax
 import numpy as np
 import scipy.special
+from gauss_setup import alpha, batched_score_eval, generate_gauss_dataset, prior, surrogate
 
 from smc_clustering.clustering.metrics import cluster_metrics
 from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
@@ -25,8 +26,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from gauss_setup import alpha, batched_score_eval, generate_gauss_dataset, prior, surrogate
 
 
 data, labels = generate_gauss_dataset()
@@ -72,10 +71,7 @@ for conf in configs:
 
     for i in range(increment, data.shape[0] + increment, increment):
         ds_size = min(data.shape[0], i + 1)
-        if i + 1 > data.shape[0]:
-            steps = data.shape[0] - 1 - (i - increment)
-        else:
-            steps = increment
+        steps = data.shape[0] - 1 - (i - increment) if i + 1 > data.shape[0] else increment
 
         rng, cl_rng = jax.random.split(rng)
         n_evals, _ = clusterer.cluster(cl_rng, steps=steps, callback_interval=0)
@@ -103,7 +99,7 @@ for conf in configs:
         metrics["total_evals"] = len(clusterer.state.score_cache)
         print(f"{method}\n {i} {metrics['LP'], metrics['f1']}")
 
-        for metric in metrics.keys():
+        for metric in metrics:
             results[method][metric].append(metrics[metric])
 
         with Path(f"data/gauss_smc_online_s{seed}.pickle").open("wb") as handle:

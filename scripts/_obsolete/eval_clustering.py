@@ -31,7 +31,6 @@ import argparse
 import collections
 import json
 import logging
-import os
 import pickle
 from functools import partial
 from pathlib import Path
@@ -86,10 +85,7 @@ class NameBigram(Bigram):
         self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
     ) -> np.ndarray:
         """Score an entity or entity list using name bigrams."""
-        if type(obs) is list:
-            name = obs[0].properties["name"]
-        else:
-            name = obs.properties["name"]
+        name = obs[0].properties["name"] if type(obs) is list else obs.properties["name"]
 
         return super().post_predictive(name, n, summary)
 

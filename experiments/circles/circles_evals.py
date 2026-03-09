@@ -9,14 +9,15 @@ This script compares split, SMC, and greedy configurations at different model-ev
 import argparse
 import collections
 import pickle
-from pathlib import Path
 import time
+from pathlib import Path
 
 import cloudpickle
 import jax
 import numpy as np
 import scipy.special
 
+from circles_setup import alpha, generate_circles_dataset, load_model, prior, surrogate
 from smc_clustering.clustering.metrics import cluster_metrics
 from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
 from smc_clustering.clustering.surrogate_models import GaussianCluster
@@ -26,8 +27,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)
 args = parser.parse_args()
 seed = args.seed
-
-from circles_setup import alpha, generate_circles_dataset, load_model, prior, surrogate
 
 
 batched_score_eval = load_model()
@@ -101,7 +100,7 @@ for e in evals:
             metrics["t"] = t
             print(f"{method}\n {t:.4g} {metrics['LP'], metrics['f1']}")
 
-            for metric in metrics.keys():
+            for metric in metrics:
                 results[method][metric].append(metrics[metric])
 
             with Path(f"data/circles_evals_s{seed}.pickle").open("wb") as handle:

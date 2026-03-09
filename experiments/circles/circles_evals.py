@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Sweep evaluation budgets for circles SMC experiments.
+
+This script compares split, SMC, and greedy configurations at different model-evaluation budgets on the circles dataset.
+"""
+
 import argparse
 import collections
 import pickle

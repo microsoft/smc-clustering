@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Shared setup helpers for circles experiments.
+
+The module loads the diffusion scorer, configures priors and surrogates, and synthesizes the circles benchmark dataset.
+"""
+
 from __future__ import annotations
 
 import os
@@ -30,6 +35,7 @@ ClusterClass = GaussianCluster
 
 
 def load_model(checkpoint_path: str = "checkpoints") -> Callable:
+    """Load the diffusion scorer from a checkpoint directory."""
     rng = jax.random.PRNGKey(1)
     schedule = LinearSchedule()
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
@@ -64,6 +70,7 @@ def generate_circles(
     max_y: float = 5.0,
     num_points: int = None,
 ) -> tuple[list, list]:
+    """Generate synthetic circles and their masks."""
     r_rng, x_rng, y_rng, n_rng, theta_rng = jax.random.split(rng, 5)
 
     radii = jax.random.uniform(r_rng, (num_circles,)) * (max_radius - min_radius) + min_radius
@@ -96,6 +103,7 @@ def generate_circles(
 
 
 def generate_circles_dataset() -> tuple[np.ndarray, np.ndarray]:
+    """Generate the flattened circles benchmark dataset."""
     rng = jax.random.PRNGKey(23)
     circles_valid, masks_valid = generate_circles(
         rng, 15, min_points=10, max_points=30, min_radius=0.6, max_radius=0.6

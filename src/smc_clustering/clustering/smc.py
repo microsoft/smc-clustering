@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Sequential Monte Carlo clustering algorithms and resamplers.
+
+The module tracks particle sets over incremental clustering decisions and provides several resampling schemes for particle management.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -18,13 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 class SMCClustererState:
-    """Represents particles as sets of cluster hashes, with a shared lookup table
-    for the ids of the datapoints in each cluster.
+    """Represent particles as sets of cluster hashes.
+
+    The state stores a shared lookup table for the data-point identifiers contained in each cluster.
     """
 
     def __init__(
         self, data: np.ndarray, ClusterClass: type, score_cache: dict[int, float] | None = None
     ):
+        """Initialize SMCClustererState with the initial singleton particle."""
         self.data = data
         self.ClusterClass = ClusterClass
         empty_cluster = ClusterClass([])
@@ -43,7 +50,7 @@ class SMCClustererState:
     def get_descendants(
         self, particle_id: tuple[int, int]
     ) -> tuple[list[list[int]], list[int], list[Any], list[Any]]:
-        """Compute possible descendants of a particle, retrieve summary statistics and weights"""
+        """Compute descendant assignments, summaries, and weights for a particle."""
         old_cluster_ids = list(self.particles[particle_id[0]][particle_id[1]]) + [
             self.ClusterClass([]).hash
         ]
@@ -63,7 +70,7 @@ class SMCClustererState:
         )
 
     def merge_point(self, particle_id: tuple[int, int], datapoint_id: int, cluster_hash: int):
-        """Add a datapoint to its assigned cluster on a given particle"""
+        """Add a data point to its assigned cluster on a given particle."""
         new_hash = hash(self.clusters[cluster_hash].add(datapoint_id))  # this could be computed directly
         self.particles[particle_id[0]][particle_id[1]].add(new_hash)
 
@@ -85,7 +92,7 @@ class SMCClustererState:
         cluster_assignments: np.ndarray,
         datapoint_id: int,
     ):
-        """Update the particle set with assignments for the new datapoint"""
+        """Update the particle set with assignments for the new data point."""
         # resample the particles
         self.particles[subprob] = [self.particles[subprob][i].copy() for i in particle_ids]
         self.weights[subprob] = weights
@@ -111,7 +118,7 @@ class SMCClustererState:
         cluster_assignments: np.ndarray | list[int],
         datapoint_id: int,
     ):
-        """Update the particle set with assignments for the new datapoint, merging subproblems together"""
+        """Update the particle set with new assignments while merging subproblems."""
         # create particles
         new_particles = [
             set.union(*[self.particles[subprobs[i]][p[i]] for i in range(len(subprobs))])
@@ -145,7 +152,7 @@ class SMCClustererState:
         self.cluster_partition.append(used_clusters)
 
     def add_subproblem(self, data_id: int):
-        """Add datapoint to new subproblem by itself"""
+        """Add a data point to a new singleton subproblem."""
         new_cluster = self.ClusterClass([data_id], data=self.data[data_id])
         self.cluster_partition.append({new_cluster.hash})
         self.clusters[new_cluster.hash] = new_cluster
@@ -153,11 +160,11 @@ class SMCClustererState:
         self.weights.append(np.zeros((1,)))
 
     def retrieve_cluster_data(self, cluster_hash: int) -> np.ndarray:
-        """Return the datapoints in a given cluster"""
+        """Return the data points in a given cluster."""
         return self.data[self.clusters[cluster_hash].ids]
 
     def split_problem(self, s: int) -> int:
-        """Attempt to split given problem into subproblems"""
+        """Attempt to split a problem into connected subproblems."""
         # list datapoints on partition
         data_idx = np.concatenate([self.clusters[cl].ids for cl in self.particles[s][0]])
         ids = {data_idx[i]: i for i in range(len(data_idx))}
@@ -232,8 +239,9 @@ class SMCClustererState:
         return n_c
 
     def list_cluster_labels(self, metric: Callable[..., Any] | None = None) -> list[str]:
-        """Return a list of the cluster IDs for each observation,
-        obtained from the top-weighted particle or best particle according to some metric
+        """Return cluster identifiers for each observation.
+
+        Labels are taken from the top-weighted particle or from the particle that optimizes the provided metric.
         """
         cluster_lookup = {}
         for s in range(len(self.weights)):
@@ -270,6 +278,8 @@ class SMCClustererState:
 
 
 class SMCClusterer:
+    """Sequential Monte Carlo clusterer for incremental assignments."""
+
     def __init__(
         self,
         data: np.ndarray,
@@ -288,6 +298,7 @@ class SMCClusterer:
         print_cluster_data: bool = False,
         **kwargs: Any,
     ):
+        """Initialize SMCClusterer with the given clustering components."""
         self.score_fn = score_fn
         self.prior = prior
         self.surrogate = surrogate
@@ -305,9 +316,9 @@ class SMCClusterer:
     def compute_scores(
         self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
     ) -> int:
-        """For a list of clusters, compute the score for each cluster
-        We use a cache to avoid recomputing scores for clusters that have already been computed.
+        """Compute scores for a list of clusters.
 
+        The cache avoids recomputing scores for clusters that have already been evaluated.
         """
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
@@ -332,7 +343,7 @@ class SMCClusterer:
         return len(hashes)
 
     def update_step(self, rng: jax.Array, new_obs: np.ndarray, verbose: bool) -> tuple[int, int]:
-        """Update particle set given new observation"""
+        """Update the particle set given a new observation."""
         rng, update_rng, move_rng = jax.random.split(rng, 3)
         n_probs = len(self.state.weights)
         empty_hash = self.state.ClusterClass([]).hash
@@ -778,7 +789,7 @@ class SMCClusterer:
     def cluster(
         self, rng: jax.Array, steps: int | None = None, callback_interval: int = 5, verbose: bool = False
     ) -> tuple[list[list[int]], list[int]]:
-        """Cluster the dataset"""
+        """Cluster the dataset."""
         if steps is None:
             steps = self.state.data.shape[0] - 1
 
@@ -822,7 +833,7 @@ class SMCClusterer:
         min_problem_size: int = 1,
         print_summary: bool = True,
     ) -> str:
-        """Summarise particle set"""
+        """Summarise particle set."""
         summary_text = ""
         if problems is None:
             problems = range(len(self.state.particles))
@@ -873,7 +884,7 @@ class SMCClusterer:
         return summary_text
 
     def list_cluster_labels(self) -> list[str]:
-        """Return a list of the cluster IDs for each observation obtained from the top-weighted particle"""
+        """Return a list of the cluster IDs for each observation obtained from the top-weighted particle."""
         return self.state.list_cluster_labels()
 
     @property
@@ -905,7 +916,7 @@ def plot_particles_2D(
     title: str | None = None,
     **kwargs: Any,
 ) -> plt.Figure:
-    """Plot particles with highest weights"""
+    """Plot particles with highest weights."""
     subprob = 0 if len(state.particles) == 1 else subprob
     if subprob is not None:
         n_plots = min(n_plots, len(state.particles[subprob]))
@@ -1124,7 +1135,8 @@ def resample_stratified(
 def resample_optimal(
     rng: jax.Array, weights: np.ndarray, max_particles: int, **kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Optimal resampling scheme of Fearnhead and Clifford (2003) -
+    """Optimal resampling scheme of Fearnhead and Clifford (2003) -.
+
     automatically keeps the highest-weighted particles and uses stratified
     resampling to choose the rest.
     """

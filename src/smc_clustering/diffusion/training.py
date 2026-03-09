@@ -2,6 +2,11 @@
 # Licensed under the MIT license.
 
 
+"""Training utilities for the diffusion model.
+
+The training loop in this module optimizes the variational diffusion network and optionally writes checkpoints during training.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -28,6 +33,7 @@ def train_model(
     callback: Callable[..., object] | None = None,
     checkpoint_path: str | None = None,
 ) -> list[float]:
+    """Train the diffusion model for the requested number of epochs."""
     loss_history = []
 
     if optimizer is None:

@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Shared setup helpers for Gaussian experiments.
+
+The module defines the Gaussian synthetic benchmark and exposes a batched evidence scorer for the surrogate model.
+"""
+
 from __future__ import annotations
 
 import jax
@@ -24,6 +29,7 @@ ClusterClass = GaussianCluster
 
 
 def generate_gauss_dataset() -> tuple[np.ndarray, np.ndarray]:
+    """Generate the Gaussian benchmark dataset."""
     a = theta[0:2]
     b = theta[2:4]
     mu = theta[4:6]
@@ -67,6 +73,7 @@ def generate_gauss_dataset() -> tuple[np.ndarray, np.ndarray]:
 
 
 def batched_score_eval(rng: jax.Array, clusters: list[np.ndarray]) -> jax.Array:
+    """Score Gaussian clusters in batches."""
     n = np.array([cl.shape[0] for cl in clusters])
     summary = np.concatenate(
         [

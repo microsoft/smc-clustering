@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run Gibbs and Metropolis clustering experiments on the circles dataset.
+
+The script tracks clustering quality over time and saves intermediate metrics for both exact and surrogate-guided updates.
+"""
+
 import argparse
 import collections
 import pickle

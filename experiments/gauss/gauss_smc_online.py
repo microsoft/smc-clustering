@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run online SMC experiments on the Gaussian dataset.
+
+The script reveals Gaussian observations incrementally and records clustering metrics after each update block.
+"""
+
 import argparse
 import collections
 import pickle

@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run MCMC clustering experiments on the Gaussian dataset.
+
+The script evaluates Gibbs updates over a Gaussian synthetic benchmark and saves progress metrics to disk.
+"""
+
 import argparse
 import collections
 import pickle

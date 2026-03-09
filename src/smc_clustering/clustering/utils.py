@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Utility helpers for batched clustering computations.
+
+The functions and wrappers in this module adapt batched scorers and tabular data to the clustering interfaces.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
@@ -17,6 +22,7 @@ def batched_eval(
 ) -> jax.Array:
     # Split arguments in batched_argnums into batches and pad last batch
     # (avoids recompilations of jitted functions)
+    """Evaluate a function on padded mini-batches."""
     n = inputs[batched_argnums[0]].shape[0]
     n_batches = ceil(n / batch_size)
     pad_by = batch_size * n_batches - n
@@ -46,6 +52,8 @@ def batched_eval(
 def generate_batched_score_func(
     score_func: Callable, batch_shape: tuple[int, int] = (16, 16)
 ) -> Callable:
+    """Wrap a score function with padded batching logic."""
+
     def batched_score_func(rng: jax.Array, compute_clusters: list[np.ndarray]) -> list[jax.Array]:
         # split clusters into batches padded to have same cluster size,
         # and evaluate scoring function
@@ -91,14 +99,19 @@ def generate_batched_score_func(
 
 class DFWrapper:
     # Allows easier retrieval of cluster data from dataframes
+    """Wrapper that exposes dataframe rows through the clustering API."""
+
     def __init__(self, df: object):
+        """Initialize DFWrapper with the provided dataframe."""
         self.df = df
 
     @property
     def shape(self) -> tuple[int, ...]:
+        """Return the shape of the wrapped data."""
         return self.df.shape
 
     def __getitem__(self, row_ids: int | np.ndarray) -> list[Any]:
+        """Return items selected from the wrapped dataframe."""
         if type(row_ids) is int:
             return [self.df.iloc[row_ids]["name"]]
         return list(self.df.iloc[row_ids]["name"])

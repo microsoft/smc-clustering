@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Sweep particle counts for Gaussian SMC experiments.
+
+This script benchmarks SMC variants across particle counts on the Gaussian synthetic dataset.
+"""
+
 import argparse
 import collections
 import pickle

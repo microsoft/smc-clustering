@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Metrics for evaluating clustering assignments.
+
+These helpers compute B-Cubed-style precision, recall, and F1 statistics from predicted and ground-truth cluster labels.
+"""
+
 from __future__ import annotations
 
 import collections
@@ -13,6 +18,7 @@ import numpy as np
 def cluster_precision(
     pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]
 ) -> float:
+    """Compute B-Cubed precision for a clustering."""
     fragment_count = len(gt_cluster_map)
     precision = 0
     for i in gt_cluster_map:
@@ -22,6 +28,7 @@ def cluster_precision(
 
 
 def cluster_recall(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]) -> float:
+    """Compute B-Cubed recall for a clustering."""
     fragment_count = len(gt_cluster_map)
     recall = 0
     for i in gt_cluster_map:
@@ -31,6 +38,7 @@ def cluster_recall(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[i
 
 
 def cluster_f1(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]) -> float:
+    """Compute B-Cubed F1 for a clustering."""
     fragment_count = len(gt_cluster_map)
     f1 = 0
     for i in gt_cluster_map:

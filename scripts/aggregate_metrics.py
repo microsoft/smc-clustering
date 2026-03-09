@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Aggregate sweep metrics over seeds.
+r"""Aggregate sweep metrics over seeds.
 
 Parses a metrics file produced by `sweep_eval_clustering_smc.py` and
 aggregates requested metrics across seeds (or any excluded keys).

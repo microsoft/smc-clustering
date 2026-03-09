@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Sweep particle counts for circles SMC experiments.
+
+This script compares split, SMC, and greedy particle configurations on the circles dataset and records metrics for each run.
+"""
+
 import argparse
 import collections
 import pickle

@@ -36,11 +36,13 @@ class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
     def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
+        """Initialize NameBigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts)
 
     def post_predictive(
         self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
     ) -> np.ndarray:
+        """Score an entity or entity list using name bigrams."""
         if type(obs) is list:
             name = obs[0].properties["name"]
         else:

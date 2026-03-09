@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run agglomerative clustering experiments on the Gaussian dataset.
+
+The script benchmarks several agglomerative batch sizes and persists metrics for each seed.
+"""
+
 import argparse
 import collections
 import pickle

@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Gibbs-style MCMC clustering algorithms.
+
+This module updates cluster assignments one observation at a time using either exact Gibbs updates or surrogate-guided Metropolis proposals.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class GibbsClusterer:
+    """Gibbs-style clusterer with optional surrogate proposals."""
+
     def __init__(
         self,
         data: np.ndarray,
@@ -27,6 +34,7 @@ class GibbsClusterer:
         ClusterClass: type[Cluster] = Cluster,
         score_cache: dict[int, float] | None = None,
     ):
+        """Initialize GibbsClusterer with the given data and scoring components."""
         self.data = data
         self.score_fn = score_fn
         self.prior = prior
@@ -41,9 +49,9 @@ class GibbsClusterer:
     def compute_scores(
         self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
     ) -> int:
-        """For a list of clusters, compute the score for each cluster
-        We use a cache to avoid recomputing scores for clusters that have already been computed.
+        """Compute scores for a list of clusters.
 
+        The cache avoids recomputing scores for clusters that have already been evaluated.
         """
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
@@ -63,7 +71,7 @@ class GibbsClusterer:
         return len(compute_clusters)
 
     def update_exact(self, rng: jax.Array, i: int) -> tuple[int, int]:
-        """Gibbs update for assignment i"""
+        """Perform a Gibbs update for assignment i."""
         compute_clusters = []
         hashes = []
         weights = np.zeros(len(self.clusters) + 1)
@@ -122,7 +130,7 @@ class GibbsClusterer:
         return model_evals, 0
 
     def update_mh(self, rng: jax.Array, i: int) -> tuple[int, int]:
-        """Metropolis-within-Gibbs update, using the surrogate model as the proposal distribution"""
+        """Perform a Metropolis-within-Gibbs update with the surrogate proposal."""
         model_evals = 0
         summary_stats = []
         cluster_sizes = []
@@ -222,6 +230,7 @@ class GibbsClusterer:
     def cluster(
         self, rng: jax.Array, sweeps: int = 100, callback: Callable | None = None
     ) -> list[list[int]]:
+        """Run the clustering procedure."""
         n_evals = []
         if self.logpost is None:
             rng, compute_rng = jax.random.split(rng)
@@ -266,6 +275,7 @@ class GibbsClusterer:
 
     def summary(self, print_cluster_data: bool = False):
         # Print out summary of clustering
+        """Print a summary of the current clustering state."""
         print(f"Current (weight {self.logpost:.4g}):")
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
@@ -289,7 +299,7 @@ class GibbsClusterer:
             print()
 
     def list_cluster_labels(self, best: bool = True) -> list[str]:
-        """Return a list of the cluster IDs for each observation"""
+        """Return a list of cluster identifiers for each observation."""
         cluster_lookup = {}
         for cl in self.best_clustering if best else self.clusters:
             for i in cl.ids:

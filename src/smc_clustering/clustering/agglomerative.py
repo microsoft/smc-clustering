@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Agglomerative clustering utilities for scored entity clusters.
+
+This module maintains cluster scores in a cache and repeatedly merges the best-scoring pair from a sampled batch of candidate merges.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -15,6 +20,8 @@ from smc_clustering.clustering.cluster import Cluster
 
 
 class Clusterer:
+    """Agglomerative clusterer over cached cluster scores."""
+
     def __init__(
         self,
         data: np.ndarray,
@@ -24,6 +31,7 @@ class Clusterer:
         prior: Callable | None = None,
         score_cache: dict[int, float] | None = None,
     ):
+        """Initialize Clusterer with the given parameters."""
         self.data = data
         self.score_fn = score_fn
         self.link_threshold = link_threshold
@@ -36,9 +44,9 @@ class Clusterer:
     def compute_scores(
         self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
     ) -> int:
-        """For a list of clusters, compute the score for each cluster
-        We use a cache to avoid recomputing scores for clusters that have already been computed.
+        """Compute scores for a list of clusters.
 
+        The cache avoids recomputing scores for clusters that have already been evaluated.
         """
         # remove the score from the cache if we're forcing a recompute
         if force_recompute:
@@ -59,6 +67,7 @@ class Clusterer:
 
     def generate_batch_ids(self, rng: jax.Array) -> tuple[jax.Array, list[tuple[Any, Any]]]:
         # select a batch at random
+        """Sample a batch of cluster indices and their unique pairs."""
         indices = np.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
         batch_indices = jax.random.choice(rng, indices, (batch_size,), replace=False)
@@ -68,6 +77,7 @@ class Clusterer:
     def cluster(
         self, rng: jax.Array, max_iter: int = 100, callback: Callable | None = None
     ) -> tuple[list[int], bool]:
+        """Run the clustering procedure."""
         n_evals = []
         if self.objective is None:
             rng, compute_rng = jax.random.split(rng)
@@ -134,6 +144,7 @@ class Clusterer:
 
     def summary(self, print_cluster_data: bool = False):
         # Print out summary of clustering
+        """Print a summary of the current clustering state."""
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
         if print_cluster_data:
@@ -142,7 +153,7 @@ class Clusterer:
             print()
 
     def list_cluster_labels(self) -> list[str]:
-        """Return a list of the cluster IDs for each observation"""
+        """Return a list of cluster identifiers for each observation."""
         cluster_lookup = {}
         for cl in self.clusters:
             for i in cl.ids:
@@ -152,6 +163,7 @@ class Clusterer:
 
 def plot_callback(clusterer: Clusterer) -> None:
     # sort clusters by size
+    """Plot the current clustering assignment."""
     clusters = sorted(clusterer.clusters, key=lambda c: c.size, reverse=True)
     plt.figure()
     for c in clusters:

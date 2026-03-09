@@ -38,14 +38,19 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 class ListWrapper:
     # Allows easier retrieval of cluster data from lists
+    """Wrapper that exposes entity lists through the clustering API."""
+
     def __init__(self, data: list[Entity]) -> None:
+        """Initialize ListWrapper with the provided entity list."""
         self.data = data
 
     @property
     def shape(self) -> tuple[int]:
+        """Return the shape of the wrapped data."""
         return (len(self.data),)
 
     def __getitem__(self, row_ids: int | slice | np.ndarray) -> list[Entity]:
+        """Return items selected from the wrapped entity list."""
         if type(row_ids) is int:
             return [self.data[row_ids]]
         if type(row_ids) is slice:
@@ -57,11 +62,13 @@ class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
     def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
+        """Initialize NameBigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts)
 
     def post_predictive(
         self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
     ) -> np.ndarray:
+        """Score an entity or entity list using name bigrams."""
         if type(obs) is list:
             name = obs[0].properties["name"]
         else:
@@ -71,7 +78,7 @@ class NameBigram(Bigram):
 
 
 class NameBigramCluster(Cluster):
-    """Cluster subclass with summary statistics for an n-gram model, looks at name property for counts"""
+    """Cluster subclass with summary statistics for an n-gram model, looks at name property for counts."""
 
     def __init__(
         self,
@@ -80,6 +87,7 @@ class NameBigramCluster(Cluster):
         counts: collections.Counter[str] | None = None,
         data: Entity | list[Entity] | None = None,
     ) -> None:
+        """Initialize NameBigramCluster with cached name n-gram counts."""
         super().__init__(data_ids)
         self.n = n
         if counts is not None:
@@ -93,9 +101,11 @@ class NameBigramCluster(Cluster):
 
     @property
     def summary(self) -> collections.Counter[str]:
+        """Return the cached name n-gram counts."""
         return self.counts
 
     def merge_point(self, data_id: int, data: list[Entity]) -> NameBigramCluster:
+        """Return a new cluster with updated name n-gram counts."""
         new_counts = self.counts + get_ngram_counts(
             [entity.properties["name"] for entity in data], self.n
         )

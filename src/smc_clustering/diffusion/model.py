@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Neural network building blocks for diffusion models.
+
+The module implements a lightweight SetFormer architecture with self-attention layers for permutation-invariant set processing.
+"""
+
 from __future__ import annotations
 
 import flax.linen as nn
@@ -9,10 +14,13 @@ import jax.numpy as jnp
 
 
 class SelfAttention(nn.Module):
+    """Self-attention block used inside the SetFormer."""
+
     dim: int
 
     @nn.compact
     def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
+        """Apply self-attention to the masked inputs."""
         q = nn.Dense(self.dim)(x)
         k = nn.Dense(self.dim)(x)
         v = nn.Dense(self.dim)(x)
@@ -27,10 +35,13 @@ class SelfAttention(nn.Module):
 
 
 class Layer(nn.Module):
+    """Transformer-style residual block for the SetFormer."""
+
     dim: int
 
     @nn.compact
     def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
+        """Apply one residual SetFormer layer."""
         x = x + SelfAttention(self.dim)(nn.RMSNorm()(x), masks, train)
 
         mlp = nn.Dense(4 * self.dim)(nn.RMSNorm()(x))
@@ -42,11 +53,14 @@ class Layer(nn.Module):
 
 
 class SetFormer(nn.Module):
+    """Permutation-invariant network for set diffusion models."""
+
     dim: int
     depth: int
 
     @nn.compact
     def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
+        """Apply the SetFormer network to the inputs."""
         seq_len = x.shape[1]
         x = jnp.where(masks[:, :, None], x, 0.0)
         masks = jnp.logical_and(

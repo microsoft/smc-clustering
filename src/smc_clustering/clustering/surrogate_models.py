@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Surrogate likelihood models and summary-statistic cluster classes.
+
+These models provide fast approximate scoring functions together with cluster subclasses that cache the sufficient statistics they need.
+"""
+
 from __future__ import annotations
 
 import collections
@@ -22,9 +27,10 @@ from smc_clustering.clustering.utils import batched_eval
 
 # ====================== Surrogate models ======================
 class Gaussian:
-    """Gaussian model with normal-inverse-gamma prior on cluster parameters"""
+    """Gaussian model with normal-inverse-gamma prior on cluster parameters."""
 
     def __init__(self, a: float, b: float, mu: float, lam: float):
+        """Initialize Gaussian with the given prior hyperparameters."""
         self.alpha_0 = a
         self.beta_0 = b
         self.mu_0 = mu
@@ -49,6 +55,7 @@ class Gaussian:
         )
 
     def post_predictive(self, x: np.ndarray, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the posterior predictive score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)))
 
@@ -74,14 +81,16 @@ class Gaussian:
         )
 
     def evidence(self, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the marginal evidence score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
 
 
 class Bernoulli:
-    """Bernoulli model with beta prior on cluster parameters"""
+    """Bernoulli model with beta prior on cluster parameters."""
 
     def __init__(self, a: float, b: float):
+        """Initialize Bernoulli with the given prior hyperparameters."""
         self.alpha_0 = a
         self.beta_0 = b
 
@@ -94,6 +103,7 @@ class Bernoulli:
         return jnp.sum(jnp.log(x * alpha + (1 - x) * beta) - jnp.log(alpha + beta))
 
     def post_predictive(self, x: np.ndarray, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the posterior predictive score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)))
 
@@ -113,12 +123,13 @@ class Bernoulli:
         )
 
     def evidence(self, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the marginal evidence score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
 
 
 def get_counts(strings: list[str]) -> np.ndarray:
-    """Convert strings to ASCII and get character counts"""
+    """Convert strings to ASCII and get character counts."""
     counts = np.zeros((26,), dtype=np.int32)
     for string in strings:
         string = unidecode(string).lower()
@@ -133,23 +144,27 @@ class CountDict(dict):
     """Dictionary with a default value. Does not insert new keys into the dictionary."""
 
     def __init__(self, default_val: Any, *args: Any, **kwargs: Any):  # noqa: ANN401
+        """Initialize CountDict with a default value and initial counts."""
         super().__init__(*args, **kwargs)
         self.default_val = default_val
 
     def __getitem__(self, key: Any) -> Any:  # noqa: ANN401
+        """Return the stored count, or the default value for missing keys."""
         try:
             return super().__getitem__(key)
         except KeyError:
             return self.default_val
 
     def copy(self) -> CountDict:
+        """Return a shallow copy that preserves the default value."""
         return CountDict(self.default_val, super().copy())
 
 
 class Multinomial:
-    """Multinomial model with Dirichlet prior on frequencies"""
+    """Multinomial model with Dirichlet prior on frequencies."""
 
     def __init__(self, alpha_0: float):
+        """Initialize Multinomial with the given prior concentration."""
         self.alpha_0 = alpha_0
 
     @functools.partial(jax.jit, static_argnums=(0))
@@ -166,6 +181,7 @@ class Multinomial:
         )
 
     def post_predictive(self, x: np.ndarray, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the posterior predictive score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(
             batched_eval(self._post_predictive, batch_size, (1, 2), x, n, np.array(summary)).flatten()
@@ -187,12 +203,13 @@ class Multinomial:
         )
 
     def evidence(self, n: np.ndarray, summary: np.ndarray) -> np.ndarray:
+        """Evaluate the marginal evidence score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
 
 
 def get_ngrams(string: str, n: int) -> collections.abc.Iterator[tuple[str, ...]]:
-    """Convert string to ASCII and get n-grams"""
+    """Convert string to ASCII and get n-grams."""
     string = re.sub(r"[^a-z0-9 \-]", "", unidecode(string.strip()).lower())
     return nltk.everygrams(" " * (n - 1) + string + "E", max_len=n, min_len=n - 1)
 
@@ -200,6 +217,7 @@ def get_ngrams(string: str, n: int) -> collections.abc.Iterator[tuple[str, ...]]
 def get_ngram_counts(
     strings: list[str] | list[list[str]], n: int = 2
 ) -> collections.Counter[tuple[str, ...]]:
+    """Count normalized n-grams across strings."""
     if type(strings[0]) is list:
         strings = sum(strings, start=[])
 
@@ -217,6 +235,7 @@ def get_ngram_counts(
 @jax.jit
 @functools.partial(jax.vmap, in_axes=(None, 0, 0))
 def dirichlet_categorical_logpmf(x: jax.Array, alphas: jax.Array, sum_alpha: jax.Array) -> jax.Array:
+    """Evaluate the Dirichlet-categorical log PMF."""
     return (
         jax.scipy.special.gammaln(sum_alpha)
         - jax.scipy.special.gammaln(sum_alpha + jnp.sum(x))
@@ -227,6 +246,7 @@ def dirichlet_categorical_logpmf(x: jax.Array, alphas: jax.Array, sum_alpha: jax
 def dirichlet_categorical_logpmf_numpy(
     x: np.ndarray, alphas: np.ndarray, sum_alpha: np.ndarray
 ) -> np.ndarray:
+    """Evaluate the Dirichlet-categorical log PMF with NumPy."""
     return (
         scipy.special.gammaln(sum_alpha)
         - scipy.special.gammaln(sum_alpha + np.sum(x))
@@ -235,9 +255,10 @@ def dirichlet_categorical_logpmf_numpy(
 
 
 class Ngram:
-    """N-gram model with Dirichlet prior on n-gram frequencies"""
+    """N-gram model with Dirichlet prior on n-gram frequencies."""
 
     def __init__(self, prior_scale: float, prior_counts: CountDict, n: int = 2):
+        """Initialize Ngram with prior counts and n-gram order."""
         self.prior_scale = prior_scale
         self.n = n
 
@@ -252,6 +273,7 @@ class Ngram:
         n: np.ndarray,
         summary: list[collections.Counter[tuple[str, ...]]],
     ) -> np.ndarray:
+        """Evaluate the posterior predictive score."""
         batch_size = 2 ** int(np.log2(n.shape[0]).item())
         counts = get_ngram_counts(obs, self.n)
         histories = [h for h in counts.keys() if len(h) == (self.n - 1) and h[-1] != "E"]
@@ -309,16 +331,23 @@ class Ngram:
         return LL
 
     def evidence(self, n: np.ndarray, summary: list[collections.Counter[tuple[str, ...]]]) -> np.ndarray:
+        """Evaluate the marginal evidence score."""
         return np.array([self._evidence(n[i], summary[i]) for i in range(len(n))])
 
 
 class Bigram(Ngram):
+    """Bigram surrogate model."""
+
     def __init__(self, prior_scale: float, prior_counts: CountDict):
+        """Initialize Bigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts, 2)
 
 
 class Trigram(Ngram):
+    """Trigram surrogate model."""
+
     def __init__(self, prior_scale: float, prior_counts: CountDict):
+        """Initialize Trigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts, 3)
 
 
@@ -326,7 +355,7 @@ class Trigram(Ngram):
 
 
 class GaussianCluster(Cluster):
-    """Cluster subclass with summary statistics for a Gaussian model"""
+    """Cluster subclass with summary statistics for a Gaussian model."""
 
     def __init__(
         self,
@@ -336,6 +365,7 @@ class GaussianCluster(Cluster):
         Sxx: np.ndarray | None = None,
         data: np.ndarray | None = None,
     ):
+        """Initialize GaussianCluster with cached sufficient statistics."""
         super().__init__(data_ids)
 
         self.dim = dim
@@ -356,9 +386,11 @@ class GaussianCluster(Cluster):
 
     @property
     def summary(self) -> list[np.ndarray]:
+        """Return Gaussian sufficient statistics for the cluster."""
         return [self.Sx, self.Sxx]
 
     def merge_point(self, data_id: int, data: np.ndarray) -> GaussianCluster:
+        """Return a new cluster after adding the given data point."""
         data_ids = self.data.union({data_id})
         Sx = self.Sx + data
         Sxx = self.Sxx + data**2
@@ -367,7 +399,7 @@ class GaussianCluster(Cluster):
 
 
 class BernoulliCluster(Cluster):
-    """Cluster subclass with summary statistics for a Bernoulli model"""
+    """Cluster subclass with summary statistics for a Bernoulli model."""
 
     def __init__(
         self,
@@ -376,6 +408,7 @@ class BernoulliCluster(Cluster):
         Sy: np.ndarray | None = None,
         data: np.ndarray | None = None,
     ):
+        """Initialize BernoulliCluster with cached sufficient statistics."""
         super().__init__(data_ids)
 
         self.dim = dim
@@ -389,9 +422,11 @@ class BernoulliCluster(Cluster):
 
     @property
     def summary(self) -> np.ndarray:
+        """Return Bernoulli sufficient statistics for the cluster."""
         return self.Sy
 
     def merge_point(self, data_id: int, data: np.ndarray) -> BernoulliCluster:
+        """Return a new cluster after adding the given data point."""
         data_ids = self.data.union({data_id})
         Sy = self.Sy + data
 
@@ -399,9 +434,10 @@ class BernoulliCluster(Cluster):
 
 
 class MultinomialCluster(Cluster):
-    """Cluster subclass with summary statistics for a multinomial model"""
+    """Cluster subclass with summary statistics for a multinomial model."""
 
     def __init__(self, data_ids: frozenset[int], dim: int, data: np.ndarray | None = None):
+        """Initialize MultinomialCluster with cached sufficient statistics."""
         super().__init__(data_ids)
         self.dim = dim
         if data is not None:
@@ -411,14 +447,16 @@ class MultinomialCluster(Cluster):
 
     @property
     def summary(self) -> np.ndarray:
+        """Return multinomial sufficient statistics for the cluster."""
         return self.counts
 
     def merge_point(self, data_id: int, data: np.ndarray) -> MultinomialCluster:
+        """Return a new cluster after adding the given data point."""
         return MultinomialCluster(self.data.union({data_id}), self.dim, data=self.counts + data)
 
 
 class WordCluster(Cluster):
-    """Cluster subclass with summary statistics for a bag-of-words model"""
+    """Cluster subclass with summary statistics for a bag-of-words model."""
 
     def __init__(
         self,
@@ -427,6 +465,7 @@ class WordCluster(Cluster):
         counts: np.ndarray | None = None,
         data: list[str] | None = None,
     ):
+        """Initialize WordCluster with cached character counts."""
         super().__init__(data_ids)
         self.dim = dim
         if counts is not None:
@@ -438,15 +477,17 @@ class WordCluster(Cluster):
 
     @property
     def summary(self) -> np.ndarray:
+        """Return bag-of-characters sufficient statistics for the cluster."""
         return self.counts
 
     def merge_point(self, data_id: int, data: list[str]) -> WordCluster:
+        """Return a new cluster after adding the given data point."""
         data_counts = get_counts(data)
         return WordCluster(self.data.union({data_id}), self.dim, counts=self.counts + data_counts)
 
 
 class NgramCluster(Cluster):
-    """Cluster subclass with summary statistics for an n-gram model"""
+    """Cluster subclass with summary statistics for an n-gram model."""
 
     def __init__(
         self,
@@ -455,6 +496,7 @@ class NgramCluster(Cluster):
         counts: collections.Counter[tuple[str, ...]] | None = None,
         data: list[str] | None = None,
     ):
+        """Initialize NgramCluster with cached n-gram counts."""
         super().__init__(data_ids)
         self.n = n
         if counts is not None:
@@ -466,28 +508,36 @@ class NgramCluster(Cluster):
 
     @property
     def summary(self) -> collections.Counter[tuple[str, ...]]:
+        """Return cached n-gram counts for the cluster."""
         return self.counts
 
     def merge_point(self, data_id: int, data: list[str]) -> NgramCluster:
+        """Return a new cluster after adding the given data point."""
         new_counts = self.counts + get_ngram_counts(data, self.n)
         return NgramCluster(self.data.union({data_id}), self.n, counts=new_counts)
 
 
 class BigramCluster(NgramCluster):
+    """Cluster with cached bigram counts."""
+
     def __init__(
         self,
         data_ids: frozenset[int],
         counts: collections.Counter[tuple[str, ...]] | None = None,
         data: list[str] | None = None,
     ):
+        """Initialize BigramCluster with cached bigram counts."""
         super().__init__(data_ids, 2, counts, data)
 
 
 class TrigramCluster(NgramCluster):
+    """Cluster with cached trigram counts."""
+
     def __init__(
         self,
         data_ids: frozenset[int],
         counts: collections.Counter[tuple[str, ...]] | None = None,
         data: list[str] | None = None,
     ):
+        """Initialize TrigramCluster with cached trigram counts."""
         super().__init__(data_ids, 3, counts, data)

@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Variational diffusion models for set-valued data.
+
+This module defines the diffusion objective, sampling procedures, and log-probability estimators used in the research code path.
+"""
+
 from __future__ import annotations
 
 import functools
@@ -13,24 +18,13 @@ from smc_clustering.diffusion.schedule import LinearSchedule
 
 
 class VariationalDiffusion:
-    """Variational diffusion following https://arxiv.org/pdf/2107.00630.pdf
+    """Variational diffusion model for sets.
 
-    In this class, we instantiate a SetFormer model, and pass it a concatenation of
-    the noisy state z, with the number of (not-masked out) elements of the set, and the diffusion time.
-    The model is trained to predict the noise that was added to z.
-
-    We use a "schedule" to control the variance of the noise added to z.
-    We require that the schedule is a monotone function of time, that it is positive and
-      f(0) = 0
-      f(1) = 1
-    (or approximately so, in the case of the linear noise schedule)
-
-    The loss function involves the gradient of the logit of the schedule!
-
-    If f(t) = sigmoid(gamma(t)), then the loss involves the gradient of gamma(t) with respect to t.
+    The model follows https://arxiv.org/pdf/2107.00630.pdf and uses a SetFormer to predict the noise added to a set-valued input. A monotone schedule controls the variance injected at each diffusion time step.
     """
 
     def __init__(self, rng: jax.Array, dim: int, depth: int, schedule: LinearSchedule | None = None):
+        """Initialize VariationalDiffusion with the given network configuration."""
         self.dim = dim
         if schedule is None:
             schedule = LinearSchedule()
@@ -43,9 +37,11 @@ class VariationalDiffusion:
         self.trained_net = None
 
     def compile_net(self):
+        """JIT-compile the network for inference."""
         self.trained_net = jax.jit(lambda x, masks: self.net.apply(self.params, x, masks, train=False))
 
     def loss(self, rng: jax.Array, params: dict, x: jax.Array, masks: jax.Array) -> jax.Array:
+        """Compute the diffusion training loss for a batch."""
         batch_size, seq_len, _ = x.shape
 
         # sample time points across batch
@@ -91,6 +87,7 @@ class VariationalDiffusion:
         log_prob: jax.Array,
     ) -> tuple[jax.Array, jax.Array, jax.Array]:
         # compute mean and variance of q(z_t | z_s)
+        """Advance one SMC step through diffusion time."""
         mu_q_ts, sigma2_q_ts = self.moments_q_ts(z_s, t, s)
 
         # sample z_t | z_s
@@ -121,11 +118,9 @@ class VariationalDiffusion:
         num_time_steps: int,
         resample_thresh: float = 0.25,
     ) -> tuple[jax.Array, jax.Array, jax.Array]:
-        """This runs a loop forwards in time, starting at x=z_0.
-        At each smc step we sample from q(z_t | z_s) (where s < t),
-        and weight the samples by log (p(z_t | z_s) / q(z_t | z_s))
-        the log weights are then normalized to sum to 1, and the product
-        of those weights is the particle estimate of p(z_0).
+        """Run an SMC estimate of the data log probability.
+
+        The routine propagates particles forward in time and reweights them by the ratio between reverse and forward transitions.
         """
         z_s = jnp.tile(x, (num_particles, 1, 1))
 
@@ -172,10 +167,9 @@ class VariationalDiffusion:
     def moments_p_st(
         self, z: jax.Array, s: jax.Array, t: jax.Array, masks: jax.Array | None = None
     ) -> tuple[jax.Array, jax.Array]:
-        """Compute the mean and variance of p(z_s | z_t)
-            according to eq. 34 of the paper (https://arxiv.org/pdf/2107.00630.pdf).
+        """Compute the moments of p(z_s | z_t).
 
-        note s < t.
+        This follows equation 34 of https://arxiv.org/pdf/2107.00630.pdf with s < t.
         """
         if masks is None:
             masks = jnp.ones_like(z[:, :, 0], dtype=jnp.bool)
@@ -208,7 +202,7 @@ class VariationalDiffusion:
         masks: jax.Array | None = None,
     ) -> jax.Array:
         # generate samples from the model
-
+        """Generate samples from the diffusion model."""
         if masks is None:
             masks = jnp.ones((num_samples, seq_len), dtype=jnp.bool)
 
@@ -235,8 +229,9 @@ class VariationalDiffusion:
         return z
 
     def score_fn(self, z: jax.Array, masks: jax.Array, t: jax.Array) -> jax.Array:
-        """Compute the score function, which is quite close to the noise prediction function.
-        See https://arxiv.org/pdf/2107.00630.pdf eqs 29-31.
+        """Compute the score function implied by the trained network.
+
+        See equations 29-31 of https://arxiv.org/pdf/2107.00630.pdf.
         """
         batch_size, seq_len, _ = z.shape
         # concatenate z, set_size and t
@@ -252,6 +247,7 @@ class VariationalDiffusion:
     def prob_flow_grad_fn(self, z: jax.Array, masks: jax.Array, t: jax.Array) -> jax.Array:
         # taken from https://arxiv.org/pdf/2210.05475.pdf
         # Eq 18 and surrounding notes
+        """Compute the probability-flow ODE drift."""
         s = self.score_fn(z, masks, t)
         beta = self.schedule(t) * self.schedule.gamma_grad(t)
         return -0.5 * beta * (z + s)
@@ -265,7 +261,7 @@ class VariationalDiffusion:
         z: jax.Array | None = None,
         rng: jax.Array | None = None,
     ) -> jax.Array:
-        """Using the probability flow ODE to generate samples.
+        """Generate samples with the probability-flow ODE.
 
         The ode is:
 

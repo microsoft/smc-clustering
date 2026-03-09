@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run agglomerative clustering experiments on the circles dataset.
+
+The script benchmarks several batch sizes for the agglomerative clusterer and saves per-seed metrics to disk.
+"""
+
 import argparse
 import collections
 import pickle

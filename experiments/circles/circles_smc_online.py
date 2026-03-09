@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Run online SMC experiments on the circles dataset.
+
+The script feeds the circles data incrementally to the clusterer and records metrics after each observation block.
+"""
+
 import argparse
 import collections
 import pickle

@@ -25,6 +25,7 @@ class UniformDummyModel(nn.Module):
     """A dummy model that returns zeros (equal logits) with EOS bias."""
 
     def __init__(self, vocab_size: int, eos_id: int) -> None:
+        """Initialize the dummy model with a fixed vocabulary size and EOS bias target."""
         super().__init__()
         self.vocab_size = vocab_size
         self.eos_id = eos_id

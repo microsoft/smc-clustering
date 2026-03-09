@@ -15,6 +15,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
 import torch
 
 from smc_clustering.jsonlm.data.dataset import EntityDataset
@@ -247,11 +248,8 @@ def test_dataset_sequence_error_handling() -> None:
         _make_jsonl(path, ['[{"a": ["x"]}, "not_a_dict"]'])
         ds = EntityDataset([str(path)], tokenizer=tok, add_bos_eos=True)
 
-        try:
+        with pytest.raises(TypeError, match="List items must all be dicts"):
             _ = ds[0]
-            assert False, "Should have raised ValueError for non-dict in list"
-        except ValueError as e:
-            assert "List items must all be dicts" in str(e)
 
     finally:
         path.unlink()

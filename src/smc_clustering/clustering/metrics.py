@@ -21,9 +21,9 @@ def cluster_precision(
     """Compute B-Cubed precision for a clustering."""
     fragment_count = len(gt_cluster_map)
     precision = 0
-    for i in gt_cluster_map:
-        tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
-        precision += tp / len(pred_cluster_map[i])
+    for item_id, gt_cluster in gt_cluster_map.items():
+        tp = len(pred_cluster_map[item_id].intersection(gt_cluster))
+        precision += tp / len(pred_cluster_map[item_id])
     return precision / fragment_count
 
 
@@ -31,9 +31,9 @@ def cluster_recall(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[i
     """Compute B-Cubed recall for a clustering."""
     fragment_count = len(gt_cluster_map)
     recall = 0
-    for i in gt_cluster_map:
-        tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
-        recall += tp / len(gt_cluster_map[i])
+    for item_id, gt_cluster in gt_cluster_map.items():
+        tp = len(pred_cluster_map[item_id].intersection(gt_cluster))
+        recall += tp / len(gt_cluster)
     return recall / fragment_count
 
 
@@ -41,10 +41,10 @@ def cluster_f1(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, 
     """Compute B-Cubed F1 for a clustering."""
     fragment_count = len(gt_cluster_map)
     f1 = 0
-    for i in gt_cluster_map:
-        tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
-        fp = len(pred_cluster_map[i].difference(gt_cluster_map[i]))
-        fn = len(gt_cluster_map[i].difference(pred_cluster_map[i]))
+    for item_id, gt_cluster in gt_cluster_map.items():
+        tp = len(pred_cluster_map[item_id].intersection(gt_cluster))
+        fp = len(pred_cluster_map[item_id].difference(gt_cluster))
+        fn = len(gt_cluster.difference(pred_cluster_map[item_id]))
         f1 += tp / (tp + 0.5 * (fp + fn))
     return f1 / fragment_count
 

@@ -25,6 +25,7 @@ class DummyModel(nn.Module):
     """A dummy LM that returns fixed logits with a small id-dependent bias for stability."""
 
     def __init__(self, vocab_size: int, bias_scale: float = 0.01) -> None:
+        """Initialize a deterministic bias-only language model."""
         super().__init__()
         # Learnable scalar isn't needed; keep a buffer with per-id bias.
         bias = torch.arange(vocab_size, dtype=torch.float32) * bias_scale
@@ -250,6 +251,7 @@ def test_logprob_sequence_empty_sequence() -> None:
 
     # Empty sequence should work but may have grammar constraints
     # Test that it doesn't crash and returns finite scores
+    error: ValueError | None = None
     try:
         score_with_eos = logprob_sequence(
             empty_entities, model=model, tokenizer=tok, include_eos=True, normalize="sum"
@@ -269,10 +271,14 @@ def test_logprob_sequence_empty_sequence() -> None:
         # Empty sequence with include_eos=False should have score 0 (no content tokens)
         assert score_without_eos == 0.0
 
-    except ValueError as e:
+    except ValueError as exc:
+        error = exc
+
+    if error is not None:
         # Empty sequences might violate grammar constraints (BOS->EOS not allowed)
-        # This is acceptable behavior - just verify the error is grammar-related
-        assert "grammar" in str(e).lower() or "disallowed" in str(e).lower()
+        # This is acceptable behavior - just verify the error is grammar-related.
+        lowered = str(error).lower()
+        assert "grammar" in lowered or "disallowed" in lowered
 
 
 def test_logprob_sequence_single_entity_vs_entity_api() -> None:

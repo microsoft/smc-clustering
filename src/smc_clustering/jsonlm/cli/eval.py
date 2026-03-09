@@ -121,7 +121,7 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
                 a = json.loads(a_str)
                 b = json.loads(b_str)
                 if not isinstance(a, dict) or not isinstance(b, dict):
-                    raise ValueError("Both columns must be JSON objects.")
+                    raise TypeError("Both columns must be JSON objects.")
             except Exception as e:
                 raise ValueError(f"Failed to parse pairs at line {lineno}: {e}") from e
             yield a, b
@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> None:
                         elif isinstance(obj, list):
                             # Entity sequence: use logprob_sequence with include_eos=False
                             if not all(isinstance(item, dict) for item in obj):
-                                raise ValueError(f"List items must all be dicts in {args.data}:{lineno}")
+                                raise TypeError(f"List items must all be dicts in {args.data}:{lineno}")
 
                             # Normalize sequence by removing legacy "properties" wrappers if present (lenient mode)
                             normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> None:
                                 f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}"
                             )
                         else:
-                            raise ValueError(
+                            raise TypeError(
                                 f"Expected a JSON object or array in {args.data}:{lineno}, got {type(obj).__name__}",
                             )
                         total += float(lp)

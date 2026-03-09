@@ -35,21 +35,21 @@ def canonicalize_entity(entity: dict[str, list[str]]) -> dict[str, list[str]]:
         A new canonicalized mapping.
 
     Raises:
-        ValueError: If types are invalid (non-dict, non-list values, non-string items).
+        TypeError: If types are invalid (non-dict, non-list values, non-string items).
     """
     if not isinstance(entity, dict):
-        raise ValueError(f"Entity must be a dict[str, list[str]], got: {type(entity).__name__}")
+        raise TypeError(f"Entity must be a dict[str, list[str]], got: {type(entity).__name__}")
 
     norm: dict[str, list[str]] = {}
     for k, vs in entity.items():
         # Validate key and value types.
         if not isinstance(k, str):
-            raise ValueError(f"Entity keys must be str, got key type: {type(k).__name__}")
+            raise TypeError(f"Entity keys must be str, got key type: {type(k).__name__}")
         if not isinstance(vs, list):
-            raise ValueError(f"Entity values must be lists, got type for key '{k}': {type(vs).__name__}")
+            raise TypeError(f"Entity values must be lists, got type for key '{k}': {type(vs).__name__}")
         bad_items = [type(x).__name__ for x in vs if not isinstance(x, str)]
         if bad_items:
-            raise ValueError(f"All list items must be str for key '{k}', bad types: {bad_items}")
+            raise TypeError(f"All list items must be str for key '{k}', bad types: {bad_items}")
 
         # Set semantics MVP: dedup + sort.
         unique_sorted = sorted(set(vs))
@@ -111,7 +111,7 @@ def entity_to_string(entity: dict[str, list[str]]) -> str:
 
 
 def entities_to_string_as_set(entities: list[dict[str, list[str]]]) -> str:
-    """Serialize a sequence of entities (interpreted as a bag)to a stable string.
+    r"""Serialize a sequence of entities (interpreted as a bag)to a stable string.
 
     Args:
         entities: List of entity mappings to serialize.
@@ -143,7 +143,7 @@ def entities_to_string_as_set(entities: list[dict[str, list[str]]]) -> str:
 
 
 def parse_sequence(text: str) -> list[dict[str, list[str]]]:
-    """Parse a training string containing multiple entities back into a list of canonical dicts.
+    r"""Parse a training string containing multiple entities back into a list of canonical dicts.
 
     Uses lexer-based brace counting to identify entity boundaries, then calls the existing parse_entity
     function for each individual entity. Only counts { and } tokens outside of STRING tokens.

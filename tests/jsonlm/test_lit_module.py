@@ -24,6 +24,7 @@ class ToyLM(nn.Module):
     """A minimal per-token linear LM: embeddings → linear head to V (no attention)."""
 
     def __init__(self, vocab_size: int, d_model: int = 32) -> None:
+        """Initialize the toy embedding-plus-linear language model."""
         super().__init__()
         self.embed = nn.Embedding(vocab_size, d_model)
         self.head = nn.Linear(d_model, vocab_size)

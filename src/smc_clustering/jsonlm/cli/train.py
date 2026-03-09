@@ -114,7 +114,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
                     if isinstance(obj, list):
                         # Entity sequence: serialize with entities_to_string
                         if not all(isinstance(item, dict) for item in obj):
-                            raise ValueError(f"List items must all be dicts in {p}:{lineno}")
+                            raise TypeError(f"List items must all be dicts in {p}:{lineno}")
                         # Normalize sequence by removing legacy "properties" wrappers if present
                         normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
                         assert isinstance(normalized_obj, list), (
@@ -130,7 +130,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
                         # Single entity: serialize with entity_to_string
                         yield entity_to_string(normalized_obj)
                     else:
-                        raise ValueError(
+                        raise TypeError(
                             f"Expected a JSON object or array in {p}:{lineno}, got {type(obj).__name__}"
                         )
                 except json.JSONDecodeError as e:

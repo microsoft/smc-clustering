@@ -122,6 +122,10 @@ def decode_sample(
       4) sample the next id.
 
     Args:
+        model: Autoregressive language model returning logits of shape ``[B, T, V]``.
+        tokenizer: Tokenizer whose vocabulary and grammar define valid continuations.
+        max_steps: Maximum number of decoding iterations before failing.
+        device: Device on which to run decoding. Defaults to the model device when omitted.
         temperature: >0; 1.0 = no scale, <1 = sharper, >1 = flatter.
         top_k: keep only the largest-k allowed logits (after masking). None disables.
         top_p: nucleus threshold in (0, 1]; keep smallest set whose cumulative prob ≥ top_p. None disables.

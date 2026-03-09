@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Integration test for the deltas CLI on a tiny end-to-end training run."""
+
 from __future__ import annotations
 
 import json

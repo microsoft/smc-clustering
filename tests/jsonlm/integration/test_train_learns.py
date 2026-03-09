@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+"""Integration test that a tiny constrained LM can improve on repeated training data."""
+
 # tests/test_end_to_end_training.py
 from __future__ import annotations
 

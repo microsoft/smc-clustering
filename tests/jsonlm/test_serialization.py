@@ -66,12 +66,12 @@ def test_values_can_be_empty_list() -> None:
 
 
 def test_bad_input_types_raise() -> None:
-    """Non-list values or non-string items should raise ValueError."""
-    with pytest.raises(ValueError):
+    """Non-list values or non-string items should raise TypeError."""
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({"a": "not-a-list"})  # type: ignore[arg-type]
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({"a": [1, 2]})  # type: ignore[list-item]
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({1: ["x"]})  # type: ignore[dict-item]
 
 

@@ -32,11 +32,13 @@ class DummyModel(nn.Module):
     """
 
     def __init__(self, vocab_size: int, bias_scale: float = 0.01) -> None:
+        """Initialize a deterministic bias-only scorer."""
         super().__init__()
         bias = torch.arange(vocab_size, dtype=torch.float32) * bias_scale
         self.register_buffer("_bias", bias, persistent=False)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """Return broadcasted per-token logits with no dependence on the input sequence."""
         B, T = input_ids.shape
         V = self._bias.numel()
         # Broadcast [V] -> [B, T, V]

@@ -252,7 +252,7 @@ def main(argv: list[str] | None = None) -> None:
     task_instance = benchmark.tasks_by_name[args.task_instance]
     logging.info(f"Loaded task instance {args.task_instance}")
 
-    data = list(e for e, _ in task_instance.read_items())
+    data = [e for e, _ in task_instance.read_items()]
     logging.info(f"Loaded {len(data)} entities for clustering")
     data = ListWrapper(data)  # TODO: get rid of that
 

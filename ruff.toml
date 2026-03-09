@@ -86,7 +86,9 @@ ignore = [
     "E731",    # allow assigning lambda; e.g., `fn = lambda x: x + 1`
     "E741",    # allow ambiguous single-letter names; e.g., `I`, `l`, `O`
     "PT018",   # allow compound assertions; e.g., `assert a and b`
+    "PT011",   # allow broad pytest.raises in tests
     "RET504",  # allow unnecessary assignment before return; e.g., `x=foo(); return x`
+    "S301",    # allow pickle usage in trusted evaluation/training flows
     "SLF001",  # allow private member access; e.g., `obj._internal` in tests/examples
     "D104",    # allow missing package docstring
     "RUF001",  # allow ambiguous unicode in comments/strings; e.g., ρ, σ in text

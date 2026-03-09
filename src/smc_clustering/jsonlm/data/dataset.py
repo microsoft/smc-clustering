@@ -116,13 +116,13 @@ class EntityDataset(Dataset):
         elif isinstance(obj, list):
             # Entity sequence: validate all elements are dicts and serialize with entities_to_string
             if not all(isinstance(item, dict) for item in obj):
-                raise ValueError(f"List items must all be dicts in {ref.path}:{ref.lineno}")
+                raise TypeError(f"List items must all be dicts in {ref.path}:{ref.lineno}")
             # Normalize sequence by removing legacy "properties" wrappers if present
             normalized_obj = normalize_entity_or_sequence(obj, seq_mode="strict")
             assert isinstance(normalized_obj, list), "Sequence normalization should return list"
             s = entities_to_string_as_set(normalized_obj)
         else:
-            raise ValueError(
+            raise TypeError(
                 f"Expected a JSON object or array in {ref.path}:{ref.lineno}, got {type(obj).__name__}"
             )
 

@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for sequence serialization functions in encoder module.
 
 This module tests the new entities_to_string and parse_sequence functions that handle

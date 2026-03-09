@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Batched scoring utilities for grammar-constrained log-likelihoods and Δ-scores.
 
 This module provides:

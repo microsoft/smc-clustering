@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Constrained negative log-likelihood under grammar masks for teacher forcing.
 
 This module masks out disallowed tokens at each step (per the grammar), renormalizes with log_softmax over the allowed

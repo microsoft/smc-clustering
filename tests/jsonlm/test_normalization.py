@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for jsonlm.serialization.normalization module.
 
 Tests comprehensive behavior of properties wrapper removal functions, including

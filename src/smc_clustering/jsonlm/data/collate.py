@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Padding-aware collate utilities for batching BOS…EOS sequences.
 
 We batch variable-length [T] LongTensors returned by EntityDataset by padding each row to the batch maximum length.

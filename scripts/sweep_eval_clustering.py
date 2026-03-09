@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Generic sweep runner for clustering evaluation scripts.
 
 Allows specifying scalar or list-valued arguments to generate a Cartesian

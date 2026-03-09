@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for constrained greedy decoding: validity, determinism, and mask adherence.
 
 We use a uniform dummy model that assigns equal logits to every token. Constrained greedy then always picks the lowest-ID

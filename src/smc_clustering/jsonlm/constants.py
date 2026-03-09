@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Defines project-wide token string constants for JSON punctuation and structural sentinels.
 
 The constants are later assembled into an ordered list for Vocabulary.

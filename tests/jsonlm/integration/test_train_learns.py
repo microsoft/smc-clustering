@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 # tests/test_end_to_end_training.py
 from __future__ import annotations
 

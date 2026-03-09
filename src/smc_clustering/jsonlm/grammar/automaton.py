@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Prefix automaton and transitions for the constrained JSON-with-<K>/<V> grammar.
 
 This module advances a compact State enum given observed token IDs from the tokenizer. It uses only the tokenizer's

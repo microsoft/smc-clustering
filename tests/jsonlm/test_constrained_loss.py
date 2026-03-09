@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for constrained NLL: renormalization over allowed tokens and helpful error paths.
 
 We hand-check a tiny example to verify probabilities renormalize strictly over allowed tokens, and confirm that

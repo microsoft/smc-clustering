@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Training CLI for grammar-constrained JSON-entity language modeling.
 
 This script:

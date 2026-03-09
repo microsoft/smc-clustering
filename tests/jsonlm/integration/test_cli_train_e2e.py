@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """End-to-end smoke test for the training CLI.
 
 This test creates a tiny JSONL train/val set, runs the jsonlm.cli.train entrypoint with

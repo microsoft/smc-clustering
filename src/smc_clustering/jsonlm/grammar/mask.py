@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Allowed-token masking for the grammar to enforce 100% valid sequences.
 
 This module exposes `allowed_token_mask`, which returns a Bool mask over the joint vocabulary for the next token given

@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Filter a JSONL dataset by labels, keeping at most N unique labels.
 
 If a "confusing entities" map is provided (JSONL lines of [entity_id, [confusing_entity_ids...]]), then accepting a

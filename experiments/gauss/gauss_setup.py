@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 import jax
 import jax.numpy as jnp
 import numpy as np

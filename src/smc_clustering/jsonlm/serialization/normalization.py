@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Entity and sequence normalization utilities.
 
 Provides centralized handling of legacy "properties" wrapper removal and consistent

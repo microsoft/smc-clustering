@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Hybrid tokenizer: specials for JSON structure + Byte-Level BPE for string contents.
 
 This tokenizer lexes the serialized training string (with <K>/<V> sentinels), keeps structure tokens as single IDs,

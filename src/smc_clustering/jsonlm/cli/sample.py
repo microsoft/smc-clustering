@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Sampling CLI: generate entities from a trained checkpoint (greedy or stochastic).
 
 Usage example:

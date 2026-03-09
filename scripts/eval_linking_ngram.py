@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Evaluate n-gram surrogate model linking performance in MS-KeBAB.
 
 Example usage:

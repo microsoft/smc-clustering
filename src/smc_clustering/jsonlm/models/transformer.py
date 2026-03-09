@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """A Transformer model for next-token prediction.
 
 The model uses token + positional embeddings, pre-LN blocks with causal self-attention, and a 2-layer GELU MLP.

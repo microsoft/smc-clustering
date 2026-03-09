@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for canonicalization and sentinel-based serialization/parsing.
 
 The tests assert idempotent canonicalization, deterministic ordering, round-trip stability, and helpful error handling

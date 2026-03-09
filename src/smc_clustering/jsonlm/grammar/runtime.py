@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Vectorized grammar mask construction runtime for training and scoring.
 
 This module provides a cached, device-local runtime that precomputes allowed token masks and state transitions

@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:

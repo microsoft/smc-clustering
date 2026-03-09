@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Evaluation CLI: score entities and (optionally) compute Δ on pairs.
 
 This script reloads a trained model and tokenizer artifacts, then:

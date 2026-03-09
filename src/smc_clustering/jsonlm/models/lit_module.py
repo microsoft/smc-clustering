@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """PyTorch Lightning module that trains a next-token LM with grammar-constrained NLL.
 
 This module wraps an arbitrary model that maps input token IDs → logits [B, T, V] and enforces the project grammar

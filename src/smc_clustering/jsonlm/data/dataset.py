@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Torch Dataset that reads JSONL entities or entity sequences, canonicalizes on-the-fly, and encodes to token IDs.
 
 The dataset builds a byte-offset index for each provided JSONL file so it can seek to a line on demand without loading

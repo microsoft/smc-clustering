@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Δ-scoring CLI: read JSONL of [entity_1, entity_2] and write Δ = logP(A∪B) − logP(A) − logP(B).
 
 Input format:

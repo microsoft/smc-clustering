@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for the public logprob API: canonicalization invariance, determinism, and normalization.
 
 We use a deterministic DummyModel (time-independent logits) so values are stable regardless of hardware,

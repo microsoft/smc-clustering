@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Provides Vocabulary, a deterministic mapping between token strings and IDs (specials-first).
 
 We use special tokens to represent JSON structure symbols, and to support grammar-constrained decoding.

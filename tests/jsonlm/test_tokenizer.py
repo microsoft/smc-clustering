@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for the hybrid tokenizer: specials-first + byte-level BPE inside quotes.
 
 We verify round-trip encode/decode on strings with spaces and unseen content, specials occupying first IDs,

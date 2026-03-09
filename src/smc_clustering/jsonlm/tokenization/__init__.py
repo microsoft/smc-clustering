@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tokenization package exposing Vocabulary and (later) tokenizer utilities.
 
 We keep vocabulary (special tokens, ids, and lookups) separate from the tokenizer implementation so that

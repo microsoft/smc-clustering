@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Constrained greedy decoding for valid JSON entities with <K>/<V> sentinels.
 
 This decoder uses the grammar automaton to mask disallowed tokens at each step, then greedily selects the

@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for the Lightning module: forward shapes, loss finiteness, and mask alignment.
 
 We build a tiny toy tokenizer and a minimal per-token linear LM to verify that training_step runs end-to-end, that

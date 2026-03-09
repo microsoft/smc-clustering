@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for token constants and the Vocabulary dataclass.
 
 We assert uniqueness, ordering stability, and correctness of id↔token mappings. Using a fixed snapshot of

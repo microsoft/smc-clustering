@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests to verify that the new runtime implementation produces correct results.
 
 This module tests the runtime implementation across various entity structures and edge cases,

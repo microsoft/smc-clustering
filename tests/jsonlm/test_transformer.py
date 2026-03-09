@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for the tiny GPT-style Transformer: shapes, weight tying, and causality.
 
 We verify logits shapes match input sizes, that lm_head is tied to tok_emb if requested, and that

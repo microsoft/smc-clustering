@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for the unified grammar runtime system.
 
 Tests verify equivalence with the old per-step automaton approach, proper EOS handling,

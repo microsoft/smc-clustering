@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Trainer for the hybrid tokenizer that uses Byte-Level BPE inside quoted strings.
 
 The trainer extracts raw string-literal contents from the serialized corpus and fits a byte-level BPE model on them.

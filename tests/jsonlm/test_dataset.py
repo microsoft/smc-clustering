@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for EntityDataset: offset indexing, on-the-fly canonicalization, and encoding.
 
 We verify that dataset items are 1-D LongTensors containing BOS/EOS by default, and that two permutations of the same

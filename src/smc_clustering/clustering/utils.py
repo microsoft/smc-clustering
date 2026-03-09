@@ -1,4 +1,6 @@
+# Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
+
 from math import ceil
 
 import jax.numpy as jnp

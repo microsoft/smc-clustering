@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.
 
 This verifies that (1) the model and Lightning wrapper interoperate, (2) grammar masks build correctly for a real batch,

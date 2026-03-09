@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 exclude = ["**/__pycache__", "**/.*"]
 
 line-length = 105

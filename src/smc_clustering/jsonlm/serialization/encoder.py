@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Canonicalization and textual serialization/parsing for JSON-entity dicts.
 
 This module converts raw Python entities of type dict[str, list[str]] into a deterministic, canonical form and a stable

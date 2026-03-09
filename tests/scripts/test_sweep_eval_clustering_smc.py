@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Tests for the sweep_eval_clustering_smc helper utilities."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for the grammar automaton and allowed-token masks.
 
 We verify local expectations at critical states and an end-to-end walk over a sample entity: each consumed token is

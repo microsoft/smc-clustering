@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Public API surface for encoding entities and computing constrained log-likelihoods.
 
 This module exposes core entry points for both single entities and entity sequences: `encode_entity`/`encode_sequence`

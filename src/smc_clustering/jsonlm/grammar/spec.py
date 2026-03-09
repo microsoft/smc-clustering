@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Grammar state definitions for the constrained JSON-with-<K>/<V> language.
 
 The grammar models a single JSON object whose values are arrays of strings. Strings are serialized with leading/trailing

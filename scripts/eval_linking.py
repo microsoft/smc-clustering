@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:

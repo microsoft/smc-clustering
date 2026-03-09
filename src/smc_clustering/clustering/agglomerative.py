@@ -1,4 +1,6 @@
+# Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
+
 import jax
 import numpy as np
 from matplotlib import pyplot as plt

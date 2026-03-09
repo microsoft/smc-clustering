@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for batched scoring utilities: score_entities_batched and compute_deltas_batched.
 
 We verify:

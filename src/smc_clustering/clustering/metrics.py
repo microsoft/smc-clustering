@@ -1,33 +1,39 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import collections
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 
 
-def cluster_precision(pred_cluster_map, gt_cluster_map):
+def cluster_precision(
+    pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]
+) -> float:
     fragment_count = len(gt_cluster_map)
     precision = 0
-    for i in gt_cluster_map.keys():
+    for i in gt_cluster_map:
         tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
         precision += tp / len(pred_cluster_map[i])
     return precision / fragment_count
 
 
-def cluster_recall(pred_cluster_map, gt_cluster_map):
+def cluster_recall(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]) -> float:
     fragment_count = len(gt_cluster_map)
     recall = 0
-    for i in gt_cluster_map.keys():
+    for i in gt_cluster_map:
         tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
         recall += tp / len(gt_cluster_map[i])
     return recall / fragment_count
 
 
-def cluster_f1(pred_cluster_map, gt_cluster_map):
+def cluster_f1(pred_cluster_map: dict[int, set[int]], gt_cluster_map: dict[int, set[int]]) -> float:
     fragment_count = len(gt_cluster_map)
     f1 = 0
-    for i in gt_cluster_map.keys():
+    for i in gt_cluster_map:
         tp = len(pred_cluster_map[i].intersection(gt_cluster_map[i]))
         fp = len(pred_cluster_map[i].difference(gt_cluster_map[i]))
         fn = len(gt_cluster_map[i].difference(pred_cluster_map[i]))
@@ -35,7 +41,7 @@ def cluster_f1(pred_cluster_map, gt_cluster_map):
     return f1 / fragment_count
 
 
-def cluster_metrics(predictions, ground_truth) -> dict[str, float]:
+def cluster_metrics(predictions: Sequence[Any], ground_truth: Sequence[Any]) -> dict[str, float]:
     """Evaluate an output for the clustering task instance."""
     fragment_count = len(predictions)
     metrics = collections.defaultdict(float)

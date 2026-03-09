@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -21,7 +23,7 @@ prior = DirichletProcess(alpha)
 ClusterClass = GaussianCluster
 
 
-def generate_gauss_dataset():
+def generate_gauss_dataset() -> tuple[np.ndarray, np.ndarray]:
     a = theta[0:2]
     b = theta[2:4]
     mu = theta[4:6]
@@ -64,7 +66,7 @@ def generate_gauss_dataset():
     return data, labels
 
 
-def batched_score_eval(rng, clusters):
+def batched_score_eval(rng: jax.Array, clusters: list[np.ndarray]) -> jax.Array:
     n = np.array([cl.shape[0] for cl in clusters])
     summary = np.concatenate(
         [

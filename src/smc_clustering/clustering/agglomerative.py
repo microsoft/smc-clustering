@@ -1,6 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
+
 import jax
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,7 +16,13 @@ from smc_clustering.clustering.cluster import Cluster
 
 class Clusterer:
     def __init__(
-        self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None
+        self,
+        data: np.ndarray,
+        score_fn: Callable,
+        link_threshold: float = 0,
+        cluster_batch_size: int = 16,
+        prior: Callable | None = None,
+        score_cache: dict[int, float] | None = None,
     ):
         self.data = data
         self.score_fn = score_fn
@@ -22,7 +33,9 @@ class Clusterer:
         self.prior = prior if prior is not None else lambda s: 0
         self.objective = None
 
-    def compute_scores(self, rng, clusters, force_recompute=False):
+    def compute_scores(
+        self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
+    ) -> int:
         """For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
@@ -44,7 +57,7 @@ class Clusterer:
 
         return len(compute_clusters)
 
-    def generate_batch_ids(self, rng):
+    def generate_batch_ids(self, rng: jax.Array) -> tuple[jax.Array, list[tuple[Any, Any]]]:
         # select a batch at random
         indices = np.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
@@ -52,7 +65,9 @@ class Clusterer:
         unique_pairs = [(i, j) for i in batch_indices for j in batch_indices if i < j]
         return batch_indices, unique_pairs
 
-    def cluster(self, rng, max_iter=100, callback=None):
+    def cluster(
+        self, rng: jax.Array, max_iter: int = 100, callback: Callable | None = None
+    ) -> tuple[list[int], bool]:
         n_evals = []
         if self.objective is None:
             rng, compute_rng = jax.random.split(rng)
@@ -117,7 +132,7 @@ class Clusterer:
 
         return n_evals, False
 
-    def summary(self, print_cluster_data=False):
+    def summary(self, print_cluster_data: bool = False):
         # Print out summary of clustering
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
@@ -126,7 +141,7 @@ class Clusterer:
                 print(f"LL:{self.score_cache[c.hash]:.2g}, ", self.data[c.ids])
             print()
 
-    def list_cluster_labels(self):
+    def list_cluster_labels(self) -> list[str]:
         """Return a list of the cluster IDs for each observation"""
         cluster_lookup = {}
         for cl in self.clusters:
@@ -135,7 +150,7 @@ class Clusterer:
         return [cluster_lookup[i] for i in sorted(cluster_lookup.keys())]
 
 
-def plot_callback(clusterer):
+def plot_callback(clusterer: Clusterer) -> None:
     # sort clusters by size
     clusters = sorted(clusterer.clusters, key=lambda c: c.size, reverse=True)
     plt.figure()

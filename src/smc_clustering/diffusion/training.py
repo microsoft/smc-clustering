@@ -2,22 +2,32 @@
 # Licensed under the MIT license.
 
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import jax
 import optax
 import tqdm
 from flax.training import checkpoints, train_state
 
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from smc_clustering.diffusion.diffusion import VariationalDiffusion
+
+
 def train_model(
-    rng,
-    model,
-    dataloader,
-    optimizer=None,
-    epochs=1,
-    loss_interval=100,
-    callback=None,
-    checkpoint_path=None,
-):
+    rng: jax.Array,
+    model: VariationalDiffusion,
+    dataloader: Iterable[tuple[jax.Array, jax.Array]],
+    optimizer: optax.GradientTransformation | None = None,
+    epochs: int = 1,
+    loss_interval: int = 100,
+    callback: Callable[..., object] | None = None,
+    checkpoint_path: str | None = None,
+) -> list[float]:
     loss_history = []
 
     if optimizer is None:
@@ -25,7 +35,9 @@ def train_model(
         opt_state = optimizer.init(model.params)
 
     @jax.jit
-    def update_step(rng, params, x, masks, opt_state):
+    def update_step(
+        rng: jax.Array, params: dict, x: jax.Array, masks: jax.Array, opt_state: optax.OptState
+    ) -> tuple[jax.Array, dict, optax.OptState]:
         val, grads = jax.value_and_grad(model.loss, argnums=1, has_aux=False)(rng, params, x, masks)
         updates, opt_state = optimizer.update(grads, opt_state)
         params = optax.apply_updates(params, updates)

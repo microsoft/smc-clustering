@@ -1,6 +1,8 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import functools
 
 import jax
@@ -28,7 +30,7 @@ class VariationalDiffusion:
     If f(t) = sigmoid(gamma(t)), then the loss involves the gradient of gamma(t) with respect to t.
     """
 
-    def __init__(self, rng, dim, depth, schedule=None):
+    def __init__(self, rng: jax.Array, dim: int, depth: int, schedule: LinearSchedule | None = None):
         self.dim = dim
         if schedule is None:
             schedule = LinearSchedule()
@@ -43,7 +45,7 @@ class VariationalDiffusion:
     def compile_net(self):
         self.trained_net = jax.jit(lambda x, masks: self.net.apply(self.params, x, masks, train=False))
 
-    def loss(self, rng, params, x, masks):
+    def loss(self, rng: jax.Array, params: dict, x: jax.Array, masks: jax.Array) -> jax.Array:
         batch_size, seq_len, _ = x.shape
 
         # sample time points across batch
@@ -79,7 +81,15 @@ class VariationalDiffusion:
 
         return loss
 
-    def smc_step(self, rng, s, t, z_s, log_weights, log_prob):
+    def smc_step(
+        self,
+        rng: jax.Array,
+        s: jax.Array,
+        t: jax.Array,
+        z_s: jax.Array,
+        log_weights: jax.Array,
+        log_prob: jax.Array,
+    ) -> tuple[jax.Array, jax.Array, jax.Array]:
         # compute mean and variance of q(z_t | z_s)
         mu_q_ts, sigma2_q_ts = self.moments_q_ts(z_s, t, s)
 
@@ -103,7 +113,14 @@ class VariationalDiffusion:
 
         return z_t, log_weights, log_prob
 
-    def logp_smc(self, rng, x, num_particles, num_time_steps, resample_thresh=0.25):
+    def logp_smc(
+        self,
+        rng: jax.Array,
+        x: jax.Array,
+        num_particles: int,
+        num_time_steps: int,
+        resample_thresh: float = 0.25,
+    ) -> tuple[jax.Array, jax.Array, jax.Array]:
         """This runs a loop forwards in time, starting at x=z_0.
         At each smc step we sample from q(z_t | z_s) (where s < t),
         and weight the samples by log (p(z_t | z_s) / q(z_t | z_s))
@@ -135,7 +152,7 @@ class VariationalDiffusion:
 
         return log_prob, z, log_weights
 
-    def moments_q_ts(self, z_s, t, s):
+    def moments_q_ts(self, z_s: jax.Array, t: jax.Array, s: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Compute the mean and variance of q(z_t | z_s).
 
         See eqs 20-22 of the paper (https://arxiv.org/pdf/2107.00630.pdf).
@@ -152,7 +169,9 @@ class VariationalDiffusion:
 
         return mu, sigma2_ts
 
-    def moments_p_st(self, z, s, t, masks=None):
+    def moments_p_st(
+        self, z: jax.Array, s: jax.Array, t: jax.Array, masks: jax.Array | None = None
+    ) -> tuple[jax.Array, jax.Array]:
         """Compute the mean and variance of p(z_s | z_t)
             according to eq. 34 of the paper (https://arxiv.org/pdf/2107.00630.pdf).
 
@@ -180,7 +199,14 @@ class VariationalDiffusion:
         sigma2 = sigma2_s * c
         return mu, sigma2
 
-    def generate(self, rng, num_samples: int, seq_len: int, num_time_steps: int, masks=None):
+    def generate(
+        self,
+        rng: jax.Array,
+        num_samples: int,
+        seq_len: int,
+        num_time_steps: int,
+        masks: jax.Array | None = None,
+    ) -> jax.Array:
         # generate samples from the model
 
         if masks is None:
@@ -189,7 +215,9 @@ class VariationalDiffusion:
         rng, init_rng = jax.random.split(rng)
         z = jax.random.normal(init_rng, (num_samples, seq_len, self.dim))
 
-        def update_step(carry, rng):
+        def update_step(
+            carry: tuple[jax.Array, jax.Array, jax.Array, jax.Array], rng: jax.Array
+        ) -> tuple[tuple[jax.Array, jax.Array, jax.Array, jax.Array], None]:
             z, s, t, masks = carry
             t -= 1 / num_time_steps
             s -= 1 / num_time_steps
@@ -206,7 +234,7 @@ class VariationalDiffusion:
 
         return z
 
-    def score_fn(self, z, masks, t):
+    def score_fn(self, z: jax.Array, masks: jax.Array, t: jax.Array) -> jax.Array:
         """Compute the score function, which is quite close to the noise prediction function.
         See https://arxiv.org/pdf/2107.00630.pdf eqs 29-31.
         """
@@ -221,14 +249,22 @@ class VariationalDiffusion:
         sigma = jnp.sqrt(sigma2)
         return -eta_hat / sigma
 
-    def prob_flow_grad_fn(self, z, masks, t):
+    def prob_flow_grad_fn(self, z: jax.Array, masks: jax.Array, t: jax.Array) -> jax.Array:
         # taken from https://arxiv.org/pdf/2210.05475.pdf
         # Eq 18 and surrounding notes
         s = self.score_fn(z, masks, t)
         beta = self.schedule(t) * self.schedule.gamma_grad(t)
         return -0.5 * beta * (z + s)
 
-    def generate_ode(self, num_samples, seq_len, num_time_steps, masks=None, z=None, rng=None):
+    def generate_ode(
+        self,
+        num_samples: int,
+        seq_len: int,
+        num_time_steps: int,
+        masks: jax.Array | None = None,
+        z: jax.Array | None = None,
+        rng: jax.Array | None = None,
+    ) -> jax.Array:
         """Using the probability flow ODE to generate samples.
 
         The ode is:
@@ -243,7 +279,9 @@ class VariationalDiffusion:
         if z is None:
             z = jax.random.normal(rng, (num_samples, seq_len, self.dim))
 
-        def update_step(carry, t):
+        def update_step(
+            carry: tuple[jax.Array, jax.Array], t: jax.Array
+        ) -> tuple[tuple[jax.Array, jax.Array], None]:
             z, masks = carry
             z -= 1 / num_time_steps * self.prob_flow_grad_fn(z, masks, t)
 
@@ -254,10 +292,14 @@ class VariationalDiffusion:
         return z
 
     @functools.partial(jax.jit, static_argnums=(0, 4))
-    def log_prob_ode(self, rng, x, masks, num_time_steps=100):
+    def log_prob_ode(
+        self, rng: jax.Array, x: jax.Array, masks: jax.Array, num_time_steps: int = 100
+    ) -> tuple[jax.Array, jax.Array]:
         """Compute the log probability of x under the model, using the probability flow ODE."""
 
-        def update_step(carry, rng):
+        def update_step(
+            carry: tuple[jax.Array, jax.Array, jax.Array, jax.Array], rng: jax.Array
+        ) -> tuple[tuple[jax.Array, jax.Array, jax.Array, jax.Array], None]:
             # use vector-Jacobian product and Skilling-Hutchinson estimator
             # see https://openreview.net/pdf?id=PxTIG12RRHS eq 39 - 40
 

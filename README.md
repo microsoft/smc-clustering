@@ -18,10 +18,3 @@ The recommended way to install the code is to clone the repository and install e
    ```bash
    uv pip install --no-deps -e ../MS-KeBAB
    ```
-
-3. Temporary fix:
-
-   ```
-   uv add pyarrow
-   uv add evaluate
-   ```

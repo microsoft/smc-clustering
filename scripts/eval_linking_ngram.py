@@ -16,6 +16,7 @@ The required pickle with prior counts is expected at:
 from __future__ import annotations
 
 import argparse
+import collections
 import logging
 import os
 import pickle
@@ -34,10 +35,12 @@ from smc_clustering.clustering.surrogate_models import Bigram, CountDict, get_ng
 class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
-    def __init__(self, prior_scale, prior_counts):
+    def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
         super().__init__(prior_scale, prior_counts)
 
-    def post_predictive(self, obs, n, summary):
+    def post_predictive(
+        self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
+    ) -> np.ndarray:
         if type(obs) is list:
             name = obs[0].properties["name"]
         else:

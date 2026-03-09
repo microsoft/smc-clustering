@@ -1,7 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import flax.linen as nn
+import jax
 import jax.numpy as jnp
 
 
@@ -9,7 +12,7 @@ class SelfAttention(nn.Module):
     dim: int
 
     @nn.compact
-    def __call__(self, x, masks, train):
+    def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
         q = nn.Dense(self.dim)(x)
         k = nn.Dense(self.dim)(x)
         v = nn.Dense(self.dim)(x)
@@ -27,7 +30,7 @@ class Layer(nn.Module):
     dim: int
 
     @nn.compact
-    def __call__(self, x, masks, train):
+    def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
         x = x + SelfAttention(self.dim)(nn.RMSNorm()(x), masks, train)
 
         mlp = nn.Dense(4 * self.dim)(nn.RMSNorm()(x))
@@ -43,7 +46,7 @@ class SetFormer(nn.Module):
     depth: int
 
     @nn.compact
-    def __call__(self, x, masks, train):
+    def __call__(self, x: jax.Array, masks: jax.Array, train: bool) -> jax.Array:
         seq_len = x.shape[1]
         x = jnp.where(masks[:, :, None], x, 0.0)
         masks = jnp.logical_and(

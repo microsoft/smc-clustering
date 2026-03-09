@@ -47,6 +47,7 @@ from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
 from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
 from smc_clustering.jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
 from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
@@ -139,7 +140,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
 class PeriodicDecodeCallback(Callback):
     """Every `every_n_steps`, print a constrained-greedy decode (as a canonical dict) for sanity."""
 
-    def __init__(self, tokenizer, every_n_steps: int = 0, max_steps: int = 128) -> None:
+    def __init__(self, tokenizer: JsonLMTokenizer, every_n_steps: int = 0, max_steps: int = 128) -> None:
         """Initialize the callback."""
         super().__init__()
         self.tokenizer = tokenizer

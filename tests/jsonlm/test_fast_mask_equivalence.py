@@ -16,11 +16,12 @@ from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarSta
 from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
 from smc_clustering.jsonlm.grammar.runtime import get_runtime
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
-def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:
+def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer: JsonLMTokenizer) -> torch.BoolTensor:
     """Reference implementation using per-step automaton for comparison."""
     assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long
     B, L = ids_with_eos.shape
@@ -47,7 +48,7 @@ def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolT
     return masks
 
 
-def _make_tokenizer():
+def _make_tokenizer() -> JsonLMTokenizer:
     """Create a tokenizer for testing."""
     vocab = Vocabulary.from_default()
     corpus = [
@@ -60,7 +61,9 @@ def _make_tokenizer():
     return tok
 
 
-def _encode_entities_to_batch(entities: list[dict[str, list[str]]], tokenizer) -> torch.Tensor:
+def _encode_entities_to_batch(
+    entities: list[dict[str, list[str]]], tokenizer: JsonLMTokenizer
+) -> torch.Tensor:
     """Encode a list of entities to a padded batch tensor."""
     # Encode each entity to BOS...EOS
     ids_list = []

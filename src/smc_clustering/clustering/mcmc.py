@@ -1,21 +1,32 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import logging
+from collections.abc import Callable
 
 import jax
 import numpy as np
 import scipy
 from tqdm import tqdm
 
-from smc_clustering.clustering.cluster import Cluster
+from smc_clustering.clustering.cluster import Cluster, DirichletProcess, Uniform
 
 
 logger = logging.getLogger(__name__)
 
 
 class GibbsClusterer:
-    def __init__(self, data, score_fn, prior, surrogate=None, ClusterClass=Cluster, score_cache=None):
+    def __init__(
+        self,
+        data: np.ndarray,
+        score_fn: Callable,
+        prior: Uniform | DirichletProcess,
+        surrogate: object | None = None,
+        ClusterClass: type[Cluster] = Cluster,
+        score_cache: dict[int, float] | None = None,
+    ):
         self.data = data
         self.score_fn = score_fn
         self.prior = prior
@@ -27,7 +38,9 @@ class GibbsClusterer:
         self.best_logpost = None
         self.score_cache = {} if score_cache is None else score_cache
 
-    def compute_scores(self, rng, clusters, force_recompute=False):
+    def compute_scores(
+        self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
+    ) -> int:
         """For a list of clusters, compute the score for each cluster
         We use a cache to avoid recomputing scores for clusters that have already been computed.
 
@@ -49,7 +62,7 @@ class GibbsClusterer:
 
         return len(compute_clusters)
 
-    def update_exact(self, rng, i):
+    def update_exact(self, rng: jax.Array, i: int) -> tuple[int, int]:
         """Gibbs update for assignment i"""
         compute_clusters = []
         hashes = []
@@ -108,7 +121,7 @@ class GibbsClusterer:
 
         return model_evals, 0
 
-    def update_mh(self, rng, i):
+    def update_mh(self, rng: jax.Array, i: int) -> tuple[int, int]:
         """Metropolis-within-Gibbs update, using the surrogate model as the proposal distribution"""
         model_evals = 0
         summary_stats = []
@@ -206,7 +219,9 @@ class GibbsClusterer:
 
         return model_evals, surrogate_evals
 
-    def cluster(self, rng, sweeps=100, callback=None):
+    def cluster(
+        self, rng: jax.Array, sweeps: int = 100, callback: Callable | None = None
+    ) -> list[list[int]]:
         n_evals = []
         if self.logpost is None:
             rng, compute_rng = jax.random.split(rng)
@@ -249,7 +264,7 @@ class GibbsClusterer:
         print()
         return n_evals
 
-    def summary(self, print_cluster_data=False):
+    def summary(self, print_cluster_data: bool = False):
         # Print out summary of clustering
         print(f"Current (weight {self.logpost:.4g}):")
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
@@ -273,7 +288,7 @@ class GibbsClusterer:
                 )
             print()
 
-    def list_cluster_labels(self, best=True):
+    def list_cluster_labels(self, best: bool = True) -> list[str]:
         """Return a list of the cluster IDs for each observation"""
         cluster_lookup = {}
         for cl in self.best_clustering if best else self.clusters:

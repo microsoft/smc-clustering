@@ -19,6 +19,7 @@ from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
 from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
 from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
@@ -44,7 +45,9 @@ def _corpus_lines(paths: list[Path]):
                 yield entity_to_string(norm)
 
 
-def _avg_logprob(items: list[dict], model: torch.nn.Module, tok, normalize="sum") -> float:
+def _avg_logprob(
+    items: list[dict], model: torch.nn.Module, tok: JsonLMTokenizer, normalize: str = "sum"
+) -> float:
     with torch.no_grad():
         vals = [
             float(logprob_entity(x, model=model.eval(), tokenizer=tok, normalize=normalize))

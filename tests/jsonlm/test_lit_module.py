@@ -15,6 +15,7 @@ from torch import nn
 
 from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
@@ -34,7 +35,7 @@ class ToyLM(nn.Module):
         return logits
 
 
-def _make_batch(tok) -> torch.Tensor:
+def _make_batch(tok: JsonLMTokenizer) -> torch.Tensor:
     """Create a small batch [B, L] of equal-length BOS…EOS sequences."""
     # Use two copies of the same entity to guarantee equal lengths for a simple stack.
     s = entity_to_string({"a": ["x", "y"], "b": ["c"]})

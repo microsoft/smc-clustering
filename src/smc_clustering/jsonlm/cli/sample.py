@@ -37,7 +37,7 @@ def build_argparser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv=None) -> None:
+def main(argv: list[str] | None = None) -> None:
     args = build_argparser().parse_args(argv)
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else args.device)
 

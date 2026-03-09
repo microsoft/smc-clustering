@@ -18,7 +18,6 @@ import pickle
 import time
 from functools import partial
 from pathlib import Path
-from typing import Any
 
 import jax
 import numpy as np
@@ -39,14 +38,14 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 class ListWrapper:
     # Allows easier retrieval of cluster data from lists
-    def __init__(self, data):
+    def __init__(self, data: list[Entity]) -> None:
         self.data = data
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int]:
         return (len(self.data),)
 
-    def __getitem__(self, row_ids):
+    def __getitem__(self, row_ids: int | slice | np.ndarray) -> list[Entity]:
         if type(row_ids) is int:
             return [self.data[row_ids]]
         if type(row_ids) is slice:
@@ -57,10 +56,12 @@ class ListWrapper:
 class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
-    def __init__(self, prior_scale, prior_counts):
+    def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
         super().__init__(prior_scale, prior_counts)
 
-    def post_predictive(self, obs, n, summary):
+    def post_predictive(
+        self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
+    ) -> np.ndarray:
         if type(obs) is list:
             name = obs[0].properties["name"]
         else:
@@ -72,7 +73,13 @@ class NameBigram(Bigram):
 class NameBigramCluster(Cluster):
     """Cluster subclass with summary statistics for an n-gram model, looks at name property for counts"""
 
-    def __init__(self, data_ids, n=2, counts=None, data=None):
+    def __init__(
+        self,
+        data_ids: frozenset[int],
+        n: int = 2,
+        counts: collections.Counter[str] | None = None,
+        data: Entity | list[Entity] | None = None,
+    ) -> None:
         super().__init__(data_ids)
         self.n = n
         if counts is not None:
@@ -85,10 +92,10 @@ class NameBigramCluster(Cluster):
             self.counts = collections.Counter()
 
     @property
-    def summary(self):
+    def summary(self) -> collections.Counter[str]:
         return self.counts
 
-    def merge_point(self, data_id, data):
+    def merge_point(self, data_id: int, data: list[Entity]) -> NameBigramCluster:
         new_counts = self.counts + get_ngram_counts(
             [entity.properties["name"] for entity in data], self.n
         )
@@ -132,7 +139,7 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 
 def score_entities(
-    rng: Any,
+    rng: jax.Array,
     clusters: list[list[Entity]],
     model: nn.Module,
     tokenizer: JsonLMTokenizer,

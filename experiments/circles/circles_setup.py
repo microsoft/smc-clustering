@@ -1,7 +1,10 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
+from __future__ import annotations
+
 import os
+from collections.abc import Callable
 
 import jax
 import jax.numpy as jnp
@@ -26,7 +29,7 @@ prior = DirichletProcess(alpha)
 ClusterClass = GaussianCluster
 
 
-def load_model(checkpoint_path="checkpoints"):
+def load_model(checkpoint_path: str = "checkpoints") -> Callable:
     rng = jax.random.PRNGKey(1)
     schedule = LinearSchedule()
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
@@ -39,7 +42,7 @@ def load_model(checkpoint_path="checkpoints"):
 
     num_time_steps = 100
 
-    def score_func(rng, data, masks):
+    def score_func(rng: jax.Array, data: jax.Array, masks: jax.Array) -> jax.Array:
         scores, _ = model.log_prob_ode(rng, data, masks, num_time_steps=num_time_steps)
         return scores
 
@@ -60,7 +63,7 @@ def generate_circles(
     min_y: float = -5.0,
     max_y: float = 5.0,
     num_points: int = None,
-):
+) -> tuple[list, list]:
     r_rng, x_rng, y_rng, n_rng, theta_rng = jax.random.split(rng, 5)
 
     radii = jax.random.uniform(r_rng, (num_circles,)) * (max_radius - min_radius) + min_radius
@@ -77,7 +80,9 @@ def generate_circles(
     angles = np.zeros((jnp.max(num_points) * num_circles,))
     angles[jnp.concat(masks, axis=-1)] = theta
 
-    def gen_circle(x, y, radius, angles, mask):
+    def gen_circle(
+        x: jax.Array, y: jax.Array, radius: jax.Array, angles: jax.Array, mask: jax.Array
+    ) -> jax.Array:
         x = mask * (radius * jnp.cos(angles) + x)
         y = mask * (radius * jnp.sin(angles) + y)
         circle = jnp.stack([x, y], axis=-1)
@@ -90,7 +95,7 @@ def generate_circles(
     return list(np.array(circles)), list(np.array(masks))
 
 
-def generate_circles_dataset():
+def generate_circles_dataset() -> tuple[np.ndarray, np.ndarray]:
     rng = jax.random.PRNGKey(23)
     circles_valid, masks_valid = generate_circles(
         rng, 15, min_points=10, max_points=30, min_radius=0.6, max_radius=0.6

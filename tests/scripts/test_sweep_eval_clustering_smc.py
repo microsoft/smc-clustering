@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import importlib.util
+import types
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "sweep_eval_clus
 
 
 @pytest.fixture(scope="module")
-def sweep_module():
+def sweep_module() -> types.ModuleType:
     spec = importlib.util.spec_from_file_location("sweep_eval_clustering_smc", MODULE_PATH)
     if spec is None:
         raise AssertionError("unable to load sweep_eval_clustering_smc module")
@@ -25,19 +26,19 @@ def sweep_module():
     return module
 
 
-def test_parse_square_list_produces_cartesian_values(sweep_module):
+def test_parse_square_list_produces_cartesian_values(sweep_module: types.ModuleType):
     spec = sweep_module.parse_sweep_spec("[1,2,3]")
     assert spec.values == ["1", "2", "3"]
     assert spec.tied is False
 
 
-def test_parse_parentheses_marks_tied(sweep_module):
+def test_parse_parentheses_marks_tied(sweep_module: types.ModuleType):
     spec = sweep_module.parse_sweep_spec("(10, 20,30)")
     assert spec.values == ["10", "20", "30"]
     assert spec.tied is True
 
 
-def test_generate_combos_with_tied_parameters(sweep_module):
+def test_generate_combos_with_tied_parameters(sweep_module: types.ModuleType):
     combos = sweep_module.generate_combos(
         {"seed": ["0", "1"]},
         [
@@ -53,7 +54,7 @@ def test_generate_combos_with_tied_parameters(sweep_module):
     ]
 
 
-def test_generate_combos_requires_matching_tied_lengths(sweep_module):
+def test_generate_combos_requires_matching_tied_lengths(sweep_module: types.ModuleType):
     with pytest.raises(ValueError, match="Tied parameters must share the same length"):
         sweep_module.generate_combos(
             {},

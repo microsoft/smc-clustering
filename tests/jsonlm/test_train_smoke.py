@@ -14,6 +14,7 @@ import torch
 from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
 from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
@@ -29,7 +30,7 @@ def _make_tokenizer() -> tuple:
     return tok, vocab
 
 
-def _make_batch(tok) -> torch.Tensor:
+def _make_batch(tok: JsonLMTokenizer) -> torch.Tensor:
     """Create a small batch [B, L] of equal-length BOS…EOS sequences."""
     s = entity_to_string({"a": ["x", "y"], "b": ["c"]})
     ids = tok.encode(s, add_bos_eos=True)

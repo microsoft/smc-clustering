@@ -1,13 +1,20 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-from math import ceil
+from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from math import ceil
+from typing import Any
+
+import jax
 import jax.numpy as jnp
 import numpy as np
 
 
-def batched_eval(f, batch_size, batched_argnums, *inputs):
+def batched_eval(
+    f: Callable, batch_size: int, batched_argnums: Sequence[int], *inputs: Any
+) -> jax.Array:
     # Split arguments in batched_argnums into batches and pad last batch
     # (avoids recompilations of jitted functions)
     n = inputs[batched_argnums[0]].shape[0]
@@ -36,8 +43,10 @@ def batched_eval(f, batch_size, batched_argnums, *inputs):
     return jnp.concatenate(batched_output, axis=0)
 
 
-def generate_batched_score_func(score_func, batch_shape=(16, 16)):
-    def batched_score_func(rng, compute_clusters):
+def generate_batched_score_func(
+    score_func: Callable, batch_shape: tuple[int, int] = (16, 16)
+) -> Callable:
+    def batched_score_func(rng: jax.Array, compute_clusters: list[np.ndarray]) -> list[jax.Array]:
         # split clusters into batches padded to have same cluster size,
         # and evaluate scoring function
         data_dim = compute_clusters[0].shape[1]
@@ -82,14 +91,14 @@ def generate_batched_score_func(score_func, batch_shape=(16, 16)):
 
 class DFWrapper:
     # Allows easier retrieval of cluster data from dataframes
-    def __init__(self, df):
+    def __init__(self, df: object):
         self.df = df
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int, ...]:
         return self.df.shape
 
-    def __getitem__(self, row_ids):
+    def __getitem__(self, row_ids: int | np.ndarray) -> list[Any]:
         if type(row_ids) is int:
             return [self.df.iloc[row_ids]["name"]]
         return list(self.df.iloc[row_ids]["name"])

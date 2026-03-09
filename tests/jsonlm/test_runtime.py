@@ -15,11 +15,14 @@ from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarSta
 from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
 from smc_clustering.jsonlm.grammar.runtime import get_runtime
 from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
 from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
-def _build_masks_for_batch_slow(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:
+def _build_masks_for_batch_slow(
+    ids_with_eos: torch.Tensor, tokenizer: JsonLMTokenizer
+) -> torch.BoolTensor:
     """Reference implementation: per-step automaton building (ported from old lit_module code)."""
     assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long
     B, L = ids_with_eos.shape
@@ -58,7 +61,7 @@ def _build_masks_for_batch_slow(ids_with_eos: torch.Tensor, tokenizer) -> torch.
     return masks
 
 
-def _make_test_tokenizer():
+def _make_test_tokenizer() -> JsonLMTokenizer:
     """Create a test tokenizer with some vocabulary."""
     vocab = Vocabulary.from_default()
     # Minimal corpus to ensure BPE has some pieces

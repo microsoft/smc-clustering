@@ -10,11 +10,11 @@ import torch
 from tokenizers import Tokenizer
 from torch import nn
 
-from jsonlm.api import decode_entity
-from jsonlm.models.decode import decode_greedy
-from jsonlm.serialization.encoder import entity_to_string, parse_entity
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import decode_entity
+from smc_clustering.jsonlm.models.decode import decode_greedy
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string, parse_entity
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class UniformDummyModel(nn.Module):

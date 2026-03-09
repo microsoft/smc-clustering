@@ -13,11 +13,11 @@ import json
 import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
 
-from jsonlm.models.decode import decode_greedy, decode_sample
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.serialization.encoder import parse_entity
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.decode import decode_greedy, decode_sample
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.serialization.encoder import parse_entity
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def build_argparser() -> argparse.ArgumentParser:

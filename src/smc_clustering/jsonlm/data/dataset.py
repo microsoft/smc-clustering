@@ -16,9 +16,9 @@ from json.decoder import JSONDecodeError
 import torch
 from torch.utils.data import Dataset
 
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
-from jsonlm.serialization.normalization import normalize_entity_or_sequence
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 @dataclass(slots=True)

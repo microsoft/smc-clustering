@@ -5,10 +5,10 @@ import cloudpickle
 import jax
 import numpy as np
 
-import clustering
-from clustering.surrogate_models import GaussianCluster
-from clustering.mcmc import GibbsClusterer
-from clustering.metrics import cluster_metrics
+from smc_clustering import clustering
+from smc_clustering.clustering.surrogate_models import GaussianCluster
+from smc_clustering.clustering.mcmc import GibbsClusterer
+from smc_clustering.clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

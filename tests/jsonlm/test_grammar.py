@@ -7,12 +7,12 @@ allowed by the mask, and EOS becomes allowed exactly after the closing '}' token
 
 from __future__ import annotations
 
-from jsonlm.grammar.automaton import GrammarAutomaton
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.spec import State
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _tok() -> tuple[GrammarAutomaton, Vocabulary]:

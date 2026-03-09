@@ -24,15 +24,15 @@ from typing import Literal
 import torch
 from torch import nn
 
-from jsonlm.models.criterion import apply_mask_and_logprobs
-from jsonlm.serialization.encoder import (
+from smc_clustering.jsonlm.models.criterion import apply_mask_and_logprobs
+from smc_clustering.jsonlm.serialization.encoder import (
     canonicalize_entity,
     entities_to_string_as_set,
     entity_to_string,
     parse_entity,
     parse_sequence,
 )
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ dataclass provides those stable mappings and convenience accessors.
 
 from __future__ import annotations
 
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 __all__ = ["Vocabulary"]

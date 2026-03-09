@@ -1,12 +1,11 @@
 # Licensed under the MIT license.
 import functools
 
-import flax
 import jax
 import jax.numpy as jnp
 
-from diffusion.model import SetFormer
-from diffusion.schedule import LinearSchedule
+from smc_clustering.diffusion.model import SetFormer
+from smc_clustering.diffusion.schedule import LinearSchedule
 
 
 class VariationalDiffusion:
@@ -107,7 +106,6 @@ class VariationalDiffusion:
         the log weights are then normalized to sum to 1, and the product
         of those weights is the particle estimate of p(z_0).
         """
-
         z_s = jnp.tile(x, (num_particles, 1, 1))
 
         log_prob = 0.0

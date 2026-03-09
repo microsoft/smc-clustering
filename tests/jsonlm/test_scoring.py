@@ -16,11 +16,11 @@ import random
 import torch
 from torch import nn
 
-from jsonlm.api import delta, logprob_entity
-from jsonlm.models.scoring import compute_deltas_batched, score_entities_batched
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import delta, logprob_entity
+from smc_clustering.jsonlm.models.scoring import compute_deltas_batched, score_entities_batched
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class DummyModel(nn.Module):

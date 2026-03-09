@@ -8,10 +8,10 @@ import scipy.special
 import jax.numpy as jnp
 import numpy as np
 
-import clustering
-from clustering.surrogate_models import Gaussian, GaussianCluster
-from clustering.smc import SMCClusterer, resample_greedy
-from clustering.metrics import cluster_metrics
+from smc_clustering import clustering
+from smc_clustering.clustering.surrogate_models import Gaussian, GaussianCluster
+from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
+from smc_clustering.clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

@@ -11,10 +11,10 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class ToyLM(nn.Module):

@@ -6,9 +6,9 @@ import jax
 import numpy as np
 
 
-import clustering
-from clustering.agglomerative import Clusterer
-from clustering.metrics import cluster_metrics
+from smc_clustering import clustering
+from smc_clustering.clustering.agglomerative import Clusterer
+from smc_clustering.clustering.metrics import cluster_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-seed", type=int, default=0)

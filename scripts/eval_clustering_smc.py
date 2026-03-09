@@ -30,14 +30,13 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from clustering.cluster import Cluster, DirichletProcess
-from clustering.smc import SMCClusterer, resample_greedy
-from clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
-
-from jsonlm.models.scoring import score_entities_batched
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.clustering.cluster import Cluster, DirichletProcess
+from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
+from smc_clustering.clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.jsonlm.models.scoring import score_entities_batched
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class ListWrapper:
@@ -258,7 +257,9 @@ def main(argv: list[str] | None = None) -> None:
         resample_fn=resample_greedy,
         ClusterClass=NameBigramCluster,
     )
-    experiment_name = f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split else '_smc'}"
+    experiment_name = (
+        f"s{args.seed}_p{args.max_particles}_evals{max_evals}_alpha{args.alpha}{'_split' if args.split else '_smc'}"
+    )
 
     # Run clustering
     t = time.time()

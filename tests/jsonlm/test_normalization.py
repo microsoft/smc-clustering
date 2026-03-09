@@ -7,7 +7,7 @@ in the task requirements.
 
 import pytest
 
-from jsonlm.serialization.normalization import (
+from smc_clustering.jsonlm.serialization.normalization import (
     normalize_entity_or_sequence,
     unwrap_properties_entity,
     unwrap_properties_sequence,

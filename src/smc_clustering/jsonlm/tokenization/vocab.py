@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from jsonlm import constants
+from smc_clustering.jsonlm import constants
 
 
 @dataclass(slots=True)

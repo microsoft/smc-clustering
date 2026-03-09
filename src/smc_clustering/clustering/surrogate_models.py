@@ -10,8 +10,8 @@ import numpy as np
 import scipy
 from unidecode import unidecode
 
-from clustering.cluster import Cluster
-from clustering.utils import batched_eval
+from smc_clustering.clustering.cluster import Cluster
+from smc_clustering.clustering.utils import batched_eval
 
 
 # ====================== Surrogate models ======================
@@ -19,6 +19,7 @@ class Gaussian:
     """
     Gaussian model with normal-inverse-gamma prior on cluster parameters
     """
+
     def __init__(self, a, b, mu, lam):
         self.alpha_0 = a
         self.beta_0 = b
@@ -75,6 +76,7 @@ class Bernoulli:
     """
     Bernoulli model with beta prior on cluster parameters
     """
+
     def __init__(self, a, b):
         self.alpha_0 = a
         self.beta_0 = b
@@ -111,7 +113,6 @@ class Bernoulli:
         return np.array(batched_eval(self._evidence, batch_size, (0, 1), n, np.array(summary)))
 
 
-
 def get_counts(strings):
     """
     Convert strings to ASCII and get character counts
@@ -130,6 +131,7 @@ class CountDict(dict):
     """
     Dictionary with a default value. Does not insert new keys into the dictionary.
     """
+
     def __init__(self, default_val, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.default_val = default_val
@@ -148,6 +150,7 @@ class Multinomial:
     """
     Multinomial model with Dirichlet prior on frequencies
     """
+
     def __init__(self, alpha_0):
         self.alpha_0 = alpha_0
 
@@ -217,17 +220,20 @@ def dirichlet_categorical_logpmf(x, alphas, sum_alpha):
         + jnp.sum(jax.scipy.special.gammaln(x + alphas) - jax.scipy.special.gammaln(alphas))
     )
 
+
 def dirichlet_categorical_logpmf_numpy(x, alphas, sum_alpha):
     return (
         scipy.special.gammaln(sum_alpha)
         - scipy.special.gammaln(sum_alpha + np.sum(x))
-        + np.sum(scipy.special.gammaln(x[None,:] + alphas) - scipy.special.gammaln(alphas), axis=-1)
+        + np.sum(scipy.special.gammaln(x[None, :] + alphas) - scipy.special.gammaln(alphas), axis=-1)
     )
+
 
 class Ngram:
     """
     N-gram model with Dirichlet prior on n-gram frequencies
     """
+
     def __init__(self, prior_scale, prior_counts, n=2):
         self.prior_scale = prior_scale
         self.n = n
@@ -305,6 +311,7 @@ class GaussianCluster(Cluster):
     """
     Cluster subclass with summary statistics for a Gaussian model
     """
+
     def __init__(self, data_ids, dim=2, Sx=None, Sxx=None, data=None):
         super().__init__(data_ids)
 
@@ -340,6 +347,7 @@ class BernoulliCluster(Cluster):
     """
     Cluster subclass with summary statistics for a Bernoulli model
     """
+
     def __init__(self, data_ids, dim=1, Sy=None, data=None):
         super().__init__(data_ids)
 
@@ -367,6 +375,7 @@ class MultinomialCluster(Cluster):
     """
     Cluster subclass with summary statistics for a multinomial model
     """
+
     def __init__(self, data_ids, dim, data=None):
         super().__init__(data_ids)
         self.dim = dim
@@ -387,6 +396,7 @@ class WordCluster(Cluster):
     """
     Cluster subclass with summary statistics for a bag-of-words model
     """
+
     def __init__(self, data_ids, dim=26, counts=None, data=None):
         super().__init__(data_ids)
         self.dim = dim
@@ -410,6 +420,7 @@ class NgramCluster(Cluster):
     """
     Cluster subclass with summary statistics for an n-gram model
     """
+
     def __init__(self, data_ids, n=2, counts=None, data=None):
         super().__init__(data_ids)
         self.n = n

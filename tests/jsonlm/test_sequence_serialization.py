@@ -10,7 +10,12 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string, parse_entity, parse_sequence
+from smc_clustering.jsonlm.serialization.encoder import (
+    entities_to_string_as_set,
+    entity_to_string,
+    parse_entity,
+    parse_sequence,
+)
 
 
 def test_entities_to_string_empty():

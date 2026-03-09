@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.grammar.spec import State
 
 
 if TYPE_CHECKING:

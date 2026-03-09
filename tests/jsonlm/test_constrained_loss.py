@@ -12,7 +12,7 @@ import math
 import pytest
 import torch
 
-from jsonlm.models.criterion import apply_mask_and_logprobs, constrained_nll, invalid_mass
+from smc_clustering.jsonlm.models.criterion import apply_mask_and_logprobs, constrained_nll, invalid_mass
 
 
 def test_apply_mask_and_logprobs_manual_check() -> None:

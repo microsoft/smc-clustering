@@ -11,12 +11,12 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from jsonlm.grammar.automaton import GrammarAutomaton
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.models.decode import decode_greedy
-from jsonlm.serialization.encoder import entity_to_string, parse_entity
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.models.decode import decode_greedy
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string, parse_entity
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class UniformDummyModel(nn.Module):

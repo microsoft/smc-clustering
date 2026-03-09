@@ -27,12 +27,12 @@ from collections.abc import Iterable
 import torch
 from tokenizers import Tokenizer as HFTokenizer  # type: ignore[import-not-found]
 
-from jsonlm import constants
-from jsonlm.api import delta, logprob_entity, logprob_sequence
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.serialization.normalization import normalize_entity_or_sequence
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm import constants
+from smc_clustering.jsonlm.api import delta, logprob_entity, logprob_sequence
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:

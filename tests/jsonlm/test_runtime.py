@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.runtime import get_runtime
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.runtime import get_runtime
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _build_masks_for_batch_slow(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:

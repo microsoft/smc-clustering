@@ -15,18 +15,18 @@ from typing import Literal
 import torch
 from torch import nn
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.models.criterion import apply_mask_and_logprobs
-from jsonlm.models.decode import decode_greedy  # add near other imports
-from jsonlm.serialization.encoder import (
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.models.criterion import apply_mask_and_logprobs
+from smc_clustering.jsonlm.models.decode import decode_greedy
+from smc_clustering.jsonlm.serialization.encoder import (
     canonicalize_entity,
     entities_to_string_as_set,
     entity_to_string,
     parse_entity,
     parse_sequence,
 )
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 def encode_entity(entity: dict[str, list[str]], tokenizer: JsonLMTokenizer, add_bos_eos: bool = True) -> list[int]:

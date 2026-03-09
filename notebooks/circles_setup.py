@@ -1,41 +1,48 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import os
+
 import jax
 import jax.numpy as jnp
 import numpy as np
 from flax.training import checkpoints
 
+from smc_clustering import clustering
+from smc_clustering.clustering.cluster import DirichletProcess
+from smc_clustering.clustering.surrogate_models import Gaussian, GaussianCluster
+from smc_clustering.diffusion.diffusion import VariationalDiffusion
+from smc_clustering.diffusion.schedule import LinearSchedule
 
-import clustering
-from clustering.surrogate_models import Gaussian, GaussianCluster
-from clustering.cluster import DirichletProcess
-from diffusion.schedule import LinearSchedule
-from diffusion.diffusion import VariationalDiffusion
 
-theta = np.array([1.4e3, 1.7e3, 2.7e2, 3e2, -9.6e-2, -3.2e-2, 2.1e-2,-2e-2])
-a = theta[0:2]; b = theta[2:4]; mu = theta[4:6]; lam = jnp.abs(theta[6:8])
+theta = np.array([1.4e3, 1.7e3, 2.7e2, 3e2, -9.6e-2, -3.2e-2, 2.1e-2, -2e-2])
+a = theta[0:2]
+b = theta[2:4]
+mu = theta[4:6]
+lam = jnp.abs(theta[6:8])
 alpha = 1
 surrogate = Gaussian(a, b, mu, lam)
 prior = DirichletProcess(alpha)
 ClusterClass = GaussianCluster
 
-def load_model(checkpoint_path='checkpoints'):
+
+def load_model(checkpoint_path="checkpoints"):
     rng = jax.random.PRNGKey(1)
     schedule = LinearSchedule()
     model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
 
     raw_restored = checkpoints.restore_checkpoint(ckpt_dir=os.path.join(os.getcwd(), checkpoint_path), target=None)
-    model.params = {'params':raw_restored['model']['params']}
+    model.params = {"params": raw_restored["model"]["params"]}
     model.compile_net()
 
     num_time_steps = 100
+
     def score_func(rng, data, masks):
         scores, _ = model.log_prob_ode(rng, data, masks, num_time_steps=num_time_steps)
         return scores
-    batched_score_eval = clustering.utils.generate_batched_score_func(score_func, batch_shape=(8,8))
+
+    batched_score_eval = clustering.utils.generate_batched_score_func(score_func, batch_shape=(8, 8))
 
     return batched_score_eval
+
 
 def generate_circles(
     rng: jax.Array,
@@ -88,12 +95,10 @@ def generate_circles_dataset():
     for k, (c, m) in enumerate(zip(circles_valid, masks_valid)):
         for ci, mi in zip(c, m):
             if mi:
-                cluster_data.append(ci[None,:])
+                cluster_data.append(ci[None, :])
                 labels.append(k)
 
     labels = np.array(labels)
     data = np.array(cluster_data).squeeze(1)
 
     return data, labels
-
-

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 def pad_collate(batch: list[torch.Tensor], tokenizer: JsonLMTokenizer) -> torch.Tensor:

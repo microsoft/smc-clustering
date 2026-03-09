@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import canonicalize_entity, entity_to_string, parse_entity
+from smc_clustering.jsonlm.serialization.encoder import canonicalize_entity, entity_to_string, parse_entity
 
 
 def test_canonicalization_idempotent() -> None:

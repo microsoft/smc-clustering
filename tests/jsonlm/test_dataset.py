@@ -13,10 +13,10 @@ import tempfile
 
 import torch
 
-from jsonlm.data.dataset import EntityDataset
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.data.dataset import EntityDataset
+from smc_clustering.jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _make_jsonl(path: str, lines: list[str]) -> None:

@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jsonlm.cli import train as train_cli
+from smc_clustering.jsonlm.cli import train as train_cli
 
 
 def _write_jsonl(path: Path, lines: list[str]) -> None:

@@ -4,7 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from clustering.cluster import Cluster
+from smc_clustering.clustering.cluster import Cluster
+
 
 class Clusterer:
     def __init__(self, data, score_fn, link_threshold=0, cluster_batch_size=16, prior=None, score_cache=None):
@@ -52,9 +53,7 @@ class Clusterer:
             rng, compute_rng = jax.random.split(rng)
             model_evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append(model_evals)
-            self.objective = sum(
-                    [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-                )
+            self.objective = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
 
         for iteration in (pbar := tqdm(range(max_iter))):
             rng, batch_rng = jax.random.split(rng)

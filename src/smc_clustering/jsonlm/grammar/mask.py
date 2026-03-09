@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.spec import State
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from smc_clustering.jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 def allowed_token_mask(gs: GrammarState, automaton: GrammarAutomaton, tokenizer: JsonLMTokenizer) -> torch.BoolTensor:

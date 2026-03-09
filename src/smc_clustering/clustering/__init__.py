@@ -1,8 +1,3 @@
 # Licensed under the MIT license.
 
-import clustering.cluster
-import clustering.smc
-import clustering.mcmc
-import clustering.agglomerative
-import clustering.utils
-import clustering.metrics
+from smc_clustering.clustering import agglomerative, cluster, mcmc, metrics, smc, utils

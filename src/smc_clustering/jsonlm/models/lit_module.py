@@ -19,9 +19,9 @@ from torch import nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 
-from jsonlm.grammar.runtime import get_runtime
-from jsonlm.models.criterion import constrained_nll, invalid_mass
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.grammar.runtime import get_runtime
+from smc_clustering.jsonlm.models.criterion import constrained_nll, invalid_mass
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 class LitConstrainedLM(LightningModule):

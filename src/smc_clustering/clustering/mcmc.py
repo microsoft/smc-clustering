@@ -2,11 +2,11 @@
 import logging
 
 import jax
-import scipy
 import numpy as np
+import scipy
 from tqdm import tqdm
 
-from clustering.cluster import Cluster
+from smc_clustering.clustering.cluster import Cluster
 
 
 logger = logging.getLogger(__name__)
@@ -94,9 +94,7 @@ class GibbsClusterer:
                 self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
             else:
                 self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-            self.logpost = sum(
-                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-            )
+            self.logpost = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
 
             if self.clusters[old_k].size > 1:
                 self.clusters[old_k] = self.ClusterClass(self.clusters[old_k].data - {i})
@@ -207,9 +205,7 @@ class GibbsClusterer:
             rng, compute_rng = jax.random.split(rng)
             evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append([evals, 0])
-            self.logpost = sum(
-                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-            )
+            self.logpost = sum([self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters])
             self.best_clustering = self.clusters.copy()
             self.best_logpost = self.logpost.copy()
 
@@ -230,7 +226,13 @@ class GibbsClusterer:
                     self.best_logpost = self.logpost.copy()
                     self.best_clustering = self.clusters.copy()
 
-                pbar.set_postfix({"Sweep progress": f"{i + 1}/{len(ids)}", "Best": f"{self.best_logpost:.4g}", "Current": f"{self.logpost:.4g}"})
+                pbar.set_postfix(
+                    {
+                        "Sweep progress": f"{i + 1}/{len(ids)}",
+                        "Best": f"{self.best_logpost:.4g}",
+                        "Current": f"{self.logpost:.4g}",
+                    }
+                )
 
             if callback is not None:
                 callback(self.clusters, iteration)

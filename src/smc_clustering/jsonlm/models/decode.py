@@ -11,10 +11,10 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from jsonlm.grammar.automaton import GrammarAutomaton
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.spec import State
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 def decode_greedy(

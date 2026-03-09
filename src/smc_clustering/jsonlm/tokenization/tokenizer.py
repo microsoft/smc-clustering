@@ -17,8 +17,8 @@ from tokenizers.models import BPE  # type: ignore[import-not-found]
 from tokenizers.pre_tokenizers import ByteLevel  # type: ignore[import-not-found]
 from tokenizers.trainers import BpeTrainer  # type: ignore[import-not-found]
 
-from jsonlm.serialization import encoder
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.serialization import encoder
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 @dataclass(slots=True)

@@ -13,8 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from jsonlm.grammar.spec import State
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 if TYPE_CHECKING:

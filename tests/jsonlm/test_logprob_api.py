@@ -13,10 +13,10 @@ import math
 import torch
 from torch import nn
 
-from jsonlm.api import encode_entity, encode_sequence, logprob_entity, logprob_sequence
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import encode_entity, encode_sequence, logprob_entity, logprob_sequence
+from smc_clustering.jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class DummyModel(nn.Module):

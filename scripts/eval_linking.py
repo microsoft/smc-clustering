@@ -30,10 +30,10 @@ from kebab.contracts.entity import Entity
 from kebab.contracts.task import Task
 from tokenizers import Tokenizer as HFTokenizer
 
-from jsonlm.models.scoring import compute_deltas_batched
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.scoring import compute_deltas_batched
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:

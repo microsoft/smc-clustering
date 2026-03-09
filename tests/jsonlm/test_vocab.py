@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm import constants
-from jsonlm.tokenization import Vocabulary
+from smc_clustering.jsonlm import constants
+from smc_clustering.jsonlm.tokenization import Vocabulary
 
 
 def test_special_tokens_uniqueness() -> None:

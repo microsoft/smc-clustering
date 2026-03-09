@@ -9,15 +9,15 @@ import torch
 from pytorch_lightning import Trainer, seed_everything
 from torch.utils.data import DataLoader
 
-from jsonlm.api import logprob_entity
-from jsonlm.data.collate import pad_collate
-from jsonlm.data.dataset import EntityDataset
-from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.serialization.normalization import normalize_entity_or_sequence
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import logprob_entity
+from smc_clustering.jsonlm.data.collate import pad_collate
+from smc_clustering.jsonlm.data.dataset import EntityDataset
+from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _write_jsonl(path: Path, objs: list[dict]) -> None:

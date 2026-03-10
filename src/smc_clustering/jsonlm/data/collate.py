@@ -40,7 +40,7 @@ def pad_collate(batch: list[torch.Tensor], tokenizer: JsonLMTokenizer) -> torch.
     pad_id = tokenizer.vocabulary.pad_id  # kept for potential future use
 
     max_len = max(seq.shape[0] for seq in batch)
-    out = torch.full((len(batch), max_len), pad_id, dtype=torch.long)
+    out = torch.full((len(batch), max_len), pad_id, dtype=torch.long)  # [B, L_max]
 
     for i, seq in enumerate(batch):
         L = int(seq.shape[0])

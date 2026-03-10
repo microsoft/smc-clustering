@@ -36,7 +36,6 @@ from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class ListWrapper:
-    # Allows easier retrieval of cluster data from lists
     """Wrapper that exposes entity lists through the clustering API."""
 
     def __init__(self, data: list[Entity]) -> None:

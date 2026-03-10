@@ -66,7 +66,6 @@ class Clusterer:
         return len(compute_clusters)
 
     def generate_batch_ids(self, rng: jax.Array) -> tuple[jax.Array, list[tuple[Any, Any]]]:
-        # select a batch at random
         """Sample a batch of cluster indices and their unique pairs."""
         indices = np.arange(len(self.clusters))
         batch_size = min(self.cluster_batch_size, len(self.clusters))
@@ -143,7 +142,6 @@ class Clusterer:
         return n_evals, False
 
     def summary(self, print_cluster_data: bool = False):
-        # Print out summary of clustering
         """Print a summary of the current clustering state."""
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)
         print(f"{len(clusters)} clusters, {self.data.shape[0]} points, {[c.size for c in clusters]}")
@@ -162,7 +160,6 @@ class Clusterer:
 
 
 def plot_callback(clusterer: Clusterer) -> None:
-    # sort clusters by size
     """Plot the current clustering assignment."""
     clusters = sorted(clusterer.clusters, key=lambda c: c.size, reverse=True)
     plt.figure()

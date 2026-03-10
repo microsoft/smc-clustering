@@ -25,7 +25,6 @@ class Cluster:
 
     @property
     def ids(self) -> np.ndarray:
-        # Convert to numpy array for easier retrieval of datapoints
         """Return the data-point identifiers as a NumPy array."""
         return np.fromiter(self.data, dtype=np.int64)
 
@@ -36,7 +35,7 @@ class Cluster:
 
     @property
     def summary(self) -> list[Any]:
-        """Print a summary of the current clustering state."""
+        """Return summary statistics for the cluster."""
         return []
 
     def add(self, data_id: int) -> frozenset[int]:
@@ -72,13 +71,11 @@ class DirichletProcess:
         self.alpha = alpha
 
     def __call__(self, cluster_sizes: np.ndarray, **_kwargs: Any) -> float:
-        # Prior probability of a clustering, based on cluster sizes and hyperparameter alpha
         """Return the prior log probability of a clustering."""
         return (
             len(cluster_sizes) * np.log(self.alpha) + np.sum(scipy.special.gammaln(cluster_sizes))
         ).item()
 
     def marginal(self, _n_obs: int, cluster_size: np.ndarray, **_kwargs: Any) -> np.ndarray:
-        # Prior probability of a single assignment, based on cluster size and hyperparameter alpha
         """Return the marginal prior term for candidate cluster sizes."""
         return np.where(cluster_size > 0, np.log(cluster_size), np.log(self.alpha))

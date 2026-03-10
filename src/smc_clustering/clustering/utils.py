@@ -27,9 +27,10 @@ class _SupportsILoc(Protocol):
 def batched_eval(
     f: Callable, batch_size: int, batched_argnums: Sequence[int], *inputs: Any
 ) -> jax.Array:
-    # Split arguments in batched_argnums into batches and pad last batch
-    # (avoids recompilations of jitted functions)
-    """Evaluate a function on padded mini-batches."""
+    """Evaluate a function on padded mini-batches.
+
+    Padding the final batch keeps every JIT invocation on the same shape, which avoids recompiling on short tails.
+    """
     n = inputs[batched_argnums[0]].shape[0]
     n_batches = ceil(n / batch_size)
     pad_by = batch_size * n_batches - n
@@ -50,9 +51,9 @@ def batched_eval(
     batched_output = [
         f(*[batched_input[i][b] if i in batched_argnums else inputs[i] for i in range(len(inputs))])
         for b in range(n_batches)
-    ]
+    ]  # Each batch result has leading shape [batch_size, ...].
     if pad_by > 0:
-        return jnp.concatenate(batched_output, axis=0)[:-pad_by]
+        return jnp.concatenate(batched_output, axis=0)[:-pad_by]  # Drop padded rows -> [n, ...].
     return jnp.concatenate(batched_output, axis=0)
 
 
@@ -62,8 +63,7 @@ def generate_batched_score_func(
     """Wrap a score function with padded batching logic."""
 
     def batched_score_func(rng: jax.Array, compute_clusters: list[np.ndarray]) -> list[jax.Array]:
-        # split clusters into batches padded to have same cluster size,
-        # and evaluate scoring function
+        """Pad cluster batches so every scorer call sees a fixed batch/sequence shape."""
         data_dim = compute_clusters[0].shape[1]
         n_batches = ceil(len(compute_clusters) / batch_shape[0])
         cluster_batches = [
@@ -77,20 +77,18 @@ def generate_batched_score_func(
                 batch_shape[1]
                 + max([0, ceil((max([len(c) for c in cluster_batch]) - batch_shape[1]) / 8)]) * 8
             )
-            # prepare the data and masks
             data, masks = [], []
             for cluster in cluster_batch:
                 size = len(cluster)
 
-                # prepare masks
-                mask = jnp.concat([jnp.ones((size,)), jnp.zeros((max_size - size,))])
+                mask = jnp.concat([jnp.ones((size,)), jnp.zeros((max_size - size,))])  # [max_size]
                 masks.append(mask)
 
-                # append nans onto data to make it the same size
                 padding = jnp.full((max_size - size, cluster.shape[1]), float("nan"))
-                data.append(jnp.concat([cluster, padding], axis=0))
+                data.append(jnp.concat([cluster, padding], axis=0))  # [max_size, data_dim]
 
             if len(cluster_batch) < batch_shape[0]:
+                # Pad the batch itself so the scorer always receives [batch_shape[0], max_size, data_dim].
                 data += [jnp.full((max_size, data_dim), float("nan"))] * (
                     batch_shape[0] - len(cluster_batches[-1])
                 )
@@ -105,7 +103,6 @@ def generate_batched_score_func(
 
 
 class DFWrapper:
-    # Allows easier retrieval of cluster data from dataframes
     """Wrapper that exposes dataframe rows through the clustering API."""
 
     def __init__(self, df: _SupportsILoc):

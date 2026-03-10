@@ -1102,9 +1102,6 @@ def plot_particles_2D(
     return fig
 
 
-# ====================== Resamplers ======================
-
-
 def resample_multinomial(
     rng: jax.Array, weights: np.ndarray, max_particles: int, **_kwargs: Any
 ) -> tuple[np.ndarray, np.ndarray]:

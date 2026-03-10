@@ -46,7 +46,7 @@ class VariationalDiffusion:
 
     def loss(self, rng: jax.Array, params: Any, x: jax.Array, masks: jax.Array) -> jax.Array:  # noqa: ANN401
         """Compute the diffusion training loss for a batch."""
-        batch_size, seq_len, _ = x.shape
+        batch_size, seq_len, _ = x.shape  # x: [B, L, D]
 
         # sample time points across batch
         # ti = mod(u0 + i/batch_size, 1)
@@ -54,7 +54,7 @@ class VariationalDiffusion:
         u0 = jax.random.uniform(t_rng, (1,), dtype=x.dtype)
         t = jnp.arange(batch_size, dtype=x.dtype) / batch_size + u0
         t %= 1
-        t = t[:, None, None]  # bcast over seq, dim
+        t = t[:, None, None]  # [B, 1, 1], broadcast over set elements and features
 
         # set up noise schedule
         sigma2 = self.schedule(t)
@@ -70,7 +70,7 @@ class VariationalDiffusion:
         set_size = masks.sum(axis=1)[:, None, None]
         model_input = jnp.concat(
             [z, jnp.tile(set_size, (1, seq_len, 1)), jnp.tile(t, (1, seq_len, 1))], axis=-1
-        )
+        )  # [B, L, D + 2]
         rng, dropout_rng = jax.random.split(rng)
         eps_hat = cast(
             jax.Array,
@@ -79,7 +79,7 @@ class VariationalDiffusion:
 
         # compute the L_inf loss
         gamma_grad = self.schedule.gamma_grad(t)
-        loss = 0.5 * jnp.sum(gamma_grad * masks[:, :, None] * (eps_hat - eps) ** 2, axis=[1, 2])
+        loss = 0.5 * jnp.sum(gamma_grad * masks[:, :, None] * (eps_hat - eps) ** 2, axis=[1, 2])  # [B]
         loss = loss.mean()  # average over batch
 
         return loss
@@ -143,7 +143,6 @@ class VariationalDiffusion:
 
             # resample particles if degenerate
             n_eff = 1.0 / jnp.sum(jnp.square(jnp.exp(log_weights)))
-            # print(f"iteration {i}, logp = {log_prob.item():.2f}, n_eff = {n_eff.item():.2f}")
             if n_eff < resample_thresh * num_particles:
                 rng, resample_rng = jax.random.split(rng)
                 z = jax.random.choice(
@@ -182,10 +181,10 @@ class VariationalDiffusion:
             masks = jnp.ones_like(z[:, :, 0], dtype=jnp.bool)
 
         batch_size, seq_len, _ = z.shape
-        set_size = masks.sum(axis=1)[:, None, None]
+        set_size = masks.sum(axis=1)[:, None, None]  # [B, 1, 1]
         model_input = jnp.concat(
             [z, jnp.tile(set_size, (1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1
-        )
+        )  # [B, L, D + 2]
         eps_hat = self.trained_net(model_input, masks)
 
         gamma_s = self.schedule.gamma(s)
@@ -208,7 +207,6 @@ class VariationalDiffusion:
         num_time_steps: int,
         masks: jax.Array | None = None,
     ) -> jax.Array:
-        # generate samples from the model
         """Generate samples from the diffusion model."""
         if masks is None:
             masks = jnp.ones((num_samples, seq_len), dtype=jnp.bool)
@@ -245,7 +243,7 @@ class VariationalDiffusion:
         set_size = masks.sum(axis=1)[:, None, None]
         model_input = jnp.concat(
             [z, jnp.tile(set_size, (1, seq_len, 1)), t * jnp.ones((batch_size, seq_len, 1))], axis=-1
-        )
+        )  # [B, L, D + 2]
         eta_hat = self.trained_net(model_input, masks)
         sigma2 = self.schedule(t)
         sigma = jnp.sqrt(sigma2)

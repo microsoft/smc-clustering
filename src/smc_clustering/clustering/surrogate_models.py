@@ -25,7 +25,6 @@ from smc_clustering.clustering.cluster import Cluster
 from smc_clustering.clustering.utils import batched_eval
 
 
-# ====================== Surrogate models ======================
 class Gaussian:
     """Gaussian model with normal-inverse-gamma prior on cluster parameters."""
 
@@ -354,9 +353,6 @@ class Trigram(Ngram):
     def __init__(self, prior_scale: float, prior_counts: CountDict):
         """Initialize Trigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts, 3)
-
-
-# ====================== Cluster classes with sufficient statistics for surrogate models ======================
 
 
 class GaussianCluster(Cluster):

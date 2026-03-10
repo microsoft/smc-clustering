@@ -285,7 +285,6 @@ class GibbsClusterer:
         return n_evals
 
     def summary(self, print_cluster_data: bool = False):
-        # Print out summary of clustering
         """Print a summary of the current clustering state."""
         print(f"Current (weight {self.logpost:.4g}):")
         clusters = sorted(self.clusters, key=lambda c: c.size, reverse=True)

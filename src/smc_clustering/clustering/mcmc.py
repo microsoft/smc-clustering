@@ -132,12 +132,13 @@ class GibbsClusterer:
                 self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
             else:
                 self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-            self.logpost = self._posterior_score()
 
             if self.clusters[old_k].size > 1:
                 self.clusters[old_k] = self.ClusterClass(self.clusters[old_k].data - {i})
             else:
                 del self.clusters[old_k]
+            
+            self.logpost = self._posterior_score()
 
         return model_evals, 0
 
@@ -229,7 +230,6 @@ class GibbsClusterer:
                     self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
                 else:
                     self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-                self.logpost = self._posterior_score()
 
                 if self.clusters[old_k].size > 1:
                     new_ids = self.clusters[old_k].data - {i}
@@ -238,6 +238,8 @@ class GibbsClusterer:
                     )
                 else:
                     del self.clusters[old_k]
+                
+                self.logpost = self._posterior_score()
 
         return model_evals, surrogate_evals
 

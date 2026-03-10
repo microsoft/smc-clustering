@@ -76,11 +76,11 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
     """Yield pairs (A,B) from a JSONL where each line is a 2-element array of objects."""
     with Path(path).open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
+            stripped_line = line.strip()
+            if not stripped_line:
                 continue
             try:
-                arr = json.loads(line)
+                arr = json.loads(stripped_line)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Parse error in {path}:{lineno}: {e}") from e
             if not (

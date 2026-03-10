@@ -99,8 +99,8 @@ def entity_to_string(entity: dict[str, list[str]]) -> str:
             tokens.append("]")
         else:
             # Emit values: <V> "val" ( , <V> "val" )*
-            for i, v in enumerate(values):
-                if i > 0:
+            for value_index, v in enumerate(values):
+                if value_index > 0:
                     tokens.append(",")
                 tokens.append("<V>")
                 tokens.append(_string_literal(v))

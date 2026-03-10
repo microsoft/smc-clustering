@@ -38,7 +38,7 @@ def load_model(checkpoint_path: str = "checkpoints") -> Callable:
     """Load the diffusion scorer from a checkpoint directory."""
     rng = jax.random.PRNGKey(1)
     schedule = LinearSchedule()
-    model = model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
+    model = VariationalDiffusion(rng, dim=2, depth=6, schedule=schedule)
 
     raw_restored = checkpoints.restore_checkpoint(
         ckpt_dir=Path.cwd() / checkpoint_path,
@@ -112,8 +112,8 @@ def generate_circles_dataset() -> tuple[np.ndarray, np.ndarray]:
 
     cluster_data = []
     labels = []
-    for k, (c, m) in enumerate(zip(circles_valid, masks_valid)):
-        for ci, mi in zip(c, m):
+    for k, (c, m) in enumerate(zip(circles_valid, masks_valid, strict=True)):
+        for ci, mi in zip(c, m, strict=True):
             if mi:
                 cluster_data.append(ci[None, :])
                 labels.append(k)

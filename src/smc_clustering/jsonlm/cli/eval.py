@@ -113,11 +113,11 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
     """Yield pairs A,B from a TSV file where each column is a JSON object string."""
     with Path(path).open(encoding="utf-8") as f:
         for lineno, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
+            stripped_line = line.strip()
+            if not stripped_line:
                 continue
             try:
-                a_str, b_str = line.split("$", 1)
+                a_str, b_str = stripped_line.split("$", 1)
                 a = json.loads(a_str)
                 b = json.loads(b_str)
             except (ValueError, json.JSONDecodeError) as e:

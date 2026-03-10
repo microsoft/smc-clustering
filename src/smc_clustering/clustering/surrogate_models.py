@@ -132,8 +132,8 @@ def get_counts(strings: list[str]) -> np.ndarray:
     """Convert strings to ASCII and get character counts."""
     counts = np.zeros((26,), dtype=np.int32)
     for string in strings:
-        string = unidecode(string).lower()
-        count_dict = collections.Counter(string)
+        normalized_string = unidecode(string).lower()
+        count_dict = collections.Counter(normalized_string)
         for i, char in enumerate("abcdefghijklmnopqrstuvwxyz"):
             counts[i] += count_dict[char]
 

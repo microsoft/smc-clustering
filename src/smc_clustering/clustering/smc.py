@@ -54,7 +54,8 @@ class SMCClustererState:
         old_cluster_ids = list(self.particles[particle_id[0]][particle_id[1]])
         old_cluster_ids.append(self.ClusterClass([]).hash)
         old_clusters = [
-            self.clusters[cluster_hash] for cluster_hash in self.particles[particle_id[0]][particle_id[1]]
+            self.clusters[cluster_hash]
+            for cluster_hash in self.particles[particle_id[0]][particle_id[1]]
         ]
         old_clusters.append(self.ClusterClass([]))
 
@@ -450,9 +451,7 @@ class SMCClusterer:
             new_clusters = [
                 self.state.clusters[cluster].add(self.state.n_obs) for cluster in putative_particles[1]
             ]
-            model_evals = self.compute_scores(
-                update_rng, [*new_clusters, frozenset({self.state.n_obs})]
-            )
+            model_evals = self.compute_scores(update_rng, [*new_clusters, frozenset({self.state.n_obs})])
             single_LL = self.state.score_cache[hash(frozenset({self.state.n_obs}))]
 
             update = np.array(
@@ -929,7 +928,9 @@ def plot_particles_2D(
             )[:n_plots]
         ):
             subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
-            weight = np.exp(weight - scipy.special.logsumexp(np.array(state.weights[subprob])))
+            normalized_weight = np.exp(
+                weight - scipy.special.logsumexp(np.array(state.weights[subprob]))
+            )
             clusters = sorted(
                 [state.retrieve_cluster_data(cluster_hash) for cluster_hash in particle],
                 key=lambda c: c.shape[0],
@@ -963,7 +964,9 @@ def plot_particles_2D(
                     markerfacecolor="none",
                 )
 
-            subfig.set_title(f"Particle {i + 1}/{len(state.particles[subprob])}, weight {weight:.2g}")
+            subfig.set_title(
+                f"Particle {i + 1}/{len(state.particles[subprob])}, weight {normalized_weight:.2g}"
+            )
             subfig.set_aspect("equal")
             subfig.set_xticks([])
             subfig.set_yticks([])
@@ -1026,7 +1029,9 @@ def plot_particles_2D(
             )[:n_plots]
         ):
             subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes
-            weight = np.exp(weight - scipy.special.logsumexp(np.array(state.weights[subprob])))
+            normalized_weight = np.exp(
+                weight - scipy.special.logsumexp(np.array(state.weights[subprob]))
+            )
             clusters = sorted(
                 [state.retrieve_cluster_data(cluster_hash) for cluster_hash in particle],
                 key=lambda c: c.shape[0],
@@ -1056,7 +1061,7 @@ def plot_particles_2D(
                 color="black",
                 linestyle="dotted",
             )
-            subfig.annotate(f"{weight:.2g}", (x_max, np.mean(np.concatenate(clusters)[:, 1])))
+            subfig.annotate(f"{normalized_weight:.2g}", (x_max, np.mean(np.concatenate(clusters)[:, 1])))
 
     for i in range(n_plots):
         subfig = axes[int(i // ncols), i % ncols] if nrows > 1 else axes[i] if n_plots > 1 else axes

@@ -205,8 +205,8 @@ class GibbsClusterer:
             new_cluster = self.clusters[new_k].add(i) if new_k < len(self.clusters) else frozenset({i})
             compute_clusters.append(new_cluster)
 
-            rng, _compute_rng = jax.random.split(rng)
-            model_evals = self.compute_scores(rng, compute_clusters)
+            rng, compute_rng = jax.random.split(rng)
+            model_evals = self.compute_scores(compute_rng, compute_clusters)
 
             ll_new_cluster_without_i = (
                 self.score_cache[self.clusters[new_k].hash] if new_k < len(self.clusters) else 0

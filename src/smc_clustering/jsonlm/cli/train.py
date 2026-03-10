@@ -74,7 +74,7 @@ def _is_wandb_configured() -> bool:
 
 
 def _save_artifacts(
-    save_dir: str, vocab: Vocabulary, tokenizer_bpe_json: str, cfg: TransformerConfig
+    save_dir: str | Path, vocab: Vocabulary, tokenizer_bpe_json: str | Path, cfg: TransformerConfig
 ) -> None:
     """Persist artifacts: `vocab.json`, `bpe.json`, and `config.json` in `save_dir`."""
     save_path = Path(save_dir)
@@ -261,11 +261,13 @@ def main(argv: list[str] | None = None) -> None:
         _train_corpus_lines(args.train), vocabulary=vocab, bpe_vocab_size=args.bpe_vocab_size
     )
 
+    save_dir = Path(args.save_dir)
+
     # Save tokenizer artifacts (HF tokenizer save returns a path).
-    tmp_bpe_path = os.path.join(args.save_dir, "_tmp_bpe.json")
-    os.makedirs(args.save_dir, exist_ok=True)
+    tmp_bpe_path = save_dir / "_tmp_bpe.json"
+    save_dir.mkdir(parents=True, exist_ok=True)
     logger.info("Saving temporary tokenizer model to %s", tmp_bpe_path)
-    tok.bpe.save(tmp_bpe_path)
+    tok.bpe.save(str(tmp_bpe_path))
 
     # Prepare model config
     logger.info(
@@ -291,8 +293,8 @@ def main(argv: list[str] | None = None) -> None:
         tie_embeddings=args.tie_embeddings,
         use_bias=args.use_bias,
     )
-    logger.info("Saving artifacts (vocab.json, bpe.json, config.json) to %s", args.save_dir)
-    _save_artifacts(args.save_dir, vocab, tmp_bpe_path, cfg)
+    logger.info("Saving artifacts (vocab.json, bpe.json, config.json) to %s", save_dir)
+    _save_artifacts(save_dir, vocab, tmp_bpe_path, cfg)
 
     # Datasets / loaders
     logger.info("Indexing training and validation datasets from JSONL files")
@@ -360,7 +362,7 @@ def main(argv: list[str] | None = None) -> None:
         ", PeriodicDecode" if int(args.decode_every) > 0 else "",
     )
     ckpt_cb = ModelCheckpoint(
-        dirpath=args.save_dir,
+        dirpath=save_dir,
         filename="model-{epoch:02d}-{val_loss:.4f}",
         save_top_k=1,
         monitor="val/loss",
@@ -372,20 +374,21 @@ def main(argv: list[str] | None = None) -> None:
 
     # Check if wandb is available and configured, fallback to CSV logger if not
     if _is_wandb_configured():
+        run_name = save_dir.name or save_dir.resolve().name
         logger.info(
             "Initializing logger (WandbLogger) [project=%s, run=%s]",
             "jsonlm",
-            os.path.basename(args.save_dir.rstrip("/")),
+            run_name,
         )
         pl_logger = WandbLogger(
             project="jsonlm",
-            name=os.path.basename(args.save_dir.rstrip("/")),
-            save_dir=args.save_dir,
+            name=run_name,
+            save_dir=save_dir,
         )
     else:
         logger.info("Wandb not available or configured, using CSVLogger")
         pl_logger = CSVLogger(
-            save_dir=args.save_dir,
+            save_dir=save_dir,
             name="training_logs",
         )
 
@@ -397,7 +400,7 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     trainer = Trainer(
-        default_root_dir=args.save_dir,
+        default_root_dir=save_dir,
         max_epochs=args.max_epochs,
         max_steps=max_steps_override,
         accelerator="gpu" if use_gpu else "cpu",
@@ -418,13 +421,13 @@ def main(argv: list[str] | None = None) -> None:
 
     # Cleanup tmp file if present
     try:
-        if os.path.exists(tmp_bpe_path):
+        if tmp_bpe_path.exists():
             logger.info("Removing temporary tokenizer file: %s", tmp_bpe_path)
-            os.remove(tmp_bpe_path)
+            tmp_bpe_path.unlink()
     except OSError:
         pass
 
-    print(f"Training complete. Artifacts/checkpoints saved in: {args.save_dir}")
+    print(f"Training complete. Artifacts/checkpoints saved in: {save_dir}")
 
 
 if __name__ == "__main__":

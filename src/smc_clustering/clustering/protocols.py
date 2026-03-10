@@ -10,10 +10,10 @@ import numpy as np
 class PriorLike(Protocol):
     """Protocol for cluster-size priors used by the clustering algorithms."""
 
-    def __call__(self, cluster_sizes: np.ndarray, **_kwargs: Any) -> float | np.ndarray:
+    def __call__(self, cluster_sizes: np.ndarray) -> float | np.ndarray:
         """Return the prior score for a batch of cluster sizes."""
 
-    def marginal(self, _n_obs: int, cluster_size: int | np.ndarray, **_kwargs: Any) -> np.ndarray:
+    def marginal(self, _n_obs: int, cluster_size: int | np.ndarray) -> np.ndarray:
         """Return marginal prior terms for candidate assignments."""
 
 

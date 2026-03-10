@@ -309,7 +309,6 @@ class Ngram:
                 # just one n-gram observation with this history, so equivalent to cheaper categorical pmf
                 LL += np.log(alphas).flatten() - np.log(sum_alphas).flatten()
             else:
-                # LL += np.array(batched_eval(dirichlet_categorical_logpmf, batch_size, (1, 2), x, alphas, sum_alphas))
                 LL += dirichlet_categorical_logpmf_numpy(x, alphas, sum_alphas)
 
         return LL

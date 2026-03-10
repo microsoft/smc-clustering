@@ -54,11 +54,11 @@ class Cluster:
 class Uniform:
     """Uniform prior on cluster sizes."""
 
-    def __call__(self, _cluster_sizes: np.ndarray, **_kwargs: Any) -> np.ndarray:
+    def __call__(self, _cluster_sizes: np.ndarray) -> np.ndarray:
         """Return a constant prior score for the provided cluster sizes."""
         return np.zeros((1,))
 
-    def marginal(self, _n_obs: int, cluster_size: np.ndarray, **_kwargs: Any) -> np.ndarray:
+    def marginal(self, _n_obs: int, cluster_size: np.ndarray) -> np.ndarray:
         """Return the marginal prior term for candidate cluster sizes."""
         return np.zeros(cluster_size.shape[0])
 
@@ -70,12 +70,12 @@ class DirichletProcess:
         """Initialize DirichletProcess with the given concentration parameter."""
         self.alpha = alpha
 
-    def __call__(self, cluster_sizes: np.ndarray, **_kwargs: Any) -> float:
+    def __call__(self, cluster_sizes: np.ndarray) -> float:
         """Return the prior log probability of a clustering."""
         return (
             len(cluster_sizes) * np.log(self.alpha) + np.sum(scipy.special.gammaln(cluster_sizes))
         ).item()
 
-    def marginal(self, _n_obs: int, cluster_size: np.ndarray, **_kwargs: Any) -> np.ndarray:
+    def marginal(self, _n_obs: int, cluster_size: np.ndarray) -> np.ndarray:
         """Return the marginal prior term for candidate cluster sizes."""
         return np.where(cluster_size > 0, np.log(cluster_size), np.log(self.alpha))

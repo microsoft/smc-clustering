@@ -323,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
             with log_path.open("w", encoding="utf-8") as lf:
                 lf.write("Command: " + " ".join(shlex.quote(c) for c in cmd) + "\n\n")
                 lf.flush()
-                proc = subprocess.Popen(  # noqa: S603
+                proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,

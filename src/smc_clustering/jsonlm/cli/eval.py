@@ -145,58 +145,55 @@ def main(argv: list[str] | None = None) -> None:
     if args.data is not None:
         total = 0.0
         count = 0
-        with torch.no_grad():
-            # Read raw JSON lines to handle both dict and list[dict]
-            with Path(args.data).open(encoding="utf-8") as f:
-                for lineno, raw in enumerate(f, start=1):
-                    line = raw.rstrip("\n\r")
-                    if not line.strip():
-                        continue  # ignore empty/whitespace-only lines
-                    try:
-                        obj = json.loads(line)
-                        if isinstance(obj, dict):
-                            # Normalize entity by removing legacy "properties" wrapper if present
-                            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
-                            assert isinstance(normalized_obj, dict), (
-                                "Single entity normalization should return dict"
-                            )
-                            # Single entity: use logprob_entity
-                            lp = logprob_entity(
-                                normalized_obj,
-                                model=model,
-                                tokenizer=tok,
-                                normalize=args.normalize,
-                                device=device,
-                            )
-                        elif isinstance(obj, list):
-                            # Entity sequence: use logprob_sequence with include_eos=False
-                            if not all(isinstance(item, dict) for item in obj):
-                                raise TypeError(f"List items must all be dicts in {args.data}:{lineno}")
+        # Read raw JSON lines to handle both dict and list[dict]
+        with torch.no_grad(), Path(args.data).open(encoding="utf-8") as f:
+            for lineno, raw in enumerate(f, start=1):
+                line = raw.rstrip("\n\r")
+                if not line.strip():
+                    continue  # ignore empty/whitespace-only lines
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict):
+                        # Normalize entity by removing legacy "properties" wrapper if present
+                        normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
+                        assert isinstance(normalized_obj, dict), (
+                            "Single entity normalization should return dict"
+                        )
+                        # Single entity: use logprob_entity
+                        lp = logprob_entity(
+                            normalized_obj,
+                            model=model,
+                            tokenizer=tok,
+                            normalize=args.normalize,
+                            device=device,
+                        )
+                    elif isinstance(obj, list):
+                        # Entity sequence: use logprob_sequence with include_eos=False
+                        if not all(isinstance(item, dict) for item in obj):
+                            raise TypeError(f"List items must all be dicts in {args.data}:{lineno}")
 
-                            # Normalize sequence by removing legacy "properties" wrappers if present (lenient mode)
-                            normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
-                            assert isinstance(normalized_obj, list), (
-                                "Sequence normalization should return list"
-                            )
-                            lp = logprob_sequence(
-                                normalized_obj,
-                                model=model,
-                                tokenizer=tok,
-                                include_eos=False,
-                                normalize=args.normalize,
-                                device=device,
-                            )
-                            print(
-                                f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}"
-                            )
-                        else:
-                            raise TypeError(
-                                f"Expected a JSON object or array in {args.data}:{lineno}, got {type(obj).__name__}",
-                            )
-                        total += float(lp)
-                        count += 1
-                    except json.JSONDecodeError as e:
-                        raise ValueError(f"JSON parse error in {args.data}:{lineno}: {e.msg}") from e
+                        # Normalize sequence by removing legacy "properties" wrappers if present (lenient mode)
+                        normalized_obj = normalize_entity_or_sequence(obj, seq_mode="lenient")
+                        assert isinstance(normalized_obj, list), (
+                            "Sequence normalization should return list"
+                        )
+                        lp = logprob_sequence(
+                            normalized_obj,
+                            model=model,
+                            tokenizer=tok,
+                            include_eos=False,
+                            normalize=args.normalize,
+                            device=device,
+                        )
+                        print(f"[debug] {args.data}:{lineno}  items={len(normalized_obj)}  {lp=:.6f}")
+                    else:
+                        raise TypeError(
+                            f"Expected a JSON object or array in {args.data}:{lineno}, got {type(obj).__name__}",
+                        )
+                    total += float(lp)
+                    count += 1
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"JSON parse error in {args.data}:{lineno}: {e.msg}") from e
         if count == 0:
             print(f"No entities found in {args.data}.")
         else:

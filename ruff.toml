@@ -64,9 +64,11 @@ select = [
 ignore = [
     "ANN10",   # missing type for self/cls (methods)
     "D301",    # allow backslashes in docstrings (escape sequences)
+    "N812",    # allow torch.nn.functional imported as `F`
     "PLR09",   # allow too-many-* (design) in places
     "PLR1702", # allow deeply nested blocks
     "RET506",  # allow else after raise
+    "S",       # defer security/hash warnings for now
     "TD003",   # TODO needn't have an issue link
     "TRY002",  # allow `raise MyError` (class) instead of instance
     "TRY003",  # allow generic `raise Exception('msg')`

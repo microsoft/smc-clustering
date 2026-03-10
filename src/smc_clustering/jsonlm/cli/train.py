@@ -304,7 +304,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     try:  # noqa: SIM105
         logger.info("Dataset sizes: train=%d, val=%d", len(train_ds), len(val_ds))
-    except Exception:  # noqa: BLE001, S110
+    except Exception:  # noqa: BLE001
         # len should work, but keep training robust if it doesn't for some reason
         pass
 

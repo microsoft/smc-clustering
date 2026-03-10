@@ -51,13 +51,12 @@ class SMCClustererState:
         self, particle_id: tuple[int, int]
     ) -> tuple[list[list[int]], list[int], list[Any], list[Any]]:
         """Compute descendant assignments, summaries, and weights for a particle."""
-        old_cluster_ids = list(self.particles[particle_id[0]][particle_id[1]]) + [
-            self.ClusterClass([]).hash
-        ]
+        old_cluster_ids = list(self.particles[particle_id[0]][particle_id[1]])
+        old_cluster_ids.append(self.ClusterClass([]).hash)
         old_clusters = [
-            self.clusters[cluster_hash]
-            for cluster_hash in self.particles[particle_id[0]][particle_id[1]]
-        ] + [self.ClusterClass([])]
+            self.clusters[cluster_hash] for cluster_hash in self.particles[particle_id[0]][particle_id[1]]
+        ]
+        old_clusters.append(self.ClusterClass([]))
 
         n = [cluster.size for cluster in old_clusters]
         summary = [cluster.summary for cluster in old_clusters]
@@ -189,13 +188,11 @@ class SMCClustererState:
 
         # list clusters that respect the data partition
         cluster_partition = [
-            set(
-                [
-                    cl
-                    for cl in self.cluster_partition[s]
-                    if self.clusters[cl].data.issubset(data_partition[i])
-                ]
-            )
+            {
+                cl
+                for cl in self.cluster_partition[s]
+                if self.clusters[cl].data.issubset(data_partition[i])
+            }
             for i in range(n_c)
         ]
 
@@ -258,16 +255,14 @@ class SMCClustererState:
                             cluster_lookup_p[i.item()] = self.clusters[cl].data
                     cluster_assignments.append(cluster_lookup_p)
 
-                for p in range(len(self.particles[s])):
-                    expected_metric.append(
-                        sum(
-                            [
-                                np.exp(self.weights[s][i])
-                                * metric(cluster_assignments[p], cluster_assignments[i])
-                                for i in range(len(self.particles[s]))
-                            ]
-                        )
+                expected_metric = [
+                    sum(
+                        np.exp(self.weights[s][i])
+                        * metric(cluster_assignments[p], cluster_assignments[i])
+                        for i in range(len(self.particles[s]))
                     )
+                    for p in range(len(self.particles[s]))
+                ]
 
                 top_particle = self.particles[s][np.argmax(expected_metric)]
 
@@ -455,7 +450,9 @@ class SMCClusterer:
             new_clusters = [
                 self.state.clusters[cluster].add(self.state.n_obs) for cluster in putative_particles[1]
             ]
-            model_evals = self.compute_scores(update_rng, new_clusters + [frozenset({self.state.n_obs})])
+            model_evals = self.compute_scores(
+                update_rng, [*new_clusters, frozenset({self.state.n_obs})]
+            )
             single_LL = self.state.score_cache[hash(frozenset({self.state.n_obs}))]
 
             update = np.array(
@@ -661,11 +658,10 @@ class SMCClusterer:
                         )
                         idx += 1
 
-            if verbose:
-                if self.callback is not None:
-                    self.callback(
-                        self.state, highlight=self.state.n_obs, title=f"Pre merge, {self.state.n_obs}"
-                    )
+            if verbose and self.callback is not None:
+                self.callback(
+                    self.state, highlight=self.state.n_obs, title=f"Pre merge, {self.state.n_obs}"
+                )
 
             if n_pairs > self.max_particles:
                 # Resample again to bring new subproblem to correct size

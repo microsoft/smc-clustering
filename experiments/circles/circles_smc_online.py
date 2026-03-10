@@ -54,7 +54,7 @@ increment = 10
 for conf in configs:
     max_particles = 1 if conf == "greedy" else p
     max_evals = np.inf if conf == "greedy" else p
-    split = True if conf == "split" else False
+    split = conf == "split"
     method = f"{p}, {conf}"
 
     clusterer = SMCClusterer(

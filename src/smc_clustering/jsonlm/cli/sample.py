@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> None:
 
     model = TransformerLM(cfg).to(device).eval()
     ckpt = torch.load(args.ckpt, map_location=device)
-    state = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
+    state = ckpt.get("state_dict", ckpt)
     state = (
         {k[len("model.") :]: v for k, v in state.items() if k.startswith("model.")}
         if "state_dict" in ckpt

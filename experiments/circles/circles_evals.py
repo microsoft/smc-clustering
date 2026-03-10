@@ -55,7 +55,7 @@ for e in evals:
     for conf in configs:
         if conf == "greedy" or e >= p or e == 0:
             max_particles = 1 if conf == "greedy" else p
-            split = True if conf == "split" else False
+            split = conf == "split"
             max_evals = e
 
             method = f"{e}, {conf}"

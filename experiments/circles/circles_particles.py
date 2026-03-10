@@ -58,7 +58,7 @@ for conf in configs:
         if t < t_max and not (p > 1 and conf == "greedy"):
             max_particles = p
             max_evals = np.inf if conf == "greedy" else p
-            split = True if conf == "split" else False
+            split = conf == "split"
             method = f"{p}, {conf}"
 
             clusterer = SMCClusterer(

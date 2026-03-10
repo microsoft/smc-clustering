@@ -59,7 +59,7 @@ for conf in configs:
         if t < t_max:
             max_particles = p
             max_evals = 0
-            split = True if conf == "split" else False
+            split = conf == "split"
             method = f"{p}, {conf}"
 
             clusterer = SMCClusterer(

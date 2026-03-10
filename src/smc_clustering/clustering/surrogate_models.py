@@ -219,7 +219,7 @@ def get_ngram_counts(
 ) -> collections.Counter[tuple[str, ...]]:
     """Count normalized n-grams across strings."""
     if type(strings[0]) is list:
-        strings = sum(strings, start=[])
+        strings = [string for group in strings for string in group]
 
     if len(strings) == 1:
         ngrams = get_ngrams(strings[0], n)

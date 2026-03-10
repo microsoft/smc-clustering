@@ -27,7 +27,7 @@ from smc_clustering.jsonlm.grammar.spec import State
 
 
 if TYPE_CHECKING:
-    from jsonlm.tokenization.tokenizer import JsonLMTokenizer
+    from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 class GrammarRuntime:
@@ -92,9 +92,7 @@ class GrammarRuntime:
         # First EOS position per row (T if none)
         eos_bt = self.eos_id == Y  # [B, T], bool
         idxs = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-        first_eos = torch.where(eos_bt, idxs, torch.full_like(idxs, T)).amin(
-            dim=1
-        )  # [B], value in [0..T]
+        first_eos = idxs.masked_fill(~eos_bt, T).amin(dim=1)  # pyright: ignore[reportCallIssue]
 
         # Prepare output: initialize everything to EOS-only for padding positions
         eos_only = torch.zeros(V, dtype=torch.bool, device=device)  # [V]

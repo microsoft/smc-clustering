@@ -96,17 +96,17 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
 
 
 def _write_out_txt(out_path: str, values: Iterable[float]) -> None:
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
+    output_path = Path(out_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
         for v in values:
             f.write(f"{v:.8f}\n")
 
 
 def _write_out_jsonl(out_path: str, values: Iterable[float]) -> None:
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as f:
+    output_path = Path(out_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
         for v in values:
             json.dump({"delta": float(v)}, f, ensure_ascii=False)
             f.write("\n")

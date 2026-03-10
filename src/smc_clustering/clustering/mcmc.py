@@ -16,7 +16,8 @@ import numpy as np
 import scipy
 from tqdm import tqdm
 
-from smc_clustering.clustering.cluster import Cluster, DirichletProcess, Uniform
+from smc_clustering.clustering.cluster import Cluster
+from smc_clustering.clustering.protocols import PriorLike, SurrogateLike
 
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,8 @@ class GibbsClusterer:
         self,
         data: np.ndarray,
         score_fn: Callable,
-        prior: Uniform | DirichletProcess,
-        surrogate: object | None = None,
+        prior: PriorLike,
+        surrogate: SurrogateLike | None = None,
         ClusterClass: type[Cluster] = Cluster,
         score_cache: dict[int, float] | None = None,
     ):
@@ -41,10 +42,19 @@ class GibbsClusterer:
         self.surrogate = surrogate
         self.ClusterClass = ClusterClass
         self.clusters = [ClusterClass({d}, data=self.data[d]) for d in range(data.shape[0])]
-        self.logpost = None
+        self.logpost: float | None = None
         self.best_clustering = self.clusters.copy()
-        self.best_logpost = None
+        self.best_logpost: float | None = None
         self.score_cache = {} if score_cache is None else score_cache
+
+    def _posterior_score(self) -> float:
+        """Return the current unnormalized clustering log-posterior."""
+        return float(
+            sum(
+                float(np.asarray(self.prior(np.array([cl.size]))).item()) + self.score_cache[cl.hash]
+                for cl in self.clusters
+            )
+        )
 
     def compute_scores(
         self, rng: jax.Array, clusters: list[frozenset[int]], force_recompute: bool = False
@@ -104,23 +114,25 @@ class GibbsClusterer:
 
         else:
             weights[:-1] += np.array([self.score_cache[h] for h in hashes])
+            assert old_k is not None
             weights[old_k] -= self.score_cache[hash(self.clusters[old_k].data - {i})]
             weights[-1] += self.score_cache[hash(frozenset({i}))]
 
         rng, sample_rng = jax.random.split(rng)
-        new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
-        ).item()
+        new_k = int(
+            jax.random.choice(
+                sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
+            ).item()
+        )
 
         if new_k != old_k:
             # Update state
+            assert old_k is not None
             if new_k < len(self.clusters):
                 self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
             else:
                 self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-            self.logpost = sum(
-                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-            )
+            self.logpost = self._posterior_score()
 
             if self.clusters[old_k].size > 1:
                 self.clusters[old_k] = self.ClusterClass(self.clusters[old_k].data - {i})
@@ -165,19 +177,23 @@ class GibbsClusterer:
             cluster_sizes.append(0)
             weights[-1] = self.prior.marginal(self.data.shape[0], 0).item()
 
+        assert self.surrogate is not None
         sur_LL = self.surrogate.post_predictive(self.data[i], np.array(cluster_sizes), summary_stats)
         weights += sur_LL
         surrogate_evals = len(cluster_sizes)
 
         rng, sample_rng = jax.random.split(rng)
-        new_k = jax.random.choice(
-            sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
-        ).item()
+        new_k = int(
+            jax.random.choice(
+                sample_rng, len(weights), (1,), p=np.exp(weights - scipy.special.logsumexp(weights))
+            ).item()
+        )
 
         model_evals = 0
         if new_k != old_k:
             # Metropolis-Hastings accept step
             compute_clusters = []
+            assert old_k is not None
 
             if self.clusters[old_k].size > 1:
                 old_cluster = self.clusters[old_k].data - {i}
@@ -213,9 +229,7 @@ class GibbsClusterer:
                     self.clusters[new_k] = self.clusters[new_k].merge_point(i, self.data[i])
                 else:
                     self.clusters.append(self.ClusterClass({i}, data=self.data[i]))
-                self.logpost = sum(
-                    [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-                )
+                self.logpost = self._posterior_score()
 
                 if self.clusters[old_k].size > 1:
                     new_ids = self.clusters[old_k].data - {i}
@@ -236,11 +250,9 @@ class GibbsClusterer:
             rng, compute_rng = jax.random.split(rng)
             evals = self.compute_scores(compute_rng, [cl.data for cl in self.clusters])
             n_evals.append([evals, 0])
-            self.logpost = sum(
-                [self.prior(np.array([cl.size])) + self.score_cache[cl.hash] for cl in self.clusters]
-            )
+            self.logpost = self._posterior_score()
             self.best_clustering = self.clusters.copy()
-            self.best_logpost = self.logpost.copy()
+            self.best_logpost = float(self.logpost)
 
         update_step = self.update_mh if self.surrogate is not None else self.update_exact
 
@@ -252,8 +264,10 @@ class GibbsClusterer:
                 model_evals, surrogate_evals = update_step(update_rng, idx.item())
                 n_evals.append([model_evals, surrogate_evals])
 
+                assert self.logpost is not None
+                assert self.best_logpost is not None
                 if self.logpost >= self.best_logpost:
-                    self.best_logpost = self.logpost.copy()
+                    self.best_logpost = float(self.logpost)
                     self.best_clustering = self.clusters.copy()
 
                 pbar.set_postfix(

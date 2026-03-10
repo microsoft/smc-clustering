@@ -10,11 +10,18 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from math import ceil
-from typing import Any
+from typing import Any, Protocol
 
 import jax
 import jax.numpy as jnp
 import numpy as np
+
+
+class _SupportsILoc(Protocol):
+    """Minimal dataframe-like interface used by DFWrapper."""
+
+    shape: tuple[int, ...]
+    iloc: Any
 
 
 def batched_eval(
@@ -27,7 +34,7 @@ def batched_eval(
     n_batches = ceil(n / batch_size)
     pad_by = batch_size * n_batches - n
 
-    batched_input = []
+    batched_input: list[Any] = []
     for i in range(len(inputs)):
         if i in batched_argnums:
             batched = [
@@ -59,13 +66,13 @@ def generate_batched_score_func(
         # and evaluate scoring function
         data_dim = compute_clusters[0].shape[1]
         n_batches = ceil(len(compute_clusters) / batch_shape[0])
-        compute_clusters = [
+        cluster_batches = [
             compute_clusters[(batch_shape[0] * i) : min(batch_shape[0] * (i + 1), len(compute_clusters))]
             for i in range(n_batches)
         ]
 
         scores = []
-        for cluster_batch in compute_clusters:
+        for cluster_batch in cluster_batches:
             max_size = (
                 batch_shape[1]
                 + max([0, ceil((max([len(c) for c in cluster_batch]) - batch_shape[1]) / 8)]) * 8
@@ -85,9 +92,9 @@ def generate_batched_score_func(
 
             if len(cluster_batch) < batch_shape[0]:
                 data += [jnp.full((max_size, data_dim), float("nan"))] * (
-                    batch_shape[0] - len(compute_clusters[-1])
+                    batch_shape[0] - len(cluster_batches[-1])
                 )
-                masks += [jnp.zeros((max_size,))] * (batch_shape[0] - len(compute_clusters[-1]))
+                masks += [jnp.zeros((max_size,))] * (batch_shape[0] - len(cluster_batches[-1]))
 
             if len(data) > 0:
                 scores.append(score_func(rng, jnp.stack(data), jnp.stack(masks))[: len(cluster_batch)])
@@ -101,7 +108,7 @@ class DFWrapper:
     # Allows easier retrieval of cluster data from dataframes
     """Wrapper that exposes dataframe rows through the clustering API."""
 
-    def __init__(self, df: object):
+    def __init__(self, df: _SupportsILoc):
         """Initialize DFWrapper with the provided dataframe."""
         self.df = df
 

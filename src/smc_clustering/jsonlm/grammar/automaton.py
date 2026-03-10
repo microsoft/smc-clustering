@@ -20,7 +20,7 @@ from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
 
 
 if TYPE_CHECKING:
-    from jsonlm.grammar.runtime import GrammarRuntime
+    from smc_clustering.jsonlm.grammar.runtime import GrammarRuntime
 
 
 @dataclass(slots=True)
@@ -106,7 +106,7 @@ class GrammarAutomaton:
         if self._runtime is not None:
             try:
                 state_idx = self._get_state_index(s)
-                next_state_idx = self._runtime.next_state[state_idx, t].item()
+                next_state_idx = int(self._runtime.next_state[state_idx, t].item())
                 if next_state_idx < 0:
                     raise ValueError(f"Invalid transition from {s} with token {t}")
                 next_state = self._runtime.state_list[next_state_idx]

@@ -9,6 +9,8 @@ This module defines the diffusion objective, sampling procedures, and log-probab
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
+from typing import Any, cast
 
 import jax
 import jax.numpy as jnp
@@ -30,17 +32,19 @@ class VariationalDiffusion:
             schedule = LinearSchedule()
         self.schedule = schedule
         self.net = SetFormer(dim, depth)
-        self.params = self.net.init(
+        self.params: Any = self.net.init(
             rng, jnp.zeros((1, 1, self.dim + 2)), jnp.ones((1, 1), dtype=jnp.bool), train=False
         )
 
-        self.trained_net = None
+        self.trained_net: Callable[[jax.Array, jax.Array], jax.Array] | None = None
 
     def compile_net(self):
         """JIT-compile the network for inference."""
-        self.trained_net = jax.jit(lambda x, masks: self.net.apply(self.params, x, masks, train=False))
+        self.trained_net = jax.jit(
+            lambda x, masks: cast(jax.Array, self.net.apply(self.params, x, masks, train=False))
+        )
 
-    def loss(self, rng: jax.Array, params: dict, x: jax.Array, masks: jax.Array) -> jax.Array:
+    def loss(self, rng: jax.Array, params: Any, x: jax.Array, masks: jax.Array) -> jax.Array:  # noqa: ANN401
         """Compute the diffusion training loss for a batch."""
         batch_size, seq_len, _ = x.shape
 
@@ -68,7 +72,10 @@ class VariationalDiffusion:
             [z, jnp.tile(set_size, (1, seq_len, 1)), jnp.tile(t, (1, seq_len, 1))], axis=-1
         )
         rng, dropout_rng = jax.random.split(rng)
-        eps_hat = self.net.apply(params, model_input, masks, train=True, rngs={"dropout": dropout_rng})
+        eps_hat = cast(
+            jax.Array,
+            self.net.apply(params, model_input, masks, train=True, rngs={"dropout": dropout_rng}),
+        )
 
         # compute the L_inf loss
         gamma_grad = self.schedule.gamma_grad(t)

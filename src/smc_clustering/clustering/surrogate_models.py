@@ -12,7 +12,7 @@ import collections
 import collections.abc
 import functools
 import re
-from typing import Any
+from typing import Any, cast
 
 import jax
 import jax.numpy as jnp
@@ -218,14 +218,22 @@ def get_ngram_counts(
     strings: list[str] | list[list[str]], n: int = 2
 ) -> collections.Counter[tuple[str, ...]]:
     """Count normalized n-grams across strings."""
-    if type(strings[0]) is list:
-        strings = [string for group in strings for string in group]
+    if not strings:
+        return collections.Counter()
 
-    if len(strings) == 1:
-        ngrams = get_ngrams(strings[0], n)
+    normalized_strings: list[str]
+    if isinstance(strings[0], list):
+        normalized_strings = [string for group in strings for string in group]
+    else:
+        normalized_strings = cast(list[str], strings)
+
+    if len(normalized_strings) == 1:
+        ngrams = get_ngrams(normalized_strings[0], n)
         return collections.Counter(ngrams)
 
-    ngrams = [get_ngrams(string, n) for string in strings if len(string.strip()) > 0]
+    ngrams = [get_ngrams(string, n) for string in normalized_strings if len(string.strip()) > 0]
+    if not ngrams:
+        return collections.Counter()
     counts = collections.Counter(ngrams[0])
     for ns in ngrams[1:]:
         counts.update(ns)

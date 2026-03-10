@@ -16,7 +16,10 @@ import jax
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 from tqdm import tqdm
+
+from smc_clustering.clustering.protocols import PriorLike, SurrogateLike
 
 
 logger = logging.getLogger(__name__)
@@ -282,8 +285,8 @@ class SMCClusterer:
         score_fn: Callable[..., Any],
         max_evals: int,
         max_particles: int,
-        prior: object,
-        surrogate: object,
+        prior: PriorLike,
+        surrogate: SurrogateLike,
         ClusterClass: type,
         resample_fn: Callable[..., tuple[np.ndarray, np.ndarray]],
         split: bool = False,
@@ -480,7 +483,7 @@ class SMCClusterer:
                 [putative_particles, singleton_putative_particles[p_max]], axis=-1
             )
             putative_weights = np.concatenate(
-                [putative_weights, singleton_putative_weights[p_max] + single_LL]
+                [putative_weights, np.asarray(singleton_putative_weights[p_max]) + single_LL]
             )
             p = np.concatenate([p, np.full((len(singleton_putative_weights[p_max])), p_max)])
 
@@ -488,7 +491,9 @@ class SMCClusterer:
             putative_particles = np.concatenate(
                 [putative_particles, singleton_putative_particles], axis=-1
             )
-            putative_weights = np.concatenate([putative_weights, singleton_putative_weights + single_LL])
+            putative_weights = np.concatenate(
+                [putative_weights, np.asarray(singleton_putative_weights) + single_LL]
+            )
 
         new_particle_ids = None
         if putative_weights.shape[0] > self.max_particles:
@@ -910,7 +915,7 @@ def plot_particles_2D(
     highlight: int | None = None,
     title: str | None = None,
     **_kwargs: Any,
-) -> plt.Figure:
+) -> Figure:
     """Plot particles with highest weights."""
     subprob = 0 if len(state.particles) == 1 else subprob
     if subprob is not None:

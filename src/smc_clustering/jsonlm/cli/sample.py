@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> None:
         print()
         try:
             print(parse_entity(text))
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             print(f"(parse error?) {e}")
 
 

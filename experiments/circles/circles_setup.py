@@ -69,7 +69,7 @@ def generate_circles(
     max_x: float = 5.0,
     min_y: float = -5.0,
     max_y: float = 5.0,
-    num_points: int = None,
+    num_points: int | None = None,
 ) -> tuple[list, list]:
     """Generate synthetic circles and their masks."""
     r_rng, x_rng, y_rng, n_rng, theta_rng = jax.random.split(rng, 5)

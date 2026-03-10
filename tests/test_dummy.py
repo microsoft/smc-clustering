@@ -6,9 +6,9 @@
 This test module keeps a minimal smoke test in place so the package import path is exercised during test runs.
 """
 
-from diffusion_linking import *
+import smc_clustering
 
 
 def test_import() -> None:
     """A dummy test to check if the package can be imported."""
-    assert True
+    assert smc_clustering is not None

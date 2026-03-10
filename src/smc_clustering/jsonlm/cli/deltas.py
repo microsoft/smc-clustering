@@ -81,16 +81,18 @@ def _read_pairs(path: str) -> Iterable[tuple[dict, dict]]:
                 continue
             try:
                 arr = json.loads(line)
-                if not (
-                    isinstance(arr, list)
-                    and len(arr) == 2
-                    and isinstance(arr[0], dict)
-                    and isinstance(arr[1], dict)
-                ):
-                    raise ValueError("Line must be a JSON array of two objects.")
-                yield arr[0], arr[1]
-            except Exception as e:
+            except json.JSONDecodeError as e:
                 raise ValueError(f"Parse error in {path}:{lineno}: {e}") from e
+            if not (
+                isinstance(arr, list)
+                and len(arr) == 2
+                and isinstance(arr[0], dict)
+                and isinstance(arr[1], dict)
+            ):
+                raise ValueError(
+                    f"Parse error in {path}:{lineno}: Line must be a JSON array of two objects."
+                )
+            yield arr[0], arr[1]
 
 
 def _write_out_txt(out_path: str, values: Iterable[float]) -> None:

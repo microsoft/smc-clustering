@@ -157,7 +157,7 @@ def test_runtime_mask_equivalence_edge_cases():
                 valid_entities.append(canonical)
             else:
                 valid_entities.append({})  # empty entity
-        except:
+        except TypeError:
             valid_entities.append({})  # fallback to empty
 
     if not valid_entities:

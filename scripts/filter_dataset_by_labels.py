@@ -39,6 +39,14 @@ CLUSTER_LOG_SAMPLE = 25  # number of cluster members to show in acceptance log
 _MIN_QUOTED_LEN = 2  # minimal length to consider stripping surrounding quotes
 
 
+def _parse_confusing_map_entry(raw_line: str) -> tuple[str, list[str]]:
+    """Parse one confusing-map JSONL record."""
+    root, conf_list = json.loads(raw_line)
+    if not isinstance(root, str) or not isinstance(conf_list, list):
+        raise TypeError("Invalid line structure; expected [str, list]")
+    return root, [candidate for candidate in conf_list if isinstance(candidate, str)]
+
+
 def build_argparser() -> argparse.ArgumentParser:
     """Build and return the argument parser for the script."""
     p = argparse.ArgumentParser(description="Filter a JSONL dataset by labels")
@@ -136,10 +144,8 @@ def _load_confusing_map(path: Path, allowed_entities: set[str] | None = None) ->
                 if not line:
                     continue
                 try:
-                    root, conf_list = json.loads(line)
-                    if not isinstance(root, str) or not isinstance(conf_list, list):
-                        raise TypeError("Invalid line structure; expected [str, list]")
-                    confusing_set = {c for c in conf_list if isinstance(c, str)}
+                    root, conf_list = _parse_confusing_map_entry(line)
+                    confusing_set = set(conf_list)
                     confusing_set.add(root)
                     if allowed_entities is not None:
                         if root not in allowed_entities and not (confusing_set & allowed_entities):
@@ -148,7 +154,7 @@ def _load_confusing_map(path: Path, allowed_entities: set[str] | None = None) ->
                         if root not in confusing_set:
                             continue
                     mapping[root] = confusing_set
-                except Exception as e:  # noqa: BLE001
+                except (TypeError, ValueError, json.JSONDecodeError) as e:
                     logging.warning("Failed to parse confusing map line %d: %s", line_no, e)
     except OSError as e:
         logging.info("Could not read confusing map file '%s': %s; proceeding without it.", path, e)

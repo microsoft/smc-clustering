@@ -120,10 +120,12 @@ def _iter_pairs(path: str) -> Iterable[tuple[dict, dict]]:
                 a_str, b_str = line.split("$", 1)
                 a = json.loads(a_str)
                 b = json.loads(b_str)
-                if not isinstance(a, dict) or not isinstance(b, dict):
-                    raise TypeError("Both columns must be JSON objects.")
-            except Exception as e:
+            except (ValueError, json.JSONDecodeError) as e:
                 raise ValueError(f"Failed to parse pairs at line {lineno}: {e}") from e
+            if not isinstance(a, dict) or not isinstance(b, dict):
+                raise TypeError(
+                    f"Failed to parse pairs at line {lineno}: Both columns must be JSON objects."
+                )
             yield a, b
 
 

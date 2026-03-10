@@ -278,7 +278,7 @@ def test_runtime_mask_end_state_kleene_plus():
     # Find the position in the sequence where END state occurs
     # The exact position depends on the tokenization, but we can verify that
     # when EOS is allowed, '{' should also be allowed (Kleene-plus behavior)
-    B, T, V = masks_runtime.shape
+    B, T, _V = masks_runtime.shape
     for b in range(B):
         for t in range(T):
             if masks_runtime[b, t, eos_id]:  # If EOS is allowed

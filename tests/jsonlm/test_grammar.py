@@ -29,7 +29,7 @@ def _tok() -> tuple[GrammarAutomaton, Vocabulary]:
 
 def test_masks_basic_states() -> None:
     """Spot-check allowed tokens at a few key states."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
 
     # START => only '{' is allowed
@@ -55,7 +55,7 @@ def test_masks_basic_states() -> None:
 
 def test_masks_inside_string_allow_bpe_or_quote() -> None:
     """Inside strings, any BPE piece or closing quote must be allowed."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
     gs = automaton.start()
     gs = automaton.step(gs, tok.vocabulary.token_id("{"))
@@ -73,7 +73,7 @@ def test_masks_inside_string_allow_bpe_or_quote() -> None:
 
 def test_end_to_end_sequence_masks_allow_all_steps() -> None:
     """Walk a real sequence and ensure each next token is allowed; EOS only after final '}'."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
 
     s = entity_to_string({"a": ["x", "y"]})

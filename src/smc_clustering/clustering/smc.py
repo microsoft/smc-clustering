@@ -344,7 +344,7 @@ class SMCClusterer:
 
     def update_step(self, rng: jax.Array, new_obs: np.ndarray, verbose: bool) -> tuple[int, int]:
         """Update the particle set given a new observation."""
-        rng, update_rng, move_rng = jax.random.split(rng, 3)
+        rng, update_rng, _move_rng = jax.random.split(rng, 3)
         n_probs = len(self.state.weights)
         empty_hash = self.state.ClusterClass([]).hash
         model_evals = 0

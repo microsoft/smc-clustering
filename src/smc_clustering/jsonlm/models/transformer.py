@@ -317,7 +317,7 @@ class TransformerLM(nn.Module):
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Return logits [B, T, V] from input token IDs [B, T]."""
         assert input_ids.dim() == 2 and input_ids.dtype == torch.long, "input_ids must be [B, T] long"
-        B, T = input_ids.shape
+        _B, T = input_ids.shape
 
         device = input_ids.device
         x = self.tok_emb(input_ids)  # [B, T, D]

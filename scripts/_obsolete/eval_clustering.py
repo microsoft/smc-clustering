@@ -298,7 +298,7 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     # Run clustering
-    n_evals, _ = clusterer.cluster(rng, callback_interval=0)
+    _n_evals, _ = clusterer.cluster(rng, callback_interval=0)
 
     # Evaluate metrics and save results
     clustering = clusterer.state.list_cluster_labels()

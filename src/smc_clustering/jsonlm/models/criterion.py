@@ -81,7 +81,7 @@ def constrained_nll(
     assert masks.shape == logits.shape, (
         f"masks must match logits; got {tuple(masks.shape)} vs {tuple(logits.shape)}"
     )
-    B, T, V = logits.shape
+    B, T, _V = logits.shape
     assert target_ids.shape == (B, T), "target_ids shape must be [B, T]"
     if weights is not None:
         assert weights.shape == (B, T), f"weights must be [B, T], got {tuple(weights.shape)}"

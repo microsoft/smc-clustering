@@ -156,7 +156,7 @@ class LitConstrainedLM(LightningModule):
         weights = self._build_weights(target_ids)
 
         # Constrained NLL.
-        loss, nll_per_token = constrained_nll(
+        loss, _nll_per_token = constrained_nll(
             logits,
             target_ids,
             masks,

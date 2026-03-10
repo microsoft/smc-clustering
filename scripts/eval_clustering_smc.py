@@ -300,7 +300,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Run clustering
     t = time.time()
-    n_evals, _ = clusterer.cluster(rng, callback_interval=0)
+    _n_evals, _ = clusterer.cluster(rng, callback_interval=0)
     t = time.time() - t
 
     # Evaluate metrics and save results

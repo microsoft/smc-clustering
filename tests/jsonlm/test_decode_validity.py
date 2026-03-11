@@ -1,5 +1,7 @@
-"""
-Tests for constrained greedy decoding: validity, determinism, and mask adherence.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Tests for constrained greedy decoding: validity, determinism, and mask adherence.
 
 We use a uniform dummy model that assigns equal logits to every token. Constrained greedy then always picks the lowest-ID
 allowed token at each step, which produces the smallest valid object: '{ }'. We verify that the result parses and that
@@ -11,18 +13,19 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from jsonlm.grammar.automaton import GrammarAutomaton
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.models.decode import decode_greedy
-from jsonlm.serialization.encoder import entity_to_string, parse_entity
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.models.decode import decode_greedy
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string, parse_entity
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class UniformDummyModel(nn.Module):
     """A dummy model that returns zeros (equal logits) with EOS bias."""
 
     def __init__(self, vocab_size: int, eos_id: int) -> None:
+        """Initialize the dummy model with a fixed vocabulary size and EOS bias target."""
         super().__init__()
         self.vocab_size = vocab_size
         self.eos_id = eos_id

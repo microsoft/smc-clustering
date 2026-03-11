@@ -1,5 +1,7 @@
-"""
-Unit tests for the Lightning module: forward shapes, loss finiteness, and mask alignment.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for the Lightning module: forward shapes, loss finiteness, and mask alignment.
 
 We build a tiny toy tokenizer and a minimal per-token linear LM to verify that training_step runs end-to-end, that
 logits/masks have the right shapes, and that the constrained loss is finite. To avoid dataloader/padding complexity,
@@ -11,16 +13,18 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class ToyLM(nn.Module):
     """A minimal per-token linear LM: embeddings → linear head to V (no attention)."""
 
     def __init__(self, vocab_size: int, d_model: int = 32) -> None:
+        """Initialize the toy embedding-plus-linear language model."""
         super().__init__()
         self.embed = nn.Embedding(vocab_size, d_model)
         self.head = nn.Linear(d_model, vocab_size)
@@ -32,7 +36,7 @@ class ToyLM(nn.Module):
         return logits
 
 
-def _make_batch(tok) -> torch.Tensor:
+def _make_batch(tok: JsonLMTokenizer) -> torch.Tensor:
     """Create a small batch [B, L] of equal-length BOS…EOS sequences."""
     # Use two copies of the same entity to guarantee equal lengths for a simple stack.
     s = entity_to_string({"a": ["x", "y"], "b": ["c"]})

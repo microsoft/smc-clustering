@@ -1,5 +1,7 @@
-"""
-End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.
 
 This verifies that (1) the model and Lightning wrapper interoperate, (2) grammar masks build correctly for a real batch,
 (3) the constrained loss is finite, (4) backprop produces nonzero gradients, and (5) an optimizer step updates params.
@@ -9,11 +11,12 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _make_tokenizer() -> tuple:
@@ -27,7 +30,7 @@ def _make_tokenizer() -> tuple:
     return tok, vocab
 
 
-def _make_batch(tok) -> torch.Tensor:
+def _make_batch(tok: JsonLMTokenizer) -> torch.Tensor:
     """Create a small batch [B, L] of equal-length BOS…EOS sequences."""
     s = entity_to_string({"a": ["x", "y"], "b": ["c"]})
     ids = tok.encode(s, add_bos_eos=True)
@@ -66,10 +69,7 @@ def test_one_training_step_with_transformer_smoke() -> None:
 
     # Backward and optimizer step manually (keeps test independent of Trainer).
     opt_config = lit.configure_optimizers()
-    if isinstance(opt_config, dict):
-        opt = opt_config["optimizer"]
-    else:
-        opt = opt_config
+    opt = opt_config["optimizer"] if isinstance(opt_config, dict) else opt_config
     assert isinstance(opt, torch.optim.Optimizer)
     opt.zero_grad(set_to_none=True)
     loss.backward()

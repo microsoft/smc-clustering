@@ -1,5 +1,7 @@
-"""
-Tests to verify that the new runtime implementation produces correct results.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Tests to verify that the new runtime implementation produces correct results.
 
 This module tests the runtime implementation across various entity structures and edge cases,
 particularly with the new Kleene-plus grammar that allows multiple entities. Since the runtime
@@ -10,15 +12,16 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.runtime import get_runtime
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.runtime import get_runtime
+from smc_clustering.jsonlm.serialization.encoder import canonicalize_entity, entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
-def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:
+def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer: JsonLMTokenizer) -> torch.BoolTensor:
     """Reference implementation using per-step automaton for comparison."""
     assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long
     B, L = ids_with_eos.shape
@@ -45,7 +48,7 @@ def _build_masks_reference(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolT
     return masks
 
 
-def _make_tokenizer():
+def _make_tokenizer() -> JsonLMTokenizer:
     """Create a tokenizer for testing."""
     vocab = Vocabulary.from_default()
     corpus = [
@@ -58,7 +61,9 @@ def _make_tokenizer():
     return tok
 
 
-def _encode_entities_to_batch(entities: list[dict[str, list[str]]], tokenizer) -> torch.Tensor:
+def _encode_entities_to_batch(
+    entities: list[dict[str, list[str]]], tokenizer: JsonLMTokenizer
+) -> torch.Tensor:
     """Encode a list of entities to a padded batch tensor."""
     # Encode each entity to BOS...EOS
     ids_list = []
@@ -144,8 +149,6 @@ def test_runtime_mask_equivalence_edge_cases():
     ]
 
     # Filter out invalid entities that canonicalization removes
-    from jsonlm.serialization.encoder import canonicalize_entity
-
     valid_entities = []
     for entity in entities:
         try:
@@ -154,7 +157,7 @@ def test_runtime_mask_equivalence_edge_cases():
                 valid_entities.append(canonical)
             else:
                 valid_entities.append({})  # empty entity
-        except:
+        except TypeError:
             valid_entities.append({})  # fallback to empty
 
     if not valid_entities:
@@ -275,7 +278,7 @@ def test_runtime_mask_end_state_kleene_plus():
     # Find the position in the sequence where END state occurs
     # The exact position depends on the tokenization, but we can verify that
     # when EOS is allowed, '{' should also be allowed (Kleene-plus behavior)
-    B, T, V = masks_runtime.shape
+    B, T, _V = masks_runtime.shape
     for b in range(B):
         for t in range(T):
             if masks_runtime[b, t, eos_id]:  # If EOS is allowed

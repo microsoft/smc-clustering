@@ -1,5 +1,7 @@
-"""
-End-to-end smoke test for the training CLI.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""End-to-end smoke test for the training CLI.
 
 This test creates a tiny JSONL train/val set, runs the jsonlm.cli.train entrypoint with
 a tiny Transformer configuration (1 epoch, batch_size=2, CPU), and then asserts that the
@@ -14,7 +16,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from jsonlm.cli import train as train_cli
+from smc_clustering.jsonlm.cli import train as train_cli
 
 
 def _write_jsonl(path: Path, lines: list[str]) -> None:

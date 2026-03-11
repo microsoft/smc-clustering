@@ -1,5 +1,7 @@
-"""
-Unit tests for canonicalization and sentinel-based serialization/parsing.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for canonicalization and sentinel-based serialization/parsing.
 
 The tests assert idempotent canonicalization, deterministic ordering, round-trip stability, and helpful error handling
 for invalid input shapes. The serialized form is whitespace-stable and parses back to a canonical dict.
@@ -9,7 +11,11 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import canonicalize_entity, entity_to_string, parse_entity
+from smc_clustering.jsonlm.serialization.encoder import (
+    canonicalize_entity,
+    entity_to_string,
+    parse_entity,
+)
 
 
 def test_canonicalization_idempotent() -> None:
@@ -60,12 +66,12 @@ def test_values_can_be_empty_list() -> None:
 
 
 def test_bad_input_types_raise() -> None:
-    """Non-list values or non-string items should raise ValueError."""
-    with pytest.raises(ValueError):
+    """Non-list values or non-string items should raise TypeError."""
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({"a": "not-a-list"})  # type: ignore[arg-type]
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({"a": [1, 2]})  # type: ignore[list-item]
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = canonicalize_entity({1: ["x"]})  # type: ignore[dict-item]
 
 

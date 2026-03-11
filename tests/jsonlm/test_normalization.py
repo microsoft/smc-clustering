@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
 """Unit tests for jsonlm.serialization.normalization module.
 
 Tests comprehensive behavior of properties wrapper removal functions, including
@@ -7,7 +10,7 @@ in the task requirements.
 
 import pytest
 
-from jsonlm.serialization.normalization import (
+from smc_clustering.jsonlm.serialization.normalization import (
     normalize_entity_or_sequence,
     unwrap_properties_entity,
     unwrap_properties_sequence,
@@ -108,7 +111,9 @@ class TestUnwrapPropertiesSequence:
             {"properties": {"name": "Alice", "age": 30}},
             {"name": "Bob", "age": 25},  # No properties wrapper
         ]
-        with pytest.raises(ValueError, match="if first item has 'properties', all items must have 'properties'"):
+        with pytest.raises(
+            ValueError, match="if first item has 'properties', all items must have 'properties'"
+        ):
             unwrap_properties_sequence(mixed_seq, mode="strict")
 
     def test_strict_mode_mixed_properties_reverse_raises_error(self) -> None:
@@ -117,7 +122,9 @@ class TestUnwrapPropertiesSequence:
             {"name": "Alice", "age": 30},  # No properties wrapper
             {"properties": {"name": "Bob", "age": 25}},
         ]
-        with pytest.raises(ValueError, match="if first item lacks 'properties', no items should have 'properties'"):
+        with pytest.raises(
+            ValueError, match="if first item lacks 'properties', no items should have 'properties'"
+        ):
             unwrap_properties_sequence(mixed_seq, mode="strict")
 
     def test_lenient_mode_all_wrapped(self) -> None:
@@ -201,7 +208,9 @@ class TestUnwrapPropertiesSequence:
             {"properties": {"name": "Alice", "age": 30}},
             {"name": "Bob", "age": 25},  # No properties wrapper
         ]
-        with pytest.raises(ValueError, match="if first item has 'properties', all items must have 'properties'"):
+        with pytest.raises(
+            ValueError, match="if first item has 'properties', all items must have 'properties'"
+        ):
             unwrap_properties_sequence(mixed_seq)  # No mode specified, should default to strict
 
 
@@ -261,7 +270,9 @@ class TestNormalizeEntityOrSequence:
             {"properties": {"name": "Alice", "age": 30}},
             {"name": "Bob", "age": 25},  # No properties wrapper
         ]
-        with pytest.raises(ValueError, match="if first item has 'properties', all items must have 'properties'"):
+        with pytest.raises(
+            ValueError, match="if first item has 'properties', all items must have 'properties'"
+        ):
             normalize_entity_or_sequence(mixed_seq, seq_mode="strict")
 
     def test_invalid_input_type_raises_error(self) -> None:
@@ -278,7 +289,9 @@ class TestNormalizeEntityOrSequence:
             {"properties": {"name": "Alice", "age": 30}},
             {"name": "Bob", "age": 25},  # No properties wrapper
         ]
-        with pytest.raises(ValueError, match="if first item has 'properties', all items must have 'properties'"):
+        with pytest.raises(
+            ValueError, match="if first item has 'properties', all items must have 'properties'"
+        ):
             normalize_entity_or_sequence(mixed_seq)  # No seq_mode specified, should default to strict
 
     def test_seq_mode_only_affects_sequences(self) -> None:
@@ -354,7 +367,9 @@ class TestReadJsonlEntitiesScenarios:
         assert result == {"user": {"name": "Alice"}, "metadata": {"id": 123}}
 
         # Properties with mixed types
-        mixed_types = {"properties": {"name": "Bob", "age": 30, "active": True, "tags": ["user", "admin"]}}
+        mixed_types = {
+            "properties": {"name": "Bob", "age": 30, "active": True, "tags": ["user", "admin"]}
+        }
         result = normalize_entity_or_sequence(mixed_types)
         assert result == {"name": "Bob", "age": 30, "active": True, "tags": ["user", "admin"]}
 

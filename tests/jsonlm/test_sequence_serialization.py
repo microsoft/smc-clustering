@@ -1,5 +1,7 @@
-"""
-Tests for sequence serialization functions in encoder module.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Tests for sequence serialization functions in encoder module.
 
 This module tests the new entities_to_string and parse_sequence functions that handle
 multiple entities, ensuring they work correctly with the Kleene-plus grammar and maintain
@@ -10,7 +12,13 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string, parse_entity, parse_sequence
+from smc_clustering.jsonlm.serialization.encoder import (
+    canonicalize_entity,
+    entities_to_string_as_set,
+    entity_to_string,
+    parse_entity,
+    parse_sequence,
+)
 
 
 def test_entities_to_string_empty():
@@ -54,8 +62,6 @@ def test_entities_to_string_with_empty_entity():
 
     # entities_to_string now sorts entities, so we need to sort them first
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -123,8 +129,6 @@ def test_parse_sequence_round_trip():
 
     # entities_to_string now sorts entities, so we need to sort the expected result
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -170,8 +174,6 @@ def test_parse_sequence_complex_values():
 
     # entities_to_string now sorts entities, so we need to sort the expected result
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -269,8 +271,6 @@ def test_empty_and_mixed_sequences():
     ]
 
     def _entity_sort_key(e: dict[str, list[str]]) -> str:
-        from jsonlm.serialization.encoder import canonicalize_entity
-
         can_ent = canonicalize_entity(e)
         if not can_ent:
             return ""
@@ -308,9 +308,7 @@ def test_parse_sequence_with_braces_in_strings():
     assert parsed == entities
 
     # Also test manually constructed problematic cases
-    problematic_text = (
-        '{ <K> "code" : [ <V> "if (x) { return \\"}\\"; }" ] } { <K> "data" : [ <V> "{\\"nested\\": \\"value\\"}" ] }'
-    )
+    problematic_text = '{ <K> "code" : [ <V> "if (x) { return \\"}\\"; }" ] } { <K> "data" : [ <V> "{\\"nested\\": \\"value\\"}" ] }'
 
     parsed_problematic = parse_sequence(problematic_text)
     expected_problematic = [{"code": ['if (x) { return "}"; }']}, {"data": ['{"nested": "value"}']}]

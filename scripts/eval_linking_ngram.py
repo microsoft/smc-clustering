@@ -1,5 +1,7 @@
-"""
-Evaluate n-gram surrogate model linking performance in MS-KeBAB.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Evaluate n-gram surrogate model linking performance in MS-KeBAB.
 
 Example usage:
     uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Test --prior_scale 0.01
@@ -14,8 +16,8 @@ The required pickle with prior counts is expected at:
 from __future__ import annotations
 
 import argparse
+import collections
 import logging
-import os
 import pickle
 from collections.abc import Iterable
 from pathlib import Path
@@ -26,20 +28,21 @@ from kebab import mskebab
 from kebab.contracts.entity import Entity
 from kebab.contracts.task import Task
 
-from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
 
 
 class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
-    def __init__(self, prior_scale, prior_counts):
+    def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
+        """Initialize NameBigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts)
 
-    def post_predictive(self, obs, n, summary):
-        if type(obs) is list:
-            name = obs[0].properties["name"]
-        else:
-            name = obs.properties["name"]
+    def post_predictive(
+        self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
+    ) -> np.ndarray:
+        """Score an entity or entity list using name bigrams."""
+        name = obs[0].properties["name"] if type(obs) is list else obs.properties["name"]
 
         return super().post_predictive(name, n, summary)
 
@@ -58,17 +61,25 @@ def build_argparser() -> argparse.ArgumentParser:
         default="./data_vm/artifacts",
         help="Directory with wikipedia_names_2gram_counts.pickle",
     )
-    p.add_argument("--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance")
-    p.add_argument("--out", default="./output/scores_ngram.txt", help="Output file path for delta values")
-    p.add_argument("--prior_scale", type=float, default=0.01, help="Dirichlet prior scale (alpha multiplier)")
-    p.add_argument("--n", type=int, default=2, choices=[2], help="Order of the n-gram model (only bigram supported)")
+    p.add_argument(
+        "--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance"
+    )
+    p.add_argument(
+        "--out", default="./output/scores_ngram.txt", help="Output file path for delta values"
+    )
+    p.add_argument(
+        "--prior_scale", type=float, default=0.01, help="Dirichlet prior scale (alpha multiplier)"
+    )
+    p.add_argument(
+        "--n", type=int, default=2, choices=[2], help="Order of the n-gram model (only bigram supported)"
+    )
     return p
 
 
 def _load_ngram_prior(artifacts_dir: str) -> CountDict:
     """Load prior bigram counts (wikipedia_names_2gram_counts.pickle)."""
-    path = os.path.join(artifacts_dir, "wikipedia_names_2gram_counts.pickle")
-    with open(path, "rb") as f:
+    path = Path(artifacts_dir) / "wikipedia_names_2gram_counts.pickle"
+    with path.open("rb") as f:
         # Trusted artifact within repo context; pickle acceptable here.
         count_dict = pickle.load(f)
     if "<UNK>" not in count_dict:
@@ -88,7 +99,7 @@ def compute_deltas_ngram(pairs: list[tuple[Entity, Entity]], surrogate: NameBigr
     def log_evidence(entity: Entity) -> float:
         names = entity.properties.get("name", [])
         counts = get_ngram_counts(names, surrogate.n) if names else get_ngram_counts([""], surrogate.n)
-        return float(surrogate._evidence(None, counts))  # noqa: SLF001
+        return float(surrogate._evidence(None, counts))
 
     deltas = []
     for left, right in pairs:
@@ -131,10 +142,11 @@ def main(argv: list[str] | None = None) -> None:
     elapsed = float(end - start)
     logging.info("Time (s): %.4f", elapsed)
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    np.savetxt(args.out, deltas)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(out_path, deltas)
 
-    metrics = task_instance.evaluate(Path(args.out))
+    metrics = task_instance.evaluate(out_path)
     metrics["Total Time (s)"] = elapsed
     metrics["Candidates per Second (C/s)"] = len(pairs) / elapsed if elapsed > 0 else float("inf")
 

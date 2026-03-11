@@ -1,5 +1,7 @@
-"""
-Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
     # --- n-gram model: baseline ---
@@ -14,12 +16,10 @@ import argparse
 import collections
 import json
 import logging
-import os
 import pickle
 import time
 from functools import partial
 from pathlib import Path
-from typing import Any
 
 import jax
 import numpy as np
@@ -30,26 +30,29 @@ from kebab.contracts.entity import Entity
 from tokenizers import Tokenizer as HFTokenizer
 from torch import nn
 
-from smc_clustering.clustering import Cluster, DirichletProcess
-from smc_clustering.smc import SMCClusterer, resample_greedy
-from smc_clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
-
-from jsonlm.models.scoring import score_entities_batched
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.clustering.cluster import Cluster, DirichletProcess
+from smc_clustering.clustering.smc import SMCClusterer, resample_greedy
+from smc_clustering.clustering.surrogate_models import Bigram, CountDict, get_ngram_counts
+from smc_clustering.jsonlm.models.scoring import score_entities_batched
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class ListWrapper:
-    # Allows easier retrieval of cluster data from lists
-    def __init__(self, data):
+    """Wrapper that exposes entity lists through the clustering API."""
+
+    def __init__(self, data: list[Entity]) -> None:
+        """Initialize ListWrapper with the provided entity list."""
         self.data = data
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int]:
+        """Return the shape of the wrapped data."""
         return (len(self.data),)
 
-    def __getitem__(self, row_ids):
+    def __getitem__(self, row_ids: int | slice | np.ndarray) -> list[Entity]:
+        """Return items selected from the wrapped entity list."""
         if type(row_ids) is int:
             return [self.data[row_ids]]
         if type(row_ids) is slice:
@@ -60,22 +63,30 @@ class ListWrapper:
 class NameBigram(Bigram):
     """Retrieves name property for use in the bigram model."""
 
-    def __init__(self, prior_scale, prior_counts):
+    def __init__(self, prior_scale: float, prior_counts: CountDict) -> None:
+        """Initialize NameBigram with the given prior counts."""
         super().__init__(prior_scale, prior_counts)
 
-    def post_predictive(self, obs, n, summary):
-        if type(obs) is list:
-            name = obs[0].properties["name"]
-        else:
-            name = obs.properties["name"]
+    def post_predictive(
+        self, obs: Entity | list[Entity], n: np.ndarray, summary: list[collections.Counter[str]]
+    ) -> np.ndarray:
+        """Score an entity or entity list using name bigrams."""
+        name = obs[0].properties["name"] if type(obs) is list else obs.properties["name"]
 
         return super().post_predictive(name, n, summary)
 
 
 class NameBigramCluster(Cluster):
-    """Cluster subclass with summary statistics for an n-gram model, looks at name property for counts"""
+    """Cluster subclass with summary statistics for an n-gram model, looks at name property for counts."""
 
-    def __init__(self, data_ids, n=2, counts=None, data=None):
+    def __init__(
+        self,
+        data_ids: frozenset[int],
+        n: int = 2,
+        counts: collections.Counter[str] | None = None,
+        data: Entity | list[Entity] | None = None,
+    ) -> None:
+        """Initialize NameBigramCluster with cached name n-gram counts."""
         super().__init__(data_ids)
         self.n = n
         if counts is not None:
@@ -88,30 +99,37 @@ class NameBigramCluster(Cluster):
             self.counts = collections.Counter()
 
     @property
-    def summary(self):
+    def summary(self) -> collections.Counter[str]:
+        """Return the cached name n-gram counts."""
         return self.counts
 
-    def merge_point(self, data_id, data):
-        new_counts = self.counts + get_ngram_counts([entity.properties["name"] for entity in data], self.n)
+    def merge_point(self, data_id: int, data: list[Entity]) -> NameBigramCluster:
+        """Return a new cluster with updated name n-gram counts."""
+        new_counts = self.counts + get_ngram_counts(
+            [entity.properties["name"] for entity in data], self.n
+        )
         return NameBigramCluster(self.data.union({data_id}), self.n, counts=new_counts)
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
     """Load tokenizer and model config from artifacts directory."""
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    bpe = HFTokenizer.from_file(str(bpe_path))
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
 
     return tok, cfg
@@ -131,7 +149,7 @@ def _load_model(ckpt_path: str, cfg: TransformerConfig, device: torch.device) ->
 
 
 def score_entities(
-    rng: Any,
+    _rng: jax.Array,
     clusters: list[list[Entity]],
     model: nn.Module,
     tokenizer: JsonLMTokenizer,
@@ -148,13 +166,17 @@ def score_entities(
         if len(cluster) < max_cluster_size:
             entities.append(cluster)
         else:
-            entities.append(cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :])
+            entities.append(
+                cluster[: int(max_cluster_size // 2)] + cluster[-int(max_cluster_size // 2) :]
+            )
             logging.warning(
                 f"Cluster too large: {len(cluster)}. Entity 1 = {cluster[0].properties['name']}, ... Entity N = {cluster[-1].properties['name']}"
             )
 
     entities = [[e.properties for e in cluster] for cluster in entities]
-    scores = score_entities_batched(entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size)
+    scores = score_entities_batched(
+        entities, model=model, tokenizer=tokenizer, offset=offset, batch_size=batch_size
+    )
 
     return np.array(scores)
 
@@ -162,13 +184,26 @@ def score_entities(
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--config", default="./config/benchmark_conf.json", help="Path to benchmark config file")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
     p.add_argument(
-        "--surrogate", default="./data_vm/artifacts/rebel_2gram_counts.pickle", help="Surrogate model parameters"
+        "--config", default="./config/benchmark_conf.json", help="Path to benchmark config file"
     )
-    p.add_argument("--task_instance", type=str, default="Clustering-REBEL-Small", help="MS-KeBAB Linking task instance")
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--surrogate",
+        default="./data_vm/artifacts/rebel_2gram_counts.pickle",
+        help="Surrogate model parameters",
+    )
+    p.add_argument(
+        "--task_instance",
+        type=str,
+        default="Clustering-REBEL-Small",
+        help="MS-KeBAB Linking task instance",
+    )
     p.add_argument("--out", default="./output", help="Output path for results")
     p.add_argument("--batch_size", type=int, default=256, help="Batch size for processing")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
@@ -206,7 +241,7 @@ def main(argv: list[str] | None = None) -> None:
     task_instance = benchmark.tasks_by_name[args.task_instance]
     logging.info(f"Loaded task instance {args.task_instance}")
 
-    data = list(e for e, _ in task_instance.read_items())
+    data = [e for e, _ in task_instance.read_items()]
     logging.info(f"Loaded {len(data)} entities for clustering")
 
     # shuffle the dataset, compute the inverse shuffling
@@ -218,7 +253,9 @@ def main(argv: list[str] | None = None) -> None:
     data = ListWrapper([data[i] for i in shuffled_idx])
 
     # Set up the JSON-LM model
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)
@@ -228,7 +265,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.info(f"Loaded model from {args.ckpt}")
 
     # Set up the SMC clustering components
-    with open(args.surrogate, "rb") as f:
+    with Path(args.surrogate).open("rb") as f:
         count_dict = pickle.load(f)
 
     logging.info(f"Loaded n-gram counts: {len(count_dict)} elements")
@@ -262,7 +299,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # Run clustering
     t = time.time()
-    n_evals, _ = clusterer.cluster(rng, callback_interval=0)
+    _n_evals, _ = clusterer.cluster(rng, callback_interval=0)
     t = time.time() - t
 
     # Evaluate metrics and save results
@@ -283,14 +320,18 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     clustering = clusterer.state.list_cluster_labels()
-    clustering = [clustering[idx] for idx in unshuffled_idx]  # cluster labels for the data in the original order
+    clustering = [
+        clustering[idx] for idx in unshuffled_idx
+    ]  # cluster labels for the data in the original order
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(os.path.join(args.out, experiment_name + "_clustering"), "w", encoding="utf-8") as f:
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    clustering_path = out_dir / f"{experiment_name}_clustering"
+    with clustering_path.open("w", encoding="utf-8") as f:
         for cluster in clustering:
             f.write(str(cluster) + "\n")
 
-    metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_clustering")))
+    metrics = task_instance.evaluate(clustering_path)
     metrics["t"] = t
     metrics["total_evals"] = len(clusterer.state.score_cache)
     metrics["LL"] = ll
@@ -301,17 +342,21 @@ def main(argv: list[str] | None = None) -> None:
         clustering = clusterer.state.list_cluster_labels()
         subprob_labels = [
             np.where(
-                [int(cl) in clusterer.state.cluster_partition[s] for s in range(len(clusterer.state.cluster_partition))]
+                [
+                    int(cl) in clusterer.state.cluster_partition[s]
+                    for s in range(len(clusterer.state.cluster_partition))
+                ]
             )[0].item()
             for cl in clustering
         ]
         subprob_labels = [subprob_labels[idx] for idx in unshuffled_idx]
 
-        with open(os.path.join(args.out, experiment_name + "_subproblems"), "w", encoding="utf-8") as f:
+        subproblems_path = out_dir / f"{experiment_name}_subproblems"
+        with subproblems_path.open("w", encoding="utf-8") as f:
             for cluster in subprob_labels:
                 f.write(str(cluster) + "\n")
 
-        subproblem_metrics = task_instance.evaluate(Path(os.path.join(args.out, experiment_name + "_subproblems")))
+        subproblem_metrics = task_instance.evaluate(subproblems_path)
         for key, val in subproblem_metrics.items():
             metrics[key + "_subproblems"] = val
 
@@ -321,7 +366,7 @@ def main(argv: list[str] | None = None) -> None:
         logging.info(f"{key}: {val:.6f}")
         print(f"{key}: {val:.6f}")
 
-    with open(os.path.join(args.out, experiment_name + "_metrics.pickle"), "wb") as f:
+    with (out_dir / f"{experiment_name}_metrics.pickle").open("wb") as f:
         pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 

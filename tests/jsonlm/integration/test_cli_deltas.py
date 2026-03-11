@@ -1,10 +1,15 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Integration test for the deltas CLI on a tiny end-to-end training run."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from jsonlm.cli import deltas as deltas_cli
-from jsonlm.cli import train as train_cli
+from smc_clustering.jsonlm.cli import deltas as deltas_cli
+from smc_clustering.jsonlm.cli import train as train_cli
 
 
 def _write_jsonl(p: Path, lines: list[str]) -> None:
@@ -12,6 +17,7 @@ def _write_jsonl(p: Path, lines: list[str]) -> None:
 
 
 def test_deltas_cli_runs(tmp_path: Path):
+    """Train a tiny model and verify the deltas CLI writes output."""
     train_path = tmp_path / "train.jsonl"
     val_path = tmp_path / "val.jsonl"
     pairs_path = tmp_path / "pairs.jsonl"

@@ -1,5 +1,7 @@
-"""
-Filter a JSONL dataset by labels, keeping at most N unique labels.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Filter a JSONL dataset by labels, keeping at most N unique labels.
 
 If a "confusing entities" map is provided (JSONL lines of [entity_id, [confusing_entity_ids...]]), then accepting a
 label will also accept all of its confusing labels (provided doing so does not exceed the unique limit). This is done
@@ -37,11 +39,23 @@ CLUSTER_LOG_SAMPLE = 25  # number of cluster members to show in acceptance log
 _MIN_QUOTED_LEN = 2  # minimal length to consider stripping surrounding quotes
 
 
+def _parse_confusing_map_entry(raw_line: str) -> tuple[str, list[str]]:
+    """Parse one confusing-map JSONL record."""
+    root, conf_list = json.loads(raw_line)
+    if not isinstance(root, str) or not isinstance(conf_list, list):
+        raise TypeError("Invalid line structure; expected [str, list]")
+    return root, [candidate for candidate in conf_list if isinstance(candidate, str)]
+
+
 def build_argparser() -> argparse.ArgumentParser:
     """Build and return the argument parser for the script."""
     p = argparse.ArgumentParser(description="Filter a JSONL dataset by labels")
     p.add_argument("--dataset", required=True, help="Path to input JSONL dataset")
-    p.add_argument("--labels", required=True, help="Path to labels file (one label per line, in same order as dataset)")
+    p.add_argument(
+        "--labels",
+        required=True,
+        help="Path to labels file (one label per line, in same order as dataset)",
+    )
     p.add_argument(
         "--max-unique",
         type=int,
@@ -130,10 +144,8 @@ def _load_confusing_map(path: Path, allowed_entities: set[str] | None = None) ->
                 if not line:
                     continue
                 try:
-                    root, conf_list = json.loads(line)
-                    if not isinstance(root, str) or not isinstance(conf_list, list):
-                        raise TypeError("Invalid line structure; expected [str, list]")
-                    confusing_set = {c for c in conf_list if isinstance(c, str)}
+                    root, conf_list = _parse_confusing_map_entry(line)
+                    confusing_set = set(conf_list)
                     confusing_set.add(root)
                     if allowed_entities is not None:
                         if root not in allowed_entities and not (confusing_set & allowed_entities):
@@ -142,7 +154,7 @@ def _load_confusing_map(path: Path, allowed_entities: set[str] | None = None) ->
                         if root not in confusing_set:
                             continue
                     mapping[root] = confusing_set
-                except Exception as e:  # noqa: BLE001
+                except (TypeError, ValueError, json.JSONDecodeError) as e:
                     logging.warning("Failed to parse confusing map line %d: %s", line_no, e)
     except OSError as e:
         logging.info("Could not read confusing map file '%s': %s; proceeding without it.", path, e)
@@ -213,7 +225,9 @@ def filter_dataset(
                 )
 
     # Construct label -> cluster mapping directly from map; unseen labels are singletons.
-    label_to_cluster: dict[str, set[str]] = {root: set(cluster) for root, cluster in confusing_map.items()}
+    label_to_cluster: dict[str, set[str]] = {
+        root: set(cluster) for root, cluster in confusing_map.items()
+    }
     missing_singletons: list[str] = []
     for lbl in all_labels:
         if lbl not in label_to_cluster:
@@ -266,7 +280,10 @@ def filter_dataset(
             effective_cluster = cluster if cluster_size >= min_confusing_cluster_size else {label}
 
             original_effective_size = len(effective_cluster)
-            if max_confusing_cluster_entities and len(effective_cluster) > max_confusing_cluster_entities:
+            if (
+                max_confusing_cluster_entities
+                and len(effective_cluster) > max_confusing_cluster_entities
+            ):
                 # Deterministic truncation: always include the triggering label, then add others in sorted order
                 others = sorted(x for x in effective_cluster if x != label)
                 take = max_confusing_cluster_entities - 1  # already including label
@@ -333,7 +350,9 @@ def main(argv: list[str] | None = None) -> int:
     logging.info(
         f"Done. Wrote filtered dataset to: {args.out or '<derived>'} and labels to: {args.out_labels or '<derived>'}"
     )
-    logging.info(f"Stats -> processed: {processed}, kept: {kept}, skipped: {skipped}, unique_labels: {unique}")
+    logging.info(
+        f"Stats -> processed: {processed}, kept: {kept}, skipped: {skipped}, unique_labels: {unique}"
+    )
     return 0
 
 

@@ -1,5 +1,7 @@
-"""
-Unit tests for the grammar automaton and allowed-token masks.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for the grammar automaton and allowed-token masks.
 
 We verify local expectations at critical states and an end-to-end walk over a sample entity: each consumed token is
 allowed by the mask, and EOS becomes allowed exactly after the closing '}' token.
@@ -7,12 +9,12 @@ allowed by the mask, and EOS becomes allowed exactly after the closing '}' token
 
 from __future__ import annotations
 
-from jsonlm.grammar.automaton import GrammarAutomaton
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.spec import State
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.spec import State
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _tok() -> tuple[GrammarAutomaton, Vocabulary]:
@@ -27,7 +29,7 @@ def _tok() -> tuple[GrammarAutomaton, Vocabulary]:
 
 def test_masks_basic_states() -> None:
     """Spot-check allowed tokens at a few key states."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
 
     # START => only '{' is allowed
@@ -53,7 +55,7 @@ def test_masks_basic_states() -> None:
 
 def test_masks_inside_string_allow_bpe_or_quote() -> None:
     """Inside strings, any BPE piece or closing quote must be allowed."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
     gs = automaton.start()
     gs = automaton.step(gs, tok.vocabulary.token_id("{"))
@@ -71,7 +73,7 @@ def test_masks_inside_string_allow_bpe_or_quote() -> None:
 
 def test_end_to_end_sequence_masks_allow_all_steps() -> None:
     """Walk a real sequence and ensure each next token is allowed; EOS only after final '}'."""
-    automaton, vocab = _tok()
+    automaton, _vocab = _tok()
     tok = automaton.tok
 
     s = entity_to_string({"a": ["x", "y"]})

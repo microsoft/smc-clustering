@@ -1,5 +1,7 @@
-"""
-Unit tests for token constants and the Vocabulary dataclass.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for token constants and the Vocabulary dataclass.
 
 We assert uniqueness, ordering stability, and correctness of id↔token mappings. Using a fixed snapshot of
 SPECIAL_TOKENS helps catch accidental reorderings that would break trainings/checkpoints and grammar masks.
@@ -9,8 +11,8 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm import constants
-from jsonlm.tokenization import Vocabulary
+from smc_clustering.jsonlm import constants
+from smc_clustering.jsonlm.tokenization import Vocabulary
 
 
 def test_special_tokens_uniqueness() -> None:

@@ -1,5 +1,7 @@
-"""
-Unit tests for the hybrid tokenizer: specials-first + byte-level BPE inside quotes.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for the hybrid tokenizer: specials-first + byte-level BPE inside quotes.
 
 We verify round-trip encode/decode on strings with spaces and unseen content, specials occupying first IDs,
 and basic range/structure checks during decode.
@@ -9,9 +11,9 @@ from __future__ import annotations
 
 import pytest
 
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _corpus() -> list[str]:

@@ -1,5 +1,7 @@
-"""
-Tests for the public logprob API: canonicalization invariance, determinism, and normalization.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Tests for the public logprob API: canonicalization invariance, determinism, and normalization.
 
 We use a deterministic DummyModel (time-independent logits) so values are stable regardless of hardware,
 and verify that canonical permutations score identically and normalizations relate as expected. Tests cover
@@ -13,16 +15,17 @@ import math
 import torch
 from torch import nn
 
-from jsonlm.api import encode_entity, encode_sequence, logprob_entity, logprob_sequence
-from jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import encode_entity, encode_sequence, logprob_entity, logprob_sequence
+from smc_clustering.jsonlm.serialization.encoder import entities_to_string_as_set, entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class DummyModel(nn.Module):
     """A dummy LM that returns fixed logits with a small id-dependent bias for stability."""
 
     def __init__(self, vocab_size: int, bias_scale: float = 0.01) -> None:
+        """Initialize a deterministic bias-only language model."""
         super().__init__()
         # Learnable scalar isn't needed; keep a buffer with per-id bias.
         bias = torch.arange(vocab_size, dtype=torch.float32) * bias_scale
@@ -64,7 +67,7 @@ def test_logprob_canonicalization_invariance() -> None:
 
 
 def test_logprob_normalizations_consistent() -> None:
-    """sum ≈ mean * T, and bits-per-token equals mean/ln(2)."""
+    """Sum ≈ mean * T, and bits-per-token equals mean/ln(2)."""
     tok, _ = _tokenizer()
     model = DummyModel(vocab_size=len(tok))
 
@@ -130,7 +133,9 @@ def test_logprob_sequence_vs_manual_serialization() -> None:
     entities = [{"a": ["x"]}, {"b": ["y", "z"]}]
 
     # Test basic functionality - sequence API should work
-    sequence_score_with_eos = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=True, normalize="sum")
+    sequence_score_with_eos = logprob_sequence(
+        entities, model=model, tokenizer=tok, include_eos=True, normalize="sum"
+    )
     sequence_score_without_eos = logprob_sequence(
         entities,
         model=model,
@@ -159,8 +164,12 @@ def test_logprob_sequence_eos_inclusion_exclusion() -> None:
     entities = [{"a": ["x"]}, {"b": ["y"]}]
 
     # Get scores with and without EOS
-    score_without_eos = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="sum")
-    score_with_eos = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=True, normalize="sum")
+    score_without_eos = logprob_sequence(
+        entities, model=model, tokenizer=tok, include_eos=False, normalize="sum"
+    )
+    score_with_eos = logprob_sequence(
+        entities, model=model, tokenizer=tok, include_eos=True, normalize="sum"
+    )
 
     # Score with EOS should be different from without EOS
     assert score_without_eos != score_with_eos
@@ -184,7 +193,6 @@ def test_logprob_sequence_normalizations_consistent() -> None:
     entities = [{"a": ["x"]}, {"b": ["y", "z"]}]
 
     # Get scores with different normalizations (include_eos=False)
-    lp_sum = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="sum")
     lp_mean = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="mean")
     bpt = logprob_sequence(entities, model=model, tokenizer=tok, include_eos=False, normalize="bpt")
 
@@ -207,8 +215,12 @@ def test_logprob_sequence_normalizations_consistent() -> None:
             break
 
     if eos_pos is not None and eos_pos > 0:
-        simple_sum = logprob_sequence(simple_entities, model=model, tokenizer=tok, include_eos=False, normalize="sum")
-        simple_mean = logprob_sequence(simple_entities, model=model, tokenizer=tok, include_eos=False, normalize="mean")
+        simple_sum = logprob_sequence(
+            simple_entities, model=model, tokenizer=tok, include_eos=False, normalize="sum"
+        )
+        simple_mean = logprob_sequence(
+            simple_entities, model=model, tokenizer=tok, include_eos=False, normalize="mean"
+        )
 
         # sum ≈ mean * active_tokens
         assert math.isclose(simple_sum, simple_mean * eos_pos, rel_tol=1e-6, abs_tol=1e-6)
@@ -238,8 +250,11 @@ def test_logprob_sequence_empty_sequence() -> None:
 
     # Empty sequence should work but may have grammar constraints
     # Test that it doesn't crash and returns finite scores
+    error: ValueError | None = None
     try:
-        score_with_eos = logprob_sequence(empty_entities, model=model, tokenizer=tok, include_eos=True, normalize="sum")
+        score_with_eos = logprob_sequence(
+            empty_entities, model=model, tokenizer=tok, include_eos=True, normalize="sum"
+        )
         assert isinstance(score_with_eos, float)
         assert math.isfinite(score_with_eos)
 
@@ -255,10 +270,14 @@ def test_logprob_sequence_empty_sequence() -> None:
         # Empty sequence with include_eos=False should have score 0 (no content tokens)
         assert score_without_eos == 0.0
 
-    except ValueError as e:
+    except ValueError as exc:
+        error = exc
+
+    if error is not None:
         # Empty sequences might violate grammar constraints (BOS->EOS not allowed)
-        # This is acceptable behavior - just verify the error is grammar-related
-        assert "grammar" in str(e).lower() or "disallowed" in str(e).lower()
+        # This is acceptable behavior - just verify the error is grammar-related.
+        lowered = str(error).lower()
+        assert "grammar" in lowered or "disallowed" in lowered
 
 
 def test_logprob_sequence_single_entity_vs_entity_api() -> None:

@@ -1,5 +1,7 @@
-"""
-Unit tests for batched scoring utilities: score_entities_batched and compute_deltas_batched.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for batched scoring utilities: score_entities_batched and compute_deltas_batched.
 
 We verify:
   * Batched log-likelihoods (sum/mean/bpt) match single-item API results.
@@ -16,11 +18,11 @@ import random
 import torch
 from torch import nn
 
-from jsonlm.api import delta, logprob_entity
-from jsonlm.models.scoring import compute_deltas_batched, score_entities_batched
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import delta, logprob_entity
+from smc_clustering.jsonlm.models.scoring import compute_deltas_batched, score_entities_batched
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 class DummyModel(nn.Module):
@@ -30,11 +32,13 @@ class DummyModel(nn.Module):
     """
 
     def __init__(self, vocab_size: int, bias_scale: float = 0.01) -> None:
+        """Initialize a deterministic bias-only scorer."""
         super().__init__()
         bias = torch.arange(vocab_size, dtype=torch.float32) * bias_scale
         self.register_buffer("_bias", bias, persistent=False)
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """Return broadcasted per-token logits with no dependence on the input sequence."""
         B, T = input_ids.shape
         V = self._bias.numel()
         # Broadcast [V] -> [B, T, V]

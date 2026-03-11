@@ -1,5 +1,7 @@
-"""
-Unit tests for the unified grammar runtime system.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Unit tests for the unified grammar runtime system.
 
 Tests verify equivalence with the old per-step automaton approach, proper EOS handling,
 correct shapes, and caching behavior across different devices and tokenizers.
@@ -9,15 +11,18 @@ from __future__ import annotations
 
 import torch
 
-from jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
-from jsonlm.grammar.mask import allowed_token_mask
-from jsonlm.grammar.runtime import get_runtime
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.grammar.automaton import GrammarAutomaton, GrammarState
+from smc_clustering.jsonlm.grammar.mask import allowed_token_mask
+from smc_clustering.jsonlm.grammar.runtime import get_runtime
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
-def _build_masks_for_batch_slow(ids_with_eos: torch.Tensor, tokenizer) -> torch.BoolTensor:
+def _build_masks_for_batch_slow(
+    ids_with_eos: torch.Tensor, tokenizer: JsonLMTokenizer
+) -> torch.BoolTensor:
     """Reference implementation: per-step automaton building (ported from old lit_module code)."""
     assert ids_with_eos.dim() == 2 and ids_with_eos.dtype == torch.long
     B, L = ids_with_eos.shape
@@ -56,7 +61,7 @@ def _build_masks_for_batch_slow(ids_with_eos: torch.Tensor, tokenizer) -> torch.
     return masks
 
 
-def _make_test_tokenizer():
+def _make_test_tokenizer() -> JsonLMTokenizer:
     """Create a test tokenizer with some vocabulary."""
     vocab = Vocabulary.from_default()
     # Minimal corpus to ensure BPE has some pieces
@@ -143,7 +148,9 @@ def test_post_eos_behavior():
     for t in range(1, T):
         expected_mask = torch.zeros(V, dtype=torch.bool, device=device)
         expected_mask[eos_id] = True
-        assert torch.equal(masks[1, t], expected_mask), f"Row 1, timestep {t} should be EOS-only after early EOS"
+        assert torch.equal(masks[1, t], expected_mask), (
+            f"Row 1, timestep {t} should be EOS-only after early EOS"
+        )
 
 
 def test_shapes_match_model_outputs():

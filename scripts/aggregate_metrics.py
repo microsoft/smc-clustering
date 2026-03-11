@@ -1,4 +1,7 @@
-"""Aggregate sweep metrics over seeds.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+r"""Aggregate sweep metrics over seeds.
 
 Parses a metrics file produced by `sweep_eval_clustering_smc.py` and
 aggregates requested metrics across seeds (or any excluded keys).
@@ -148,7 +151,9 @@ def _normalize_exclude_arg(raw: str) -> set[str]:
     return set(_parse_list_like(raw))
 
 
-def parse_metrics_file(path: Path, exclude: set[str]) -> tuple[dict[str, dict[str, list[float]]], set[str]]:
+def parse_metrics_file(
+    path: Path, exclude: set[str]
+) -> tuple[dict[str, dict[str, list[float]]], set[str]]:
     """Parse metrics file and return grouped metric values.
 
     Returns:
@@ -192,7 +197,9 @@ def parse_metrics_file(path: Path, exclude: set[str]) -> tuple[dict[str, dict[st
             except ValueError:
                 continue
             # Build grouping key excluding requested keys
-            effective_items = [(k, current_header[k]) for k in sorted(current_header) if k not in exclude]
+            effective_items = [
+                (k, current_header[k]) for k in sorted(current_header) if k not in exclude
+            ]
             conf_key = "[" + ", ".join(f"{k}={v}" for k, v in effective_items) + "]"
             grouped[conf_key][name].append(value)
             all_metrics.add(name)

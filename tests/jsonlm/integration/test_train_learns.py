@@ -1,3 +1,8 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Integration test that a tiny constrained LM can improve on repeated training data."""
+
 # tests/test_end_to_end_training.py
 from __future__ import annotations
 
@@ -9,15 +14,16 @@ import torch
 from pytorch_lightning import Trainer, seed_everything
 from torch.utils.data import DataLoader
 
-from jsonlm.api import logprob_entity
-from jsonlm.data.collate import pad_collate
-from jsonlm.data.dataset import EntityDataset
-from jsonlm.models.lit_module import LitConstrainedLM
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.serialization.encoder import entity_to_string
-from jsonlm.serialization.normalization import normalize_entity_or_sequence
-from jsonlm.tokenization.trainer import train_tokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.api import logprob_entity
+from smc_clustering.jsonlm.data.collate import pad_collate
+from smc_clustering.jsonlm.data.dataset import EntityDataset
+from smc_clustering.jsonlm.models.lit_module import LitConstrainedLM
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.serialization.encoder import entity_to_string
+from smc_clustering.jsonlm.serialization.normalization import normalize_entity_or_sequence
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.trainer import train_tokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _write_jsonl(path: Path, objs: list[dict]) -> None:
@@ -41,13 +47,19 @@ def _corpus_lines(paths: list[Path]):
                 yield entity_to_string(norm)
 
 
-def _avg_logprob(items: list[dict], model: torch.nn.Module, tok, normalize="sum") -> float:
+def _avg_logprob(
+    items: list[dict], model: torch.nn.Module, tok: JsonLMTokenizer, normalize: str = "sum"
+) -> float:
     with torch.no_grad():
-        vals = [float(logprob_entity(x, model=model.eval(), tokenizer=tok, normalize=normalize)) for x in items]
+        vals = [
+            float(logprob_entity(x, model=model.eval(), tokenizer=tok, normalize=normalize))
+            for x in items
+        ]
     return float(np.mean(vals))
 
 
 def test_tiny_model_learns(tmp_path: Path):
+    """Verify a tiny end-to-end training run improves model fit on simple data."""
     # Reproducibility & CPU-only
     seed_everything(1234, workers=True)
     torch.set_grad_enabled(True)
@@ -74,7 +86,7 @@ def test_tiny_model_learns(tmp_path: Path):
     train_ds = EntityDataset([str(train_path)], tokenizer=tok, max_length=max_len, add_bos_eos=True)
     val_ds = EntityDataset([str(val_path)], tokenizer=tok, max_length=max_len, add_bos_eos=True)
 
-    collate = lambda batch: pad_collate(batch, tokenizer=tok)  # noqa: E731
+    collate = lambda batch: pad_collate(batch, tokenizer=tok)
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=True, num_workers=0, collate_fn=collate)
     val_loader = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=0, collate_fn=collate)
 
@@ -129,4 +141,6 @@ def test_tiny_model_learns(tmp_path: Path):
 
     # 9) Assert improvement (higher log-probability == better)
     # A small but reliable margin to avoid flakiness on CI.
-    assert post > pre + 1.0, f"Expected training to improve log-probability: pre={pre:.3f}, post={post:.3f}"
+    assert post > pre + 1.0, (
+        f"Expected training to improve log-probability: pre={pre:.3f}, post={post:.3f}"
+    )

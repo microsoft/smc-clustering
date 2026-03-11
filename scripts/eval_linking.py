@@ -1,5 +1,7 @@
-"""
-Evaluate JSON-LM linking performance in MS-KeBAB.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+"""Evaluate JSON-LM linking performance in MS-KeBAB.
 
 Example usage:
     uv run scripts/eval_linking.py --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/last.ckpt --task_instance Linking-REBEL-Test
@@ -19,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
 from time import perf_counter as pc
 
@@ -30,28 +31,31 @@ from kebab.contracts.entity import Entity
 from kebab.contracts.task import Task
 from tokenizers import Tokenizer as HFTokenizer
 
-from jsonlm.models.scoring import compute_deltas_batched
-from jsonlm.models.transformer import TransformerConfig, TransformerLM
-from jsonlm.tokenization.tokenizer import JsonLMTokenizer
-from jsonlm.tokenization.vocab import Vocabulary
+from smc_clustering.jsonlm.models.scoring import compute_deltas_batched
+from smc_clustering.jsonlm.models.transformer import TransformerConfig, TransformerLM
+from smc_clustering.jsonlm.tokenization.tokenizer import JsonLMTokenizer
+from smc_clustering.jsonlm.tokenization.vocab import Vocabulary
 
 
 def _load_artifacts(artifacts_dir: str) -> tuple[JsonLMTokenizer, TransformerConfig]:
     """Load tokenizer and model config from artifacts directory."""
-    vocab_path = os.path.join(artifacts_dir, "vocab.json")
-    bpe_path = os.path.join(artifacts_dir, "bpe.json")
-    cfg_path = os.path.join(artifacts_dir, "config.json")
+    artifacts_path = Path(artifacts_dir)
+    vocab_path = artifacts_path / "vocab.json"
+    bpe_path = artifacts_path / "bpe.json"
+    cfg_path = artifacts_path / "config.json"
 
-    with open(vocab_path, encoding="utf-8") as f:
+    with vocab_path.open(encoding="utf-8") as f:
         tokens = json.load(f)
         if not isinstance(tokens, list) or not all(isinstance(t, str) for t in tokens):
             raise ValueError("vocab.json must be a JSON list of token strings.")
     vocab = Vocabulary.from_tokens(tokens)
 
-    bpe = HFTokenizer.from_file(bpe_path)
-    tok = JsonLMTokenizer(vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size())
+    bpe = HFTokenizer.from_file(str(bpe_path))
+    tok = JsonLMTokenizer(
+        vocabulary=vocab, bpe=bpe, specials_size=len(vocab), bpe_size=bpe.get_vocab_size()
+    )
 
-    with open(cfg_path, encoding="utf-8") as f:
+    with cfg_path.open(encoding="utf-8") as f:
         cfg = TransformerConfig(**json.load(f))
 
     return tok, cfg
@@ -86,9 +90,15 @@ def _load_linking_pairs(task_instance: Task) -> list[tuple[dict, dict]]:
 def build_argparser() -> argparse.ArgumentParser:
     """Build the argument parser."""
     p = argparse.ArgumentParser(description="Evaluate JSON-LM in MS-KeBAB Linking task.")
-    p.add_argument("--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json")
-    p.add_argument("--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)")
-    p.add_argument("--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance")
+    p.add_argument(
+        "--artifacts", default="./artifacts", help="Directory with vocab.json, bpe.json, config.json"
+    )
+    p.add_argument(
+        "--ckpt", default="./artifacts/last.ckpt", help="Checkpoint (.ckpt or raw state_dict)"
+    )
+    p.add_argument(
+        "--task_instance", type=str, default="Linking-REBEL-Test", help="MS-KeBAB Linking task instance"
+    )
     p.add_argument(
         "--skip_calibration",
         action="store_true",
@@ -114,7 +124,9 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logging.info(f"Arguments: {args}")
 
-    device = torch.device(("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device)
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
     logging.info(f"Using device: {device}")
 
     tok, cfg = _load_artifacts(args.artifacts)
@@ -140,7 +152,12 @@ def main(argv: list[str] | None = None) -> None:
             start = pc()
 
             deltas = compute_deltas_batched(
-                pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
+                pairs,
+                model=model,
+                tokenizer=tok,
+                offset=args.offset,
+                batch_size=args.batch_size,
+                device=device,
             )
 
             end = pc()
@@ -150,7 +167,12 @@ def main(argv: list[str] | None = None) -> None:
         start = pc()
 
         deltas = compute_deltas_batched(
-            pairs, model=model, tokenizer=tok, offset=args.offset, batch_size=args.batch_size, device=device
+            pairs,
+            model=model,
+            tokenizer=tok,
+            offset=args.offset,
+            batch_size=args.batch_size,
+            device=device,
         )
 
         end = pc()
@@ -159,10 +181,11 @@ def main(argv: list[str] | None = None) -> None:
     elapsed = float(end - start)
     logging.info(f"Time (s): {elapsed:.4f}")
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    np.savetxt(args.out, deltas)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savetxt(out_path, deltas)
 
-    metrics = task_instance.evaluate(Path(args.out))
+    metrics = task_instance.evaluate(out_path)
 
     metrics["Total Time (s)"] = elapsed
     metrics["Candidates per Second (C/s)"] = len(pairs) / elapsed

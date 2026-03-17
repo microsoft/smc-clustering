@@ -139,19 +139,24 @@ class VariationalDiffusion:
             t = (i + 1) / num_time_steps
 
             rng, step_rng = jax.random.split(rng)
-            z, log_weights, log_prob = self.smc_step(step_rng, s, t, z_s, log_weights, log_prob)
+            z_s, log_weights, log_prob = self.smc_step(step_rng, s, t, z_s, log_weights, log_prob)
 
             # resample particles if degenerate
             n_eff = 1.0 / jnp.sum(jnp.square(jnp.exp(log_weights)))
             if n_eff < resample_thresh * num_particles:
                 rng, resample_rng = jax.random.split(rng)
-                z = jax.random.choice(
-                    resample_rng, z, shape=(num_particles,), p=jnp.exp(log_weights), replace=True, axis=0
+                z_s = jax.random.choice(
+                    resample_rng,
+                    z_s,
+                    shape=(num_particles,),
+                    p=jnp.exp(log_weights),
+                    replace=True,
+                    axis=0,
                 )
 
                 log_weights = jnp.ones((num_particles,)) * jnp.log(1.0 / num_particles)
 
-        return log_prob, z, log_weights
+        return log_prob, z_s, log_weights
 
     def moments_q_ts(self, z_s: jax.Array, t: jax.Array, s: jax.Array) -> tuple[jax.Array, jax.Array]:
         """Compute the mean and variance of q(z_t | z_s).
@@ -218,11 +223,12 @@ class VariationalDiffusion:
             carry: tuple[jax.Array, jax.Array, jax.Array, jax.Array], rng: jax.Array
         ) -> tuple[tuple[jax.Array, jax.Array, jax.Array, jax.Array], None]:
             z, s, t, masks = carry
-            t -= 1 / num_time_steps
-            s -= 1 / num_time_steps
 
             mu, sigma2 = self.moments_p_st(z, s, t, masks)
             z = mu + jnp.sqrt(sigma2) * jax.random.normal(rng, z.shape)
+
+            t = s
+            s = jnp.maximum(s - 1 / num_time_steps, 0.0)
 
             return (z, s, t, masks), None
 

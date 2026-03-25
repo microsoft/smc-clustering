@@ -366,6 +366,7 @@ def main(argv: list[str] | None = None) -> None:
         logging.info(f"{key}: {val:.6f}")
         print(f"{key}: {val:.6f}")
 
+    metrics['subprob_sizes'] = np.array([len(clusterer.state.weights[i]) for i in range(len(clusterer.state.weights))])
     with (out_dir / f"{experiment_name}_metrics.pickle").open("wb") as f:
         pickle.dump(metrics, f, protocol=pickle.HIGHEST_PROTOCOL)
 

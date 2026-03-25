@@ -342,7 +342,6 @@ class SMCClusterer:
 
     def update_step(self, rng: jax.Array, new_obs: np.ndarray, verbose: bool) -> tuple[int, int]:
         """Update the particle set given a new observation."""
-        rng, update_rng, _move_rng = jax.random.split(rng, 3)
         n_probs = len(self.state.weights)
         empty_hash = self.state.ClusterClass([]).hash
         model_evals = 0
@@ -453,7 +452,8 @@ class SMCClusterer:
             new_clusters = [
                 self.state.clusters[cluster].add(self.state.n_obs) for cluster in putative_particles[1]
             ]
-            model_evals = self.compute_scores(update_rng, [*new_clusters, frozenset({self.state.n_obs})])
+            rng, compute_rng = jax.random.split(rng)
+            model_evals = self.compute_scores(compute_rng, [*new_clusters, frozenset({self.state.n_obs})])
             single_LL = self.state.score_cache[hash(frozenset({self.state.n_obs}))]
 
             update = np.array(
@@ -725,11 +725,12 @@ class SMCClusterer:
                         assignment = putative_particles[1][i]
                     else:
                         rng, sample_rng = jax.random.split(rng)
+                        other_weights = np.array(self.state.weights[j])
                         particle_ids_i.append(
                             jax.random.choice(
                                 sample_rng,
                                 len(self.state.particles[j]),
-                                p=np.exp(np.array(self.state.weights[j])),
+                                p=np.exp(other_weights - scipy.special.logsumexp(other_weights)),
                             ).item()
                         )
 

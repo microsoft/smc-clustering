@@ -63,10 +63,10 @@ def test_clustering_smc(data, prior, surrogate):
     assert list(clusterer_labels) == list(reference_labels)
     
     # check the log-posterior density of the top-weighted clustering
-    assert math.isclose(clusterer.best_logpost, -42.167816, rel_tol=1e-4, abs_tol=1e-4)
+    assert math.isclose(clusterer.best_logpost, -42.25391, rel_tol=1e-4, abs_tol=1e-4)
     
     # check all particle weights
-    reference_weights = [np.array([-8.43127867, -8.29379147, -7.82196373, -7.40201631, -4.40918871])]
+    reference_weights = [np.array([-8.39751328, -8.33921396, -7.93428503, -7.4778169 , -4.39593352])]
     assert [len(w) for w in clusterer.state.weights] == [len(w) for w in reference_weights]
     
     weight_diff = np.sum([np.abs(w - reference_weights[i]) for i, w in enumerate(clusterer.state.weights)])
@@ -98,11 +98,11 @@ def test_clustering_split_smc(data, prior, surrogate):
     assert list(clusterer_labels) == list(reference_labels)
     
     # check the log-posterior density of the top-weighted clustering
-    assert math.isclose(clusterer.best_logpost, -42.167816, rel_tol=1e-4, abs_tol=1e-4)
+    assert math.isclose(clusterer.best_logpost, -42.25391, rel_tol=1e-4, abs_tol=1e-4)
     
     # check all particle weights
-    reference_weights = [np.array([-10.53582581,  -7.74093588,  -6.8029681 ,  -6.78348787,  -2.76139792]),
-                         np.array([-8.41763892, -7.91175309, -7.43992534, -7.01997792, -4.02715032])]
+    reference_weights = [np.array([-10.48826235, -7.70787447, -6.78617518, -6.75808065, -2.75650089]),
+                         np.array([-8.54821891, -7.95263524, -7.54770631, -7.09123818, -4.0093548])]
     assert [len(w) for w in clusterer.state.weights] == [len(w) for w in reference_weights]
     
     weight_diff = np.sum([np.abs(w - reference_weights[i]) for i, w in enumerate(clusterer.state.weights)])

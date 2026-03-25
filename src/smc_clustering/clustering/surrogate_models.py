@@ -42,7 +42,7 @@ class Gaussian:
         Sxx = summary[1]
         alpha = self.alpha_0 + n / 2
         lam = self.lam_0 + n
-        mu = (self.lam_0 + Sx) / (self.lam_0 + n)
+        mu = (self.lam_0*self.mu_0 + Sx) / (self.lam_0 + n)
         beta = self.beta_0 + jnp.where(n > 0, 1 / n, 0) * 1 / 2 * (
             Sxx * n - Sx**2 + self.lam_0 / lam * (Sx - self.mu_0 * n) ** 2
         )

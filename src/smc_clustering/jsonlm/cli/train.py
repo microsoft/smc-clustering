@@ -138,7 +138,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
 
 
 class PeriodicDecodeCallback(Callback):
-    """Every `every_n_steps`, print a constrained-greedy decode (as a canonical dict) for sanity."""
+    """Every `every_n_steps`, print a constrained-greedy decode (as a canonical dict)."""
 
     def __init__(self, tokenizer: JsonLMTokenizer, every_n_steps: int = 0, max_steps: int = 128) -> None:
         """Initialize the callback."""

@@ -19,8 +19,9 @@ The recommended way to install the code is to clone the repository and install e
    uv sync --locked
    ```
 
-2. Install MS-KeBAB package:
-   Assuming MS-KEBAB project is cloned in the parent directory of this repository, you can install it as follows:
+2. Optional: install the MS-KeBAB package for REBEL-based experiments:
+   This dependency is only needed for the evaluation scripts that use the REBEL datasets.
+   Assuming the MS-KeBAB project is cloned in the parent directory of this repository, you can install it as follows:
 
    ```bash
    uv pip install --no-deps -e ../MS-KeBAB

@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Allowed-token masking for the grammar to enforce 100% valid sequences.

@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Batched scoring utilities for grammar-constrained log-likelihoods and Δ-scores.

@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Tests to verify that the new runtime implementation produces correct results.

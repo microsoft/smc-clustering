@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Gibbs-style MCMC clustering algorithms.
@@ -137,7 +137,7 @@ class GibbsClusterer:
                 self.clusters[old_k] = self.ClusterClass(self.clusters[old_k].data - {i})
             else:
                 del self.clusters[old_k]
-            
+
             self.logpost = self._posterior_score()
 
         return model_evals, 0
@@ -238,7 +238,7 @@ class GibbsClusterer:
                     )
                 else:
                     del self.clusters[old_k]
-                
+
                 self.logpost = self._posterior_score()
 
         return model_evals, surrogate_evals

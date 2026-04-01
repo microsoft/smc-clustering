@@ -1,13 +1,11 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Evaluate SMC + JSON-LM clustering performance in MS-KeBAB.
 
 Example usage:
-    # --- n-gram model: baseline ---
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10 --max_evals 0
-
-    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data_vm/artifacts --ckpt ./data_vm/artifacts/best.ckpt --offset 6.2146 --task_instance Clustering-REBEL-100 --alpha 1.0 --max_particles 100 --max_evals 100
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data/artifacts --ckpt ./data/artifacts/best.ckpt --task_instance Clustering-REBEL-100 --alpha 500.0 --max_particles 10 --max_evals 0
+    uv run scripts/eval_clustering_smc.py --config ./scripts/config/benchmark_conf.json --artifacts ./data/artifacts --ckpt ./data/artifacts/best.ckpt --offset 6.2146 --task_instance Clustering-REBEL-100 --alpha 1.0 --max_particles 100 --max_evals 100
 """
 
 from __future__ import annotations
@@ -195,7 +193,7 @@ def build_argparser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--surrogate",
-        default="./data_vm/artifacts/rebel_2gram_counts.pickle",
+        default="./data/artifacts/rebel_2gram_counts.pickle",
         help="Surrogate model parameters",
     )
     p.add_argument(

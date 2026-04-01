@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Torch Dataset that reads JSONL entities or entity sequences, canonicalizes on-the-fly, and encodes to token IDs.

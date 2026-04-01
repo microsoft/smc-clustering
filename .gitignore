@@ -7,15 +7,12 @@ __pycache__/
 log/
 
 # data
-data_vm/
-data_vm
 runs/
 output/
 experiments/data
-scripts/artifacts
 scripts/data
 scripts/output
-*.lnk
+scripts/artifacts
 
 # wandb
 wandb/*

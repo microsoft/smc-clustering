@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 # Exit immediately if anything goes wrong
@@ -12,9 +12,6 @@ uv run ruff check --select I
 
 # Lint
 uv run ruff check
-
-# Type check (temporarily disabled)
-# uv run pyright
 
 # Tests
 uv run pytest

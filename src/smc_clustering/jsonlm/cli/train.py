@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Training CLI for grammar-constrained JSON-entity language modeling.
@@ -11,7 +11,7 @@ This script:
   5) Saves artifacts: vocabulary tokens, BPE model JSON, and transformer config JSON.
 
 Example:
-    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --max_epochs 10 --decode_every 500 --device cuda --batch_size 32
+    uv run ./src/jsonlm/cli/train.py --train ./data/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --max_epochs 10 --decode_every 500 --device cuda --batch_size 32
 """
 
 from __future__ import annotations
@@ -138,7 +138,7 @@ def _train_corpus_lines(paths: Sequence[str]) -> Iterable[str]:
 
 
 class PeriodicDecodeCallback(Callback):
-    """Every `every_n_steps`, print a constrained-greedy decode (as a canonical dict) for sanity."""
+    """Every `every_n_steps`, print a constrained-greedy decode (as a canonical dict)."""
 
     def __init__(self, tokenizer: JsonLMTokenizer, every_n_steps: int = 0, max_steps: int = 128) -> None:
         """Initialize the callback."""

@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Tests for the decode wrapper: it returns a canonical dict and matches parse(decode_greedy).

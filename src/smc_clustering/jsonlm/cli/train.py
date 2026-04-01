@@ -11,7 +11,7 @@ This script:
   5) Saves artifacts: vocabulary tokens, BPE model JSON, and transformer config JSON.
 
 Example:
-    uv run ./src/jsonlm/cli/train.py --train ./data_vm/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data_vm/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --max_epochs 10 --decode_every 500 --device cuda --batch_size 32
+    uv run ./src/jsonlm/cli/train.py --train ./data/datasets/fragment_set_generation/train/rebel_fragment_set_generation_dataset.jsonl --val ./data/datasets/fragment_set_generation/dev/rebel_fragment_set_generation_dataset.jsonl --save_dir runs/exp1 --max_epochs 10 --decode_every 500 --device cuda --batch_size 32
 """
 
 from __future__ import annotations

@@ -4,10 +4,7 @@
 """Evaluate n-gram surrogate model linking performance in MS-KeBAB.
 
 Example usage:
-    uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Test --prior_scale 0.01
-    uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Validation --prior_scale 0.01
-    uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Incremental-Test --prior_scale 0.01
-    uv run scripts/eval_linking_ngram.py --artifacts ./data_vm/artifacts --task_instance Linking-REBEL-Incremental-Validation --prior_scale 0.01
+    uv run scripts/eval_linking_ngram.py --artifacts ./data/artifacts --task_instance Linking-REBEL-Test --prior_scale 0.01
 
 The required pickle with prior counts is expected at:
     <artifacts>/wikipedia_names_2gram_counts.pickle
@@ -58,7 +55,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Evaluate n-gram surrogate model in MS-KeBAB Linking task.")
     p.add_argument(
         "--artifacts",
-        default="./data_vm/artifacts",
+        default="./data/artifacts",
         help="Directory with wikipedia_names_2gram_counts.pickle",
     )
     p.add_argument(

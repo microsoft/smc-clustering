@@ -3,52 +3,12 @@
 
 """Generic sweep runner for clustering evaluation scripts.
 
-Allows specifying scalar or list-valued arguments to generate a Cartesian
-product of runs. Can be used with any evaluation script (e.g., eval_clustering_smc.py,
-eval_clustering_mcmc.py, etc.).
-
-Note: The --script parameter is now required to specify which evaluation script to run.
-
-Examples:ric sweep runner for clustering evaluation scripts.
-
-Allows specifying scalar or list-valued arguments to generate a Cartesian
-product of runs. Can be used with any evaluation script (e.g., eval_clustering_smc.py,
-eval_clustering_mcmc.py, etc.).
-
 Examples:
-    # SMC: no use of the model
     uv run scripts/sweep_eval_clustering.py \
         --script scripts/eval_clustering_smc.py \
         --config ./scripts/config/benchmark_conf.json \
-        --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/best.ckpt \
-        --offset 6.2146 \
-        --task_instance Clustering-REBEL-200 \
-        --alpha 1.0 \
-        --seed [0,1] \
-        --max_particles 10 \
-        --max_evals 0 \
-        --split [0,1]
-
-    # SMC: 1 particle, no/100 evals, no split interval
-    uv run scripts/sweep_eval_clustering.py \
-        --script scripts/eval_clustering_smc.py \
-        --config ./scripts/config/benchmark_conf.json \
-        --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/best.ckpt \
-        --offset 6.2146 \
-        --task_instance Clustering-REBEL-200 \
-        --alpha 1.0 \
-        --seed [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20] \
-        --max_particles 1 \
-        --max_evals [-1,100]
-
-    # SMC: particles=evals, all seeds
-    uv run scripts/sweep_eval_clustering.py \
-        --script scripts/eval_clustering_smc.py \
-        --config ./scripts/config/benchmark_conf.json \
-        --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/best.ckpt \
+        --artifacts ./data/artifacts \
+        --ckpt ./data/artifacts/best.ckpt \
         --offset 6.2146 \
         --task_instance Clustering-REBEL-200 \
         --alpha 1.0 \
@@ -56,32 +16,6 @@ Examples:
         --max_particles 200 \
         --max_evals 200 \
         --split [0,1]
-
-
-        --seed [11,12,13,14,15] \
-    MCMC
-    uv run scripts/sweep_eval_clustering.py \
-        --script scripts/eval_clustering_mcmc.py \
-        --config ./scripts/config/benchmark_conf.json \
-        --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/best.ckpt \
-        --offset 6.2146 \
-        --task_instance Clustering-REBEL-50 \
-        --alpha 1.0 \
-        --max_iter 150 \
-        --seed [0,1,2,3,4,5,6,7,8,9,10]
-
-    uv run scripts/sweep_eval_clustering.py \
-        --script scripts/eval_clustering_mcmc.py \
-        --config ./scripts/config/benchmark_conf.json \
-        --artifacts ./data_vm/artifacts \
-        --ckpt ./data_vm/artifacts/best.ckpt \
-        --offset 6.2146 \
-        --task_instance Clustering-REBEL-50 \
-        --alpha 1.0 \
-        --max_iter 150 \
-        --seed [11,12,13,14,15,16,17,18,19,20]
-
 
 Use --dry-run to only print the planned commands.
 """
@@ -149,13 +83,7 @@ def parse_sweep_spec(value: str) -> SweepSpec:
 
 
 def build_argparser() -> argparse.ArgumentParser:
-    """Construct argument parser for sweep script.
-
-    Returns:
-    -------
-    argparse.ArgumentParser
-        Configured parser instance.
-    """
+    """Construct argument parser for sweep script."""
     p = argparse.ArgumentParser(description="Generic sweep runner for clustering evaluation scripts")
     p.add_argument(
         "--script",
@@ -237,18 +165,7 @@ def generate_combos(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for running a sweep.
-
-    Parameters
-    ----------
-    argv : list[str] | None
-        Optional argument list (defaults to sys.argv).
-
-    Returns:
-    -------
-    int
-        Process exit code (0 on success).
-    """
+    """Entry point for running a sweep."""
     args = build_argparser().parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

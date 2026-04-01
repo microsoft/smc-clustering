@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Prefix automaton and transitions for the constrained JSON-with-<K>/<V> grammar.

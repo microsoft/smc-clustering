@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Trainer for the hybrid tokenizer that uses Byte-Level BPE inside quoted strings.

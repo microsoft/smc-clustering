@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """End-to-end smoke test: TinyTransformerLM + LitConstrainedLM one optimization step.

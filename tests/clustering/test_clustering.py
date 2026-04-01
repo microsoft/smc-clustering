@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Test that the clustering algorithms give the expected output on a toy problem.
@@ -41,88 +41,88 @@ def surrogate():
 
 def test_clustering_smc(data, prior, surrogate):
     """Test SMC clustering, without split step"""
-    clusterer = SMCClusterer(data = data, 
+    clusterer = SMCClusterer(data = data,
                              max_particles = 5,
                              max_evals = 0,
                              score_fn = None,
-                             prior = prior, 
-                             surrogate = surrogate, 
+                             prior = prior,
+                             surrogate = surrogate,
                              resample_fn = resample_greedy,
                              ClusterClass = GaussianCluster
                              )
-    
+
     rng = jax.random.PRNGKey(0)
-    evals, subprobs = clusterer.cluster(rng,callback_interval=0) 
-    
+    evals, subprobs = clusterer.cluster(rng,callback_interval=0)
+
     # check number of subproblems at each point in time
     assert subprobs == [1, 1, 1, 1, 1, 1, 1, 1, 1]
-    
+
     # check the top-weighted clustering
     reference_labels = np.array([1, 1, 1, 0, 1, 1, 0, 0, 1, 1])
     _, clusterer_labels = np.unique(clusterer.list_cluster_labels(), return_inverse=True)
     assert list(clusterer_labels) == list(reference_labels)
-    
+
     # check the log-posterior density of the top-weighted clustering
     assert math.isclose(clusterer.best_logpost, -42.25391, rel_tol=1e-4, abs_tol=1e-4)
-    
+
     # check all particle weights
     reference_weights = [np.array([-8.39751328, -8.33921396, -7.93428503, -7.4778169 , -4.39593352])]
     assert [len(w) for w in clusterer.state.weights] == [len(w) for w in reference_weights]
-    
+
     weight_diff = np.sum([np.abs(w - reference_weights[i]) for i, w in enumerate(clusterer.state.weights)])
     assert math.isclose(weight_diff, 0, rel_tol=1e-4, abs_tol=1e-4)
 
 
 def test_clustering_split_smc(data, prior, surrogate):
     """Test SMC clustering, with split step"""
-    clusterer = SMCClusterer(data = data, 
+    clusterer = SMCClusterer(data = data,
                              split = 1,
                              max_particles = 5,
                              max_evals = 0,
                              score_fn = None,
-                             prior = prior, 
-                             surrogate = surrogate, 
+                             prior = prior,
+                             surrogate = surrogate,
                              resample_fn = resample_greedy,
                              ClusterClass = GaussianCluster
                              )
-    
+
     rng = jax.random.PRNGKey(0)
-    evals, subprobs = clusterer.cluster(rng,callback_interval=0) 
-    
+    evals, subprobs = clusterer.cluster(rng,callback_interval=0)
+
     # check number of subproblems at each point in time
     assert subprobs == [1, 1, 1, 2, 2, 2, 2, 2, 2]
-    
+
     # check the top-weighted clustering
     reference_labels = np.array([1, 1, 1, 0, 1, 1, 0, 0, 1, 1])
     _, clusterer_labels = np.unique(clusterer.list_cluster_labels(), return_inverse=True)
     assert list(clusterer_labels) == list(reference_labels)
-    
+
     # check the log-posterior density of the top-weighted clustering
     assert math.isclose(clusterer.best_logpost, -42.25391, rel_tol=1e-4, abs_tol=1e-4)
-    
+
     # check all particle weights
     reference_weights = [np.array([-10.48826235, -7.70787447, -6.78617518, -6.75808065, -2.75650089]),
                          np.array([-8.54821891, -7.95263524, -7.54770631, -7.09123818, -4.0093548])]
     assert [len(w) for w in clusterer.state.weights] == [len(w) for w in reference_weights]
-    
+
     weight_diff = np.sum([np.abs(w - reference_weights[i]) for i, w in enumerate(clusterer.state.weights)])
     assert math.isclose(weight_diff, 0, rel_tol=1e-4, abs_tol=1e-4)
 
 
 def test_clustering_mcmc(data, prior, surrogate):
-    """Test Gibbs clustering"""  
+    """Test Gibbs clustering"""
     def batched_likelihood(rng, clusters):
         n = np.array([cl.shape[0] for cl in clusters])
         summary = np.concatenate([np.array([np.sum(cl, axis=0) if len(cl.shape)>1 else cl for cl in clusters])[:,None,:],
                    np.array([np.sum(cl**2, axis=0) if len(cl.shape)>1 else cl**2 for cl in clusters])[:,None,:]], axis=1)
         return surrogate.evidence(n, summary)
-    
-    clusterer = GibbsClusterer(data = data, 
+
+    clusterer = GibbsClusterer(data = data,
                                score_fn = batched_likelihood,
-                               prior = prior, 
+                               prior = prior,
                                surrogate = surrogate,
                                ClusterClass = GaussianCluster)
-    
+
     rng = jax.random.PRNGKey(0)
     _ = clusterer.cluster(rng, sweeps=10)
 
@@ -132,15 +132,15 @@ def test_clustering_mcmc(data, prior, surrogate):
     reference_labels = np.array([1, 1, 1, 0, 1, 1, 0, 0, 1, 1])
     _, clusterer_labels = np.unique(clusterer.list_cluster_labels(best=False), return_inverse=True)
     assert list(clusterer_labels) == list(reference_labels)
-    
-    # check MAP clustering and log posterior density 
+
+    # check MAP clustering and log posterior density
     assert math.isclose(clusterer.best_logpost, -42.25396, rel_tol=1e-4, abs_tol=1e-4)
 
     reference_labels = np.array([1, 1, 1, 0, 1, 1, 0, 0, 1, 1])
     _, clusterer_labels = np.unique(clusterer.list_cluster_labels(), return_inverse=True)
     assert list(clusterer_labels) == list(reference_labels)
-    
-    
+
+
 
 def test_clustering_agglomerative(data, prior, surrogate):
     """Test agglomerative clustering"""
@@ -149,23 +149,23 @@ def test_clustering_agglomerative(data, prior, surrogate):
         summary = np.concatenate([np.array([np.sum(cl, axis=0) if len(cl.shape)>1 else cl for cl in clusters])[:,None,:],
                    np.array([np.sum(cl**2, axis=0) if len(cl.shape)>1 else cl**2 for cl in clusters])[:,None,:]], axis=1)
         return surrogate.evidence(n, summary)
-    
-    clusterer = Clusterer(data = data, 
-                          score_fn = batched_likelihood, 
-                          prior = prior, 
+
+    clusterer = Clusterer(data = data,
+                          score_fn = batched_likelihood,
+                          prior = prior,
                           cluster_batch_size = 16)
-    
+
     rng = jax.random.PRNGKey(0)
     _, done = clusterer.cluster(rng, max_iter=500)
-    
+
     # check algorithm has terminated
     assert done
-    
+
     # check clustering
     reference_labels = np.array([1, 1, 1, 0, 1, 1, 0, 0, 1, 1])
     _, clusterer_labels = np.unique(clusterer.list_cluster_labels(), return_inverse=True)
     assert list(clusterer_labels) == list(reference_labels)
-    
+
     # check log posterior density
     assert math.isclose(clusterer.objective, -42.25396, rel_tol=1e-4, abs_tol=1e-4)
 

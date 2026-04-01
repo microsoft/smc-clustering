@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Hybrid tokenizer: specials for JSON structure + Byte-Level BPE for string contents.

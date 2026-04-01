@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """Provides Vocabulary, a deterministic mapping between token strings and IDs (specials-first).

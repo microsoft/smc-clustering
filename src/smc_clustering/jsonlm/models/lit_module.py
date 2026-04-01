@@ -1,4 +1,4 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Lancaster University.
 # Licensed under the MIT license.
 
 """PyTorch Lightning module that trains a next-token LM with grammar-constrained NLL.

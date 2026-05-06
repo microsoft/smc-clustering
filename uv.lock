@@ -1368,7 +1368,7 @@ wheels = [
 
 [[package]]
 name = "jupyter-server"
-version = "2.17.0"
+version = "2.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1390,9 +1390,9 @@ dependencies = [
     { name = "traitlets" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/ac/e040ec363d7b6b1f11304cc9f209dac4517ece5d5e01821366b924a64a50/jupyter_server-2.17.0.tar.gz", hash = "sha256:c38ea898566964c888b4772ae1ed58eca84592e88251d2cfc4d171f81f7e99d5", size = 731949, upload-time = "2025-08-21T14:42:54.042Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/ec/9302cec1ccacdd33c1b1312ac31681c8975cae56c626d783ab49edf9c681/jupyter_server-2.18.0.tar.gz", hash = "sha256:568b27bce4320a53c3eebf1bdcbee9acf48a8ab7f66ec83d900ca9909d4fb770", size = 751152, upload-time = "2026-05-04T13:39:29.685Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/80/a24767e6ca280f5a49525d987bf3e4d7552bf67c8be07e8ccf20271f8568/jupyter_server-2.17.0-py3-none-any.whl", hash = "sha256:e8cb9c7db4251f51ed307e329b81b72ccf2056ff82d50524debde1ee1870e13f", size = 388221, upload-time = "2025-08-21T14:42:52.034Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/f9/050312d92072ddb9ce14c11171804c07435790c98d4350935a780d9e10c2/jupyter_server-2.18.0-py3-none-any.whl", hash = "sha256:69a5397a039d689da81a45955f9b23e95ee167f6d8a8d64372fb616f2aac650a", size = 391687, upload-time = "2026-05-04T13:39:27.549Z" },
 ]
 
 [[package]]
@@ -2092,7 +2092,10 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/1b/54f7595727516ba21b59dd8607ade5e6dda973462264be9af74b5ee0dee3/nvidia_cublas_cu12-12.9.2.10.tar.gz", hash = "sha256:7caf6512c921f956e5e609378e8332be502d7e5108deaade5c7ecf6b8042e842", size = 15431, upload-time = "2026-03-24T04:05:24.555Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/a2/c96163a0fff1839c0c9548bbdeae7b853b867009e33b9b9264adc238b1cf/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:5572131a59c3eebeeb1c4c8144f772d49372c20124916e072a0e3fc30df421d5", size = 575012079, upload-time = "2026-04-08T18:51:47.303Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/c0/0a517bfe63ccd3b92eb254d264e28fca3c7cab75d07daea315250fb1bf73/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:e4f53a8ca8c5d6e8c492d0d0a3d565ecb59a751b19cfdaa4f6da0ab2104c1702", size = 581240110, upload-time = "2026-04-08T18:52:31.532Z" },
+]
 
 [[package]]
 name = "nvidia-cuda-cccl-cu12"
